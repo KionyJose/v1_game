@@ -1,16 +1,19 @@
-// ignore_for_file: file_names, avoid_print, use_build_context_synchronously
+// ignore_for_file: file_names, avoid_print, use_build_context_synchronously, must_be_immutable
 
 import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:v1_game/Class/Paad.dart';
 import 'package:v1_game/Controllers/PastaCtl.dart';
+import 'package:v1_game/Global.dart';
 import 'package:v1_game/Metodos/leituraArquivo.dart';
 import 'package:v1_game/Modelos/Item.dart';
 import 'package:v1_game/Widgets/Pops.dart';
 
 class NavPasta extends StatefulWidget {
-  const NavPasta({super.key});
+  final Paad pad;
+  const NavPasta({super.key, required this.pad});
 
   @override
   State<NavPasta> createState() => _NavPastaState();
@@ -21,6 +24,8 @@ class _NavPastaState extends State<NavPasta> {
   String imgLoadPreview = "";
   String caminhoFinal = "";
   List<String> listCaminho = [];
+
+  late  bool stateTela;
       
   FocusScopeNode gridViewFocus1 = FocusScopeNode();
   FocusScopeNode gridViewFocus2 = FocusScopeNode();
@@ -39,60 +44,132 @@ class _NavPastaState extends State<NavPasta> {
 
   @override
   void initState() {
+    stateTela = true;
     super.initState();
     iniciaTela();
+    
+  }
+  
+  @override
+  void dispose() {
+    super.dispose();
+    
+    stateTela = false;
+  }
+
+
+  escutaPad(String event)async {
+    // default pov 65535.0
+    // esquerda pov 27000.0
+    // direita pov 9000.0
+    // cima pov 0.0
+    // baixo pov 18000.0
+    // QUADRADO = 1
+    // XIS = 2
+    // BOLA = 3
+    // TRIANGULO = 4
+    // L1 = 4
+    // R1 = 5
+    // L2 = 6
+    // R2 = 7
+    // SELECT = 8
+    // START = 9
+    
+    // verificaFocoJanela();
+    // if(!isWindowFocused) return;
+    if(!stateTela) return;
+    debugPrint("=======   Escuta NavPasta  =======");
+    if(event == "ESQUERDA"){//ESQUERDA
+      gridFocoAtual.focusInDirection(TraversalDirection.left);
+    }
+    if(event == "DIREITA"){//DIREITA
+      gridFocoAtual.focusInDirection(TraversalDirection.right);
+    }
+    if(event == "CIMA" || event.contains("ANALOGICO DIREITO")){//CIMA
+      gridFocoAtual.focusInDirection(TraversalDirection.up);
+    }
+    if(event == "BAIXO" || event.contains("ANALOGICO ESQUERDO X")){//BAIXO
+      gridFocoAtual.focusInDirection(TraversalDirection.down);
+    }
+    if(event == "START"){//START
+      // btnMais();
+    }
+    if(event == "2"){//Entrar
+      btnEntrar();
+    }
+    if(event == "3"){//Entrar
+      clickVoltar();
+    }
+    if(event == "LB"){//Entrar
+      gridViewFocus1.requestFocus();
+      gridFocoAtual = gridViewFocus1;
+    }
+    if(event == "RB"){//Entrar
+      gridViewFocus2.requestFocus();
+      gridFocoAtual = gridViewFocus2;
+    }
+
+
+
   }
 
   iniciaTela()async { 
     gridFocoAtual = gridViewFocus2;
-    
     unidades = lerArquivos.getUnidadesWindows();
     caminhoFinal = "${unidades[0]}:";
     listCaminho.add(caminhoFinal);
-    items = await lerArquivos.lerDadosPasta("C:");
+    String caminhoDesktop = lerArquivos.desktopPath();
+    debugPrint(caminhoDesktop);
+    items = await lerArquivos.lerDadosPasta(caminhoDesktop);
+    widget.pad.recebeDados(escutaPad);
+    setState(() {});
+  }
+
+  btnEntrar() async {
+    try{
+      if(gridFocoAtual == gridViewFocus1){
+        caminhoFinal = "${unidades[selectedIndex1]}:";
+        items = await lerArquivos.lerDadosPasta(caminhoFinal);
+        if(caminhoFinal != listCaminho.last ) listCaminho.add(caminhoFinal);
+        setState(() {});
+      }
+      if(gridFocoAtual == gridViewFocus2){
+        // String brs = "\\";
+        caminhoFinal = items[selectedIndex2].caminho;
+
+        if(items[selectedIndex2].pasta == false){
+          stateTela = false;
+          String resposta = await Pops().msgSN(context,widget.pad, "Definir este caminho?");
+          if(resposta == "Sim"){
+            List<String> listAux = listCaminho.last.split('\\');
+            String caminho = "";
+            for (var item in listAux) {
+              caminho += "$item\\\\";
+            }
+            stateTela = true;
+            Navigator.pop(context);
+            return Navigator.pop(context,["caminho", items[selectedIndex2].url ? caminhoFinal : caminho + caminhoFinal]);
+          }
+          
+          stateTela = true;
+        }
+
+
+
+        items = await lerArquivos.lerDadosPasta(caminhoFinal);      
+        if(caminhoFinal != listCaminho.last ) listCaminho.add(caminhoFinal);
+        setState(() {});
+
+      }
+    }catch(e){ notificacaoPop = true;
     setState(() {
       
     });
-
-  }
-
-  click() async {
-
-    
-    
-    if(gridFocoAtual == gridViewFocus1){
-      caminhoFinal = "${unidades[selectedIndex1]}:";
-      items = await lerArquivos.lerDadosPasta(caminhoFinal);
-      if(caminhoFinal != listCaminho.last ) listCaminho.add(caminhoFinal);
-      setState(() {});
     }
-    if(gridFocoAtual == gridViewFocus2){
-      // String brs = "\\";
-      caminhoFinal = items[selectedIndex2].caminho;
-
-      if(items[selectedIndex2].pasta == false){
-        return Pops().msgSN(context, "Definir este caminho?", () {
-          List<String> listAux = listCaminho.last.split('\\');
-          String caminho = "";
-          for (var item in listAux) {
-            caminho += "$item\\\\";
-          }
-          Navigator.pop(context);
-          Navigator.pop(context,["caminho", items[selectedIndex2].url ? caminhoFinal : caminho + caminhoFinal]);
-        });
-      }
-
-
-      
-      items = await lerArquivos.lerDadosPasta(caminhoFinal);      
-      if(caminhoFinal != listCaminho.last ) listCaminho.add(caminhoFinal);
-      setState(() {});
-      
-    }
-
   }
   clickVoltar() async {
     
+    if(listCaminho.last.length < 4) stateTela = false;
     if(listCaminho.last.length < 4) return Navigator.pop(context);
     listCaminho.removeLast();
     caminhoFinal = listCaminho.last;
@@ -112,7 +189,7 @@ class _NavPastaState extends State<NavPasta> {
             
             if(event.logicalKey == LogicalKeyboardKey.digit2){//entrar
               // openFile("C:\\Users\\Public\\Documents\\Bingo Grandioso\\BingoPresencial.exe");
-              click();
+              btnEntrar();
             }
             if(event.logicalKey == LogicalKeyboardKey.digit3){//sair
               //openFile("C:\\Users\\Public\\Documents\\Bingo Grandioso\\BingoPresencial.exe");
@@ -147,7 +224,7 @@ class _NavPastaState extends State<NavPasta> {
         height: MediaQuery.of(context).size.height * 0.90,
         width: MediaQuery.of(context).size.width * 0.90,
         child:  Column(
-          children: [            
+          children: [
             const FittedBox (
               child:  Text("Navegando nos arquivos",style: TextStyle(fontSize: 20),)),
             Flexible(
@@ -164,8 +241,10 @@ class _NavPastaState extends State<NavPasta> {
                       child: ListView.builder(
                         scrollDirection: Axis.vertical,
                         padding: const EdgeInsets.only(left: 5),
-                        itemCount: unidades.length,
+                        itemCount: unidades.length + 1,
                         itemBuilder: (context, index) {
+
+                          // if(unidades.length == index-1)
     
                           return Focus(
                             focusNode: focusNodeSetas1[index],
@@ -186,7 +265,8 @@ class _NavPastaState extends State<NavPasta> {
                                 }
                               },
     
-                              child: arquivo(index,"Disco ${unidades[index]}", context,selectedIndex1)
+                              child: 0 == index ? arquivo(index,"Area Trabalho", context, selectedIndex1)
+                              : arquivo(index,"Disco ${unidades[index-1]}", context, selectedIndex1)
                               ));     
                         },
                       ),

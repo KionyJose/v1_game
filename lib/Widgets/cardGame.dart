@@ -22,8 +22,33 @@ class CardGame extends StatelessWidget {
         ),
         height: 200,
         width: 135,
-        child: focus ? Center(child: Text(iconInitial.nome,style: const TextStyle(fontSize: 25,color: Colors.white),)) : Container()    ),
+        child: focus ? Column(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [texto()],
+        ) : Container()
+      ),
 
     );
+  }
+
+  texto(){
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 7 ,horizontal: 10),
+      child: Text(
+      iconInitial.nome,
+      textAlign: TextAlign.center,
+      style:  TextStyle(
+        fontSize: 25,
+        color: Colors.white,
+        shadows: [
+          for(int i =0; i < 10; i++)
+          const Shadow(
+            color: Colors.black,
+            blurRadius: 30,
+            offset: Offset(0,18),
+          ),
+        ]
+      ),
+    ),);
   }
 }

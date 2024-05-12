@@ -1,4 +1,5 @@
 // ignore_for_file: file_names
+import 'dart:ffi';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -27,6 +28,15 @@ class LerArquivos{
     return listRow;
   }
 
+  String desktopPath() {
+  if (Platform.isWindows) {
+    // Obtém o valor da variável de ambiente %USERPROFILE%
+    final userProfile = Platform.environment['USERPROFILE'];
+    if (userProfile != null) return userProfile;
+    
+  }
+  return "";
+}
   arquivoUrl(String path) async {
     String url = "";
         try{

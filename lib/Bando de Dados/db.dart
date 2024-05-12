@@ -53,7 +53,6 @@ class DB{
     // local: D:\\GAMES\\HOGWARTS LEGACY\\Hogwarts Legacy\\Phoenix\\Binaries\\Win64\\HogwartsLegacy.exe
     // img: C:\\Users\\kiony\\OneDrive\\Imagens\\Walpappers\\1102284.jpg
     // imgAux: caminho/.png
-
   }
   
 
@@ -63,7 +62,6 @@ class DB{
 
     List<String> itemCard = [];
     List<IconInicial> listIconsInicial = [];
-
 
     Stream<String> lines = file.openRead()
       .transform(utf8.decoder) // Decode bytes to UTF-8.
@@ -89,25 +87,13 @@ class DB{
     return listIconsInicial;
   }
 
-  void openFile(String filePath) async {
+  openFile(String filePath) async {
     try {
-    final process = await Process.start(filePath, ["-h"]);
-    // final lineStream = process.stdout.transform(const Utf8Decoder()).transform(const LineSplitter());
 
-    // await for (final line in lineStream) {
-    //   debugPrint(line);
-    // }
-
-    await process.stderr.drain();
-    debugPrint('exit code: ${await process.exitCode}');
-
-
-
-
-    //   final process = Process.runSync('open', [filePath]); // Comando 'open' para macOS
-    //   if (process.exitCode != 0) {
-    //     debugPrint('Erro ao abrir o arquivo: ${process.stderr}');
-    //   }
+      final process = await Process.start(filePath, ["-h"]);
+      await process.stderr.drain();
+      debugPrint('exit code: ${await process.exitCode}');
+      
     } on ProcessException catch (e) {
       debugPrint('Erro ao abrir o arquivo: $e');
       openUrl(filePath);
