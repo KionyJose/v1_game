@@ -8,7 +8,8 @@ import 'package:v1_game/Modelos/IconeInicial.dart';
 class DB{
 
   
-  String dbPath = "C:\\Users\\kiony\\OneDrive\\Área de Trabalho\\testeDBLocal.txt"; 
+  // String dbPath = "C:\\Users\\kiony\\OneDrive\\Área de Trabalho\\testeDBLocal.txt"; 
+  String dbPath = "C:\\Users\\Public\\Documents\\testeDBLocal.txt"; 
 
   leiaBanco() async {
     return await leituraDeDados();
@@ -28,6 +29,9 @@ class DB{
       // Se a permissão não for concedida, exiba uma mensagem ao usuário ou tome outra ação apropriada
       debugPrint('Permissão para escrever na área de trabalho não concedida');
     }
+
+  }
+  addNovoCard(IconInicial ico){
 
   }
 
@@ -80,8 +84,10 @@ class DB{
         itemCard.add(line);
 
       }
-      IconInicial iconIni =  IconInicial(itemCard);
-      listIconsInicial.add(iconIni);
+      if(itemCard.isNotEmpty){        
+        IconInicial iconIni =  IconInicial(itemCard);
+        listIconsInicial.add(iconIni);
+      }
     } catch (_) {}
     debugPrint(listIconsInicial.length.toString());
     return listIconsInicial;
@@ -92,13 +98,13 @@ class DB{
 
       final process = await Process.start(filePath, ["-h"]);
       await process.stderr.drain();
-      debugPrint('exit code: ${await process.exitCode}');
+      debugPrint('Erro ao abrir 1\ncode: ${await process.exitCode}');
       
     } on ProcessException catch (e) {
       debugPrint('Erro ao abrir o arquivo: $e');
       openUrl(filePath);
     } catch (e) {
-      debugPrint('Erro desconhecido: $e');
+      debugPrint('Erro 2 desconhecido: $e');
     }
   }
 

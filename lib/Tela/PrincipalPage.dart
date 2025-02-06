@@ -1,7 +1,8 @@
-// ignore_for_file: use_build_context_synchronously, file_names
+// ignore_for_file: use_build_context_synchronously, file_names, deprecated_member_use
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:flutter/scheduler.dart';
+import 'package:provider/provider.dart';
+import 'package:v1_game/Class/Paad.dart';
 import 'package:v1_game/Controllers/PrincipalCtrl.dart';
 import 'package:v1_game/Widgets/cardGame.dart';
 
@@ -16,85 +17,101 @@ class PrincipalPage extends StatefulWidget {
 
 class _PrincipalPageState extends State<PrincipalPage> with WidgetsBindingObserver {
 
-  late PrincipalCtrl ctrl;
-  atualizaTela(){}
-  void atualizarTela() => setState((){});
+  // late PrincipalCtrl ctrl;
+  EdgeInsetsGeometry cardMargin = const EdgeInsets.only(left: 5, right: 5, top: 20);
+  
+  // void atualizarTela() => setState((){});
 
   @override
   void initState() {
     super.initState();
-    ctrl = PrincipalCtrl(context, atualizaTela);
-    ctrl.showNewImage = false;
-
-    WidgetsBinding.instance.addObserver(this);
-    ctrl.iniciaTela();
-    ctrl.pad.recebeDados(ctrl.escutaPad);
-
-    ctrl.ctrlAnimeBgFundo = AnimationController(
-      duration: const Duration(seconds: 20),
-      vsync:  MyTickerProvider(),
-    );
-
-    ctrl.scaleAnimation = Tween<double>(begin: 1.0, end: 1.1).animate(ctrl.ctrlAnimeBgFundo)
-      ..addListener(() {
-        setState(() {});
-      });
-
-    ctrl.ctrlAnimeBgFundo.repeat(reverse: true);
+    WidgetsBinding.instance.addObserver(this);// en teste!
   }
+
+  
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    debugPrint(state.name);
+    // debugPrint(state.name);
     if (state == AppLifecycleState.hidden) {
-      ctrl.isWindowFocused = false;
+      // ctrl.isWindowFocused = false;
     } else {
-      ctrl.isWindowFocused = true;
+      // ctrl.isWindowFocused = true;
     }
   }
 
   @override
   void dispose() {
-    ctrl.dispose();
-    WidgetsBinding.instance.removeObserver(this);
+    debugPrint("SAIU PAGE PAGE");
+    // ctrl.dispose();
+    // WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   } 
+  
   
 
   @override
   Widget build(BuildContext context) {
-    return KeyboardListener(
-      includeSemantics: false,
-      focusNode: ctrl.focoPrincipal,
-      autofocus: false,
-      onKeyEvent: (KeyEvent event) async => ctrl.keyPress(event),
-      child: scaffold()
+
+    return ChangeNotifierProvider(
+      create: (context) => PrincipalCtrl(context), // Cria o controlador aqui
+      // dispose: (context, ctrl) => ctrl.dispose(), // Remove o controlador quando sair
+      child: Consumer<PrincipalCtrl>(
+        builder: (context, ctrl, child) {
+          debugPrint("object =========================");
+          ctrl.ctx = context;
+          return KeyboardListener( // Escuta teclado Press;
+            includeSemantics: false,
+            focusNode: ctrl.focoPrincipal,
+            autofocus: false,
+            onKeyEvent: (KeyEvent event) => ctrl.keyPress(event),
+            child: escutaPadWid(ctrl)
+          );
+        },
+      ),
     );
   }
-  scaffold(){
+
+  escutaPadWid(PrincipalCtrl ctrl){
+    return Selector<Paad, String>(
+      selector: (context, paad) => paad.click, // Escuta apenas click
+      builder: (context, valorAtual, child) {
+        // Aguardando o próximo frame para chamar o showDialog
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          ctrl.escutaPad(valorAtual);  // Isso pode chamar o showDialog
+        });
+        return scaffold(ctrl);
+      },
+    );
+  }
+  scaffold(PrincipalCtrl ctrl){
     return Scaffold(
       backgroundColor: Colors.black,
-      body: body(),
+      body: body(ctrl),
       floatingActionButton: floatBtns(),
     );
   }
-  body(){
+  body(PrincipalCtrl ctrl){
     return Stack(
       children: [
-        backGorundfade(),
+        backGroundAnimado(ctrl),
+        if(ctrl.telaIniciada)
         Padding(
           padding: const EdgeInsets.only(top: 20),
           child: FocusScope(
-            onFocusChange: (value) => debugPrint(value.toString()),
-            node: ctrl.listViewFocus,
+            onFocusChange: (value) => debugPrint("--------------------------------***-----------------------------"),
+            node: ctrl.focusScope,
             child: ListView.builder(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 10),
-              itemCount: ctrl.listIconsInicial.length,
+              itemCount: ctrl.focusNodeIcones.length,
               itemBuilder: (context, index) {
+                if (index >= ctrl.focusNodeIcones.length) {
+                  return Container(); // Retorna um placeholder ou nada
+                }
                 return Focus(
                   autofocus: ctrl.indexFcs == 0 ? true : false,
-                  focusNode: ctrl.focusNodeSetas[index],
+                  focusNode: ctrl.focusNodeIcones[index],
                   onFocusChange: (hasFocus) => ctrl.onFocusChange(hasFocus, index),
                   child: GestureDetector(
                     onTap: () async {
@@ -105,23 +122,22 @@ class _PrincipalPageState extends State<PrincipalPage> with WidgetsBindingObserv
                         debugPrint(e.toString());
                       }
                     },
-                    child:Column(
+                    child: Column(
                       children: [
-                        cardAnimado(index),
-                        // if (ctrl.selectedIndex == index)
-                        // textoBaixoCard(index)
+                        if(ctrl.listIconsInicial.isNotEmpty) cardAnimado(ctrl, index),
+                        if(ctrl.listIconsInicial.isEmpty) cardAnimadoAdd(ctrl, index)
                       ],
-                    ),
+                    ) ,
                   ),
                 );
               },
             ),
           ),
-        ),        
+        ),
       ],
     );
   }
-  textoBaixoCard(int index){
+  textoBaixoCard(PrincipalCtrl ctrl,int index){
     return Center(
       child: Text(
         ctrl.listIconsInicial[index].nome,
@@ -138,14 +154,14 @@ class _PrincipalPageState extends State<PrincipalPage> with WidgetsBindingObserv
       )
     );
   }
-  cardAnimado(int index){
+  cardAnimado(PrincipalCtrl ctrl,int index){
     return AnimatedContainer(
       constraints: const BoxConstraints(
-        minHeight: 200,
-        minWidth: 200,
+        minHeight: 175,
+        minWidth: 175,
       ),
       duration: const Duration(milliseconds: 200),
-      margin: const EdgeInsets.only( left: 20, right: 20, top: 20),
+      margin: cardMargin,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(30),
         gradient: LinearGradient(
@@ -175,7 +191,7 @@ class _PrincipalPageState extends State<PrincipalPage> with WidgetsBindingObserv
           // onHover(index, false);
         },
         child: AnimatedContainer(
-          width: ctrl.selectedIndex == index ? MediaQuery.of(context).size.width * 0.15 : MediaQuery.of(context).size.width * 0.04,
+          width: ctrl.selectedIndex == index ? MediaQuery.of(context).size.width * 0.18 : MediaQuery.of(context).size.width * 0.04,
           height: ctrl.selectedIndex == index ? MediaQuery.of(context).size.width * 0.25 : MediaQuery.of(context).size.width * 0.05,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(30),
@@ -185,6 +201,65 @@ class _PrincipalPageState extends State<PrincipalPage> with WidgetsBindingObserv
           child: CardGame(
             iconInitial: ctrl.listIconsInicial[index],
             focus: ctrl.selectedIndex == index,
+          ),
+        ),
+      ),
+    );
+  }
+  cardAnimadoAdd(PrincipalCtrl ctrl, int index){
+    return AnimatedContainer(
+      constraints: const BoxConstraints(
+        minHeight: 175,
+        minWidth: 175,
+      ),
+      duration: const Duration(milliseconds: 200),
+      margin: cardMargin,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(30),
+        gradient: LinearGradient(
+          colors: [
+            Colors.pinkAccent.withOpacity(1.0),
+            Colors.blue.withOpacity(1.0),
+          ],
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.pink,
+            offset: const Offset(-2, 0),
+            blurRadius: ctrl.selectedIndex == index ? 30 : 10,
+          ),
+          BoxShadow(
+            color: Colors.blue,
+            offset: const Offset(2, 0),
+            blurRadius: ctrl.selectedIndex == index ? 30 : 10,
+          ),
+        ],
+      ),
+      child: MouseRegion(
+        onEnter: (event) {
+          // onHover(index, true);
+        },
+        onExit: (value) {
+          // onHover(index, false);
+        },
+        child: AnimatedContainer(
+          width: MediaQuery.of(context).size.width * 0.12 ,
+          height: MediaQuery.of(context).size.width * 0.12,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(30),
+            color: const Color(0xFF000515),
+          ),
+          duration: const Duration(milliseconds: 100),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(30),
+            child: Container(
+              decoration: const BoxDecoration(
+                image: DecorationImage( fit: BoxFit.cover, image: AssetImage('assets/BGICOdefault.png'),
+              ),),
+              height: 200,
+              width: 135,
+              child: const FittedBox(child: Icon(Icons.add,color: Colors.white,))
+              )
           ),
         ),
       ),
@@ -261,44 +336,49 @@ class _PrincipalPageState extends State<PrincipalPage> with WidgetsBindingObserv
   }
   
 
-  backGroundAnimado(){
-    return AnimatedBuilder(
+  backGroundAnimado(PrincipalCtrl ctrl){
+    return AnimatedBuilder( // crece Container e diminui.
       animation: ctrl.ctrlAnimeBgFundo,
       builder: (context, child) {
-        return Transform.scale(
-          scale: ctrl.scaleAnimation.value,
-          child: Container(
-            width: double.maxFinite,
-            height: double.maxFinite,
-            decoration: BoxDecoration(
-              color: Colors.blue.withOpacity(0.5),
-              borderRadius: BorderRadius.circular(50),
+        return AnimatedOpacity( // Anima A Opacidade.
+          opacity: ctrl.showNewImage ? 1.0 : 0.0,
+          duration: !ctrl.showNewImage ?  const Duration(microseconds: 0) :  const Duration(seconds: 1),
+          child: Transform.scale(
+            scale: ctrl.scaleAnimation.value,
+            child: Container(
+              width: double.maxFinite,
+              height: double.maxFinite,
+              decoration: BoxDecoration(
+                color: Colors.blue.withOpacity(0.5),
+                borderRadius: BorderRadius.circular(50),
+              ),
+              child: imagemFundo(ctrl),
             ),
-            child: imagemFundo(),
           ),
         );
       },
     );
   }
   
-  imagemFundo() {
+  imagemFundo(PrincipalCtrl ctrl) {
+    final item = BoxDecoration( image: DecorationImage( fit: BoxFit.cover, image: FileImage(File('assets/BGdefault.jpeg'),scale: 5)));
+    if(ctrl.listIconsInicial.isEmpty){
+      return Image.asset('assets/BGdefault.jpeg',
+      fit: BoxFit.cover,
+      );      
+    }
     return Container(
-      decoration: File(ctrl.imgFundoStr).existsSync() ? BoxDecoration( image: DecorationImage(fit: BoxFit.cover, image 
+      decoration: ctrl.imgFundoStr.isNotEmpty ? File(ctrl.imgFundoStr).existsSync() ? BoxDecoration( image: DecorationImage(fit: BoxFit.cover, image 
       : FileImage( File(ctrl.imgFundoStr),)))
-      : const BoxDecoration(color: Colors.transparent),
+      : item : item,
+      // : const BoxDecoration(color: Colors.transparent),
       height: 200,
       width: 135,
       // child: focus ? Center(child: Text(iconInitial.nome,style: const TextStyle(fontSize: 25,color: Colors.white),)) : Container()
     );
   }
 
-  backGorundfade(){
-    return AnimatedOpacity(
-      opacity: ctrl.showNewImage ? 1.0 : 0.0,
-      duration: !ctrl.showNewImage ?  const Duration(microseconds: 0) :  const Duration(seconds: 1),
-      child: backGroundAnimado()
-    );
-  }
+  
   teclasPRess() {
     // var key = navigatorKey.currentState.;
     // (event) {
@@ -311,9 +391,4 @@ class _PrincipalPageState extends State<PrincipalPage> with WidgetsBindingObserv
   }
 }
 
-class MyTickerProvider extends TickerProvider {
-  @override
-  Ticker createTicker(TickerCallback onTick) {
-    return Ticker(onTick);
-  }
-}
+

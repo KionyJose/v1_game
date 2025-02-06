@@ -10,15 +10,23 @@ class CardGame extends StatelessWidget {
   CardGame({super.key,required this.iconInitial,required this.focus});
   @override
   Widget build(BuildContext context) {
+    bool imgFundo = iconInitial.imgStr != "";
     return ClipRRect(
       borderRadius: BorderRadius.circular(30),
       child: Container(
-        decoration: File(iconInitial.imgStr).existsSync() ?   BoxDecoration(
+        decoration: imgFundo ?   BoxDecoration(
           image: DecorationImage(
             fit: BoxFit.cover,
             image: FileImage(            
               File(iconInitial.imgStr ,),))
-        ) : const BoxDecoration(color: Colors.transparent 
+        ) :  BoxDecoration(
+                image: DecorationImage( fit: BoxFit.cover, image: FileImage(
+                  File('assets/BGICOdefault.png'),
+                  
+                  scale: 5,
+                ),
+                //Image.asset('assets/BGdefault.jpeg',fit: BoxFit.cover),),
+              ),
         ),
         height: 200,
         width: 135,

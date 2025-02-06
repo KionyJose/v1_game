@@ -3,11 +3,11 @@
 import 'package:desktop_window/desktop_window.dart';
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:v1_game/Global.dart';
-import 'package:v1_game/Tela/PrincipalPage.dart';
-import 'package:v1_game/Widgets/NotificacaoPop.dart';
+import 'package:v1_game/Bando%20de%20Dados/TESTES.dart';
+import 'package:v1_game/MyApp.dart';
 import 'package:window_manager/window_manager.dart';
 void main() async {
+  await TESTES().testes();
   WidgetsFlutterBinding.ensureInitialized();  
   // Solicitar permissão de armazenamento externo
   var status = await Permission.storage.request();  
@@ -19,9 +19,9 @@ void main() async {
   }
   // windowFunctions();
   // fullScren();
-
-
 }
+
+// executaTeste()
 
 
 
@@ -37,7 +37,7 @@ Future windowFunctions() async {
   await DesktopWindow.setMaxWindowSize(const Size(800,800));
 
   await DesktopWindow.resetMaxWindowSize();
-  bool isFullScreen = await DesktopWindow.getFullScreen();
+  // bool isFullScreen = await DesktopWindow.getFullScreen();
   await DesktopWindow.setFullScreen(true);
   await DesktopWindow.setFullScreen(false);
 }
@@ -58,45 +58,7 @@ fullScren() async {
   });
 }
 
-class MyApp extends StatefulWidget {
-  const MyApp({super.key});
-  @override
-  State<MyApp> createState() => _MyAppState();
-}
 
-class _MyAppState extends State<MyApp> {
- 
-  @override
-  Widget build(BuildContext context) {
-    
-    
-    
- // Obtém o tamanho da tela do Windows
-
-
-
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      navigatorKey: navigatorKey,
-      title: 'V1_Games',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-        useMaterial3: true,
-      ),
-      home:    Stack(
-        children: [
-          const PrincipalPage(title: 'V1_Games 007'),
-          if(notificacaoPop)
-          const Positioned(
-            bottom: 20,
-            right: 20,
-            child: NotificacaoPop()
-          ), 
-        ]
-      ),
-    );
-  }
-}
 //============================================================================================
 
 

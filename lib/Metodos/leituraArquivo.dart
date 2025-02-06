@@ -1,15 +1,10 @@
 // ignore_for_file: file_names
-import 'dart:ffi';
 import 'dart:io';
-
 import 'package:flutter/material.dart';
-
+import 'package:path_provider/path_provider.dart';
 import '../Modelos/Item.dart';
-// import 'package:path_provider/path_provider.dart';
 
 class LerArquivos{
-  
- 
 
   leituraString(String linha) {
     if (linha.isEmpty || linha == "" || linha == " ") return;
@@ -28,15 +23,38 @@ class LerArquivos{
     return listRow;
   }
 
-  String desktopPath() {
-  if (Platform.isWindows) {
-    // Obtém o valor da variável de ambiente %USERPROFILE%
-    final userProfile = Platform.environment['USERPROFILE'];
-    if (userProfile != null) return userProfile;
-    
+  Future<String> getDesktopPath() async {
+    final directory = await getApplicationDocumentsDirectory();
+    final userProfile = Directory(directory.parent.path); // Caminho do usuário
+    String desktopPaths = "";
+    if (userProfile == null) {
+      throw Exception('Não foi possível determinar o caminho do perfil do usuário.');
+    }
+
+    // Tenta acessar "Desktop" no idioma EUA    
+    desktopPaths = '${userProfile.path}\\Desktop'; // Adiciona 'Desktop'
+    final desktopPath = Directory(desktopPaths);
+    if (desktopPath.existsSync()) {
+      return desktopPath.path;
+    }
+
+    // Tenta acessar "Desktop" no idioma PT-BR        
+    desktopPaths = '${userProfile.path}\\Área de Trabalho'; // Adiciona 'Desktop'
+    final areaDeTrabalhoPath = Directory(desktopPaths);
+    if (areaDeTrabalhoPath.existsSync()) {
+      return areaDeTrabalhoPath.path;
+    }
+    throw Exception('Não foi possível localizar a área de trabalho.');
   }
-  return "";
-}
+
+  String desktopPath() {
+    if (Platform.isWindows) {
+      // Obtém o valor da variável de ambiente %USERPROFILE%
+      final userProfile = Platform.environment['USERPROFILE'];
+      if (userProfile != null) return userProfile;
+    }
+    return "";
+  }
   arquivoUrl(String path) async {
     String url = "";
         try{
