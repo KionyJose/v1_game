@@ -35,7 +35,7 @@ class JanelaCtrl {
       // Aguarda 1 segundo e então restaura a janela e a traz para a frente
       Future.delayed(const Duration(milliseconds: 100), () {
         showWindow(hWnd, SW_RESTORE); // Restaura a janela
-        // setForegroundWindow(hWnd);    // Traz a janela para frente
+        setForegroundWindow(hWnd);    // Traz a janela para frente
       });
     } else {
       debugPrint("Janela não encontrada.");

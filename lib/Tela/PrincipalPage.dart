@@ -2,12 +2,10 @@
 import 'dart:io';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:flutter/material.dart';
-import 'package:get_it/get_it.dart';
 import 'package:provider/provider.dart';
 import 'package:snappy_list_view/snappy_list_view.dart';
 import 'package:v1_game/Class/Paad.dart';
 import 'package:v1_game/Controllers/PrincipalCtrl.dart';
-import 'package:v1_game/Rotas/PaadGet.dart';
 import 'package:v1_game/Widgets/YouTubeTela.dart';
 import 'package:v1_game/Widgets/cardGame.dart';
 import 'package:v1_game/Widgets/videoSliders.dart';
@@ -40,26 +38,13 @@ class _PrincipalPageState extends State<PrincipalPage> with WidgetsBindingObserv
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     // debugPrint(state.name);
-    // print(state);
-    if (state == AppLifecycleState.inactive) {
-      // SAIU DA TELA
-      ctrlOff.isWindowFocused = false;
-    }
-    if (state == AppLifecycleState.resumed) {
-      // ENTROU NA TELA
-      ctrlOff.isWindowFocused = true;
-    }
-
-    // } else {
-    //   debugPrint("SAI");
-    //   // ctrl.isWindowFocused = true;
+    // if (state == AppLifecycleState.inactive) {
+    //   // SAIU DA TELA
+    //   ctrlOff.isWindowFocused = false;
     // }
-    // if (state != AppLifecycleState.hidden) {
-    //   debugPrint("Entrei-1");
-    //   // ctrl.isWindowFocused = false;
-    // } else {
-    //   debugPrint("SAI-1");
-    //   // ctrl.isWindowFocused = true;
+    // if (state == AppLifecycleState.resumed) {
+    //   // ENTROU NA TELA
+    //   ctrlOff.isWindowFocused = true;
     // }
   }
 
@@ -67,7 +52,7 @@ class _PrincipalPageState extends State<PrincipalPage> with WidgetsBindingObserv
   void dispose() {
     debugPrint("SAIU PAGE PAGE");
     // ctrl.dispose();
-    // WidgetsBinding.instance.removeObserver(this);
+    WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   } 
   
@@ -84,13 +69,9 @@ class _PrincipalPageState extends State<PrincipalPage> with WidgetsBindingObserv
           // debugPrint("object =========================");
           ctrl.ctx = context;
           ctrlOff = ctrl;
-          return KeyboardListener( // Escuta teclado Press;
-            includeSemantics: false,
-            focusNode: FocusNode(),//ctrl.focoPrincipal,
-            autofocus: false,
-            onKeyEvent: (KeyEvent event) => ctrl.keyPress(event),
-            child: escutaPadWid(ctrl)
-          );
+          return scaffold(ctrl);
+          
+          
         },
       ),
     );
@@ -104,14 +85,20 @@ class _PrincipalPageState extends State<PrincipalPage> with WidgetsBindingObserv
         WidgetsBinding.instance.addPostFrameCallback((_) {
           ctrl.escutaPad(valorAtual);// Isso pode chamar o showDialog
         });
-        return scaffold(ctrl);
+        return body(ctrl);
       },
     );
   }
   scaffold(PrincipalCtrl ctrl){
     return Scaffold(
       backgroundColor: Colors.black,
-      body: body(ctrl),
+      body: KeyboardListener( // Escuta teclado Press;
+            includeSemantics: false,
+            focusNode: ctrl.keyboradEscutaNode,//ctrl.focoPrincipal,
+            autofocus: false,
+            onKeyEvent: (KeyEvent event) => ctrl.keyPress(event),
+            child: escutaPadWid(ctrl)
+          ),
       floatingActionButton: floatBtns(),
     );
   }
@@ -133,114 +120,44 @@ class _PrincipalPageState extends State<PrincipalPage> with WidgetsBindingObserv
     );
   }
 
-  listaIcones(PrincipalCtrl ctrl){
-    double tamanho = 0.24;
-    try{
-    if(ctrl.focusScope == ctrl.focusScopeIcones)tamanho = 0.35;
-    }catch(e){}
-    return  Align(
-      alignment: Alignment.topLeft,
-      child: FocusScope(
-        node: ctrl.focusScopeIcones,
-        child: AnimatedContainer(          
-          height: MediaQuery.of(context).size.height * tamanho,  // Altura do carrossel
-          duration: const Duration(milliseconds: 100),
-          width: double.infinity,
-          child: CarouselSlider.builder(
-            carouselController: ctrl.carouselIconesCtrl,
-            itemCount: ctrl.focusNodeIcones.length,
-            itemBuilder: (context, i, realIndex) {
-              return Container(
-                height: 200,
-                padding: const EdgeInsets.symmetric(vertical: 30),
-                child: Focus(
-                  autofocus: ctrl.indexFcs == 0 ? true : false,
-                  focusNode: ctrl.focusNodeIcones[i],
-                  onFocusChange: (hasFocus) => ctrl.onFocusChangeIcones(hasFocus, i),              
-                  child: ctrl.listIconsInicial.isEmpty ? cardAnimadoAdd(ctrl, i) :  cardAnimado(ctrl, i),
-                ),
-              );
-            },
-            
-            options: CarouselOptions(
-                // pageSnapping: true,
-                // autoPlay: true, // Habilita autoplay quando nao focado.
-                
-                // height: MediaQuery.of(context).size.height * tamanho,  // Altura do carrossel
-                enlargeCenterPage: true, // Centraliza e destaca o item ativo
-      
-                enableInfiniteScroll: true,
-                viewportFraction: 0.17, // Tamanho do item visível
-                initialPage: ctrl.selectedIndexIcone,
-                // reverse: true,
-                animateToClosest: true,
-                disableCenter: true,
-                padEnds: true,
-                // scrollDirection: Axis.vertical
-                // pauseAutoPlayOnManualNavigate: true,
-                // pauseAutoPlayInFiniteScroll: true,
-                enlargeStrategy: CenterPageEnlargeStrategy.zoom
-              ),
-          ),
-            
-        ),
-      ),
-    );
-  }
   body(PrincipalCtrl ctrl){
-
-  final screenHeight = MediaQuery.of(context).size.height;
     return Stack(
       children: [
-      // Fundo animado
-      backGroundAnimado(ctrl),
-
-      // Ícones horizontais
-      if (ctrl.telaIniciada) listIcones2(ctrl),
-      // listaIcones(ctrl),
-      // iconesListHorizontal(ctrl),
-
-      // Escurecer tela
-      escurecerTela(ctrl),
-
-      // Player de vídeo
+      backGroundAnimado(ctrl), // Fundo animado
+      if (ctrl.telaIniciada) listIcones(ctrl),// Ícones horizontais
+      escurecerTela(ctrl),// Escurecer tela      
       if (ctrl.videoAtivo)
-        Align(
-          alignment: Alignment.center,
-          child: Container(
-            margin: const EdgeInsets.only(bottom: 80),
-            height: screenHeight * 0.70,
-            width: screenHeight * 0.70 * 1.809, // Aspect ratio 16:9
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(50),
-              child: YoutubeTela(
-                url: ctrl.videosYT[ctrl.selectedIndexVideo].urlVideo,
-              ),
-            ),
-          ),
-        ),
-      
+      videoAtivo(ctrl),// Player de vídeo
       if (ctrl.videosYT.isNotEmpty && ctrl.telaIniciada)
-      VideoSliders(child: listVideos(ctrl)),
-      // Lista de vídeos
-      // if (ctrl.videosYT.isNotEmpty && ctrl.telaIniciada)
-        // Align(
-        //   alignment: Alignment.bottomCenter,
-        //   child: listVideos(ctrl),
-        // ),
+      VideoSliders(child: listVideos(ctrl)),// Lista de vídeos
     ],
     );
   }
 
-  listIcones2(PrincipalCtrl ctrl){
+  videoAtivo(PrincipalCtrl ctrl){
+    return Align(
+      alignment: Alignment.center,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 80),
+        height: MediaQuery.of(context).size.height * 0.70,
+        width: MediaQuery.of(context).size.height * 0.70 * 1.809, // Aspect ratio 16:9
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(50),
+          child: YoutubeTela(
+            url: ctrl.videosYT[ctrl.selectedIndexVideo].urlVideo,
+          ),
+        ),
+      ),
+    );
+  }
+
+  listIcones(PrincipalCtrl ctrl){
 
     return Align(
       alignment: Alignment.topLeft,
       child: FocusScope(
         node: ctrl.focusScopeIcones,
         child: AnimatedContainer(
-          // color: Colors.black54,
-          height: MediaQuery.of(context).size.height * 0.55,  // Altura do carrossel
           duration: const Duration(milliseconds: 100),
           width: double.infinity,
           child: SnappyListView(
@@ -252,13 +169,10 @@ class _PrincipalPageState extends State<PrincipalPage> with WidgetsBindingObserv
             
             itemBuilder: (context, i) {
               return Container(
-                // height: 500,
-                // width: MediaQuery.of(context).size.height * 0.2,
-                padding: const EdgeInsets.symmetric(vertical: 30),
+                padding: const EdgeInsets.symmetric(vertical: 32),
                 child: Align(
                   alignment: Alignment.topLeft,
                   child: Focus(
-                      // autofocus: ctrl.indexFcs == 0 ? true : false,
                       focusNode: ctrl.focusNodeIcones[i],
                       onFocusChange: (hasFocus) => ctrl.onFocusChangeIcones(hasFocus, i),              
                       child: ctrl.listIconsInicial.isEmpty ? cardAnimadoAdd(ctrl, i) :  cardAnimado(ctrl, i),
@@ -280,7 +194,7 @@ class _PrincipalPageState extends State<PrincipalPage> with WidgetsBindingObserv
     double tamanho = 0.2;
     try{
     if(ctrl.focusScope == ctrl.focusScopeVideos && !ctrl.videoAtivo)tamanho = 0.27;
-    }catch(e){}
+    }catch(_){}
     
     return  Align(
       alignment: Alignment.bottomLeft,
@@ -308,7 +222,6 @@ class _PrincipalPageState extends State<PrincipalPage> with WidgetsBindingObserv
                 items: [
                   for(int i = 0; i < ctrl.videosYT.length; i++)
                   Focus(
-                    autofocus: ctrl.indexFcs == 0 ? true : false,
                     focusNode: ctrl.focusNodeVideos[i],
                     onFocusChange: (hasFocus) => ctrl.onFocusChangeVideos(hasFocus, i),              
                     child: Container(
@@ -347,47 +260,6 @@ class _PrincipalPageState extends State<PrincipalPage> with WidgetsBindingObserv
     );
   }
 
-  iconesListHorizontal(PrincipalCtrl ctrl){
-    return Align(
-      alignment: Alignment.topLeft,
-      child: FocusScope(
-        // onFocusChange: (value) => debugPrint("--------------------------------***-----------------------------"),
-        node: ctrl.focusScopeIcones,
-        child: ListView.builder(
-          controller: ctrl.scrolListIcones,
-          scrollDirection: Axis.horizontal,
-          padding: const EdgeInsets.symmetric(horizontal: 30,vertical: 45),
-          itemCount: ctrl.focusNodeIcones.length,
-          itemBuilder: (context, index) {
-            if (index >= ctrl.focusNodeIcones.length) {
-              return Container(); // Retorna um placeholder ou nada
-            }
-            return Focus(
-              autofocus: ctrl.indexFcs == 0 ? true : false,
-              focusNode: ctrl.focusNodeIcones[index],
-              onFocusChange: (hasFocus) => ctrl.onFocusChangeIcones(hasFocus, index),
-              child: GestureDetector(
-                onTap: () async {
-                  try {
-                    debugPrint('Container $index clicado!');
-                    await ctrl.btnMais();
-                  } catch (e) {
-                    debugPrint(e.toString());
-                  }
-                },
-                child: Column(
-                  children: [
-                    if(ctrl.listIconsInicial.isNotEmpty) cardAnimado(ctrl, index),
-                    if(ctrl.listIconsInicial.isEmpty) cardAnimadoAdd(ctrl, index)
-                  ],
-                ) ,
-              ),
-            );
-          },
-        ),
-      ),
-    );
-  }
   textoBaixoCard(PrincipalCtrl ctrl,int index){
     return Center(
       child: Text(
@@ -406,31 +278,27 @@ class _PrincipalPageState extends State<PrincipalPage> with WidgetsBindingObserv
     );
   }
   cardAnimado(PrincipalCtrl ctrl,int index){
+    bool foco = ctrl.selectedIndexIcone == index;
     return AnimatedContainer(
       constraints: const BoxConstraints(
-        minHeight: 175,
-        minWidth: 175,
+        minHeight: 140,
+        minWidth: 140,
       ),
       duration: const Duration(milliseconds: 200),
       margin: cardMargin,
       decoration: BoxDecoration(
+        color: Colors.transparent,
         borderRadius: BorderRadius.circular(30),
-        gradient: LinearGradient(
-          colors: [
-            Colors.pinkAccent.withOpacity(1.0),
-            Colors.blue.withOpacity(1.0),
-          ],
-        ),
         boxShadow: [
-          BoxShadow(
+          if(foco)BoxShadow(
             color: Colors.pink,
             offset: const Offset(-2, 0),
-            blurRadius: ctrl.selectedIndexIcone == index ? 30 : 10,
+            blurRadius: foco ? 28 : 10,
           ),
-          BoxShadow(
+          if(foco)BoxShadow(
             color: Colors.blue,
             offset: const Offset(2, 0),
-            blurRadius: ctrl.selectedIndexIcone == index ? 30 : 10,
+            blurRadius: foco ? 28 : 10,
           ),
         ],
       ),
@@ -442,16 +310,20 @@ class _PrincipalPageState extends State<PrincipalPage> with WidgetsBindingObserv
           // onHover(index, false);
         },
         child: AnimatedContainer(
-          width: ctrl.selectedIndexIcone == index ? MediaQuery.of(context).size.width * 0.13 : MediaQuery.of(context).size.width * 0.08,
-          height: ctrl.selectedIndexIcone == index ? MediaQuery.of(context).size.width * 0.35 : MediaQuery.of(context).size.width * 0.08,
+          width: foco ? MediaQuery.of(context).size.width * 0.12 : MediaQuery.of(context).size.width * 0.08,
+          height: foco ? MediaQuery.of(context).size.width * 0.26 : MediaQuery.of(context).size.width * 0.08,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(30),
-            color: const Color(0xFF000515),
+            color: Colors.transparent,
           ),
           duration: const Duration(milliseconds: 100),
-          child: CardGame(
-            iconInitial: ctrl.listIconsInicial[index],
-            focus: ctrl.selectedIndexIcone == index,
+          child: AnimatedOpacity(
+            opacity: foco ? 1.0 : 1.0,
+            duration: foco ?  const Duration(milliseconds: 350) :  const Duration(seconds: 1),
+            child: CardGame(
+              iconInitial: ctrl.listIconsInicial[index],
+              focus: ctrl.selectedIndexIcone == index,
+            ),
           ),
         ),
       ),
@@ -631,16 +503,6 @@ class _PrincipalPageState extends State<PrincipalPage> with WidgetsBindingObserv
   }
 
   
-  teclasPRess() {
-    // var key = navigatorKey.currentState.;
-    // (event) {
-    //   if (event is RawKeyDownEvent) {
-    //     debugPrint('Tecla pressionada: ${event.logicalKey}');
-    //   } else if (event is RawKeyUpEvent) {
-    //     debugPrint('Tecla liberada: ${event.logicalKey}');
-    //   }
-    // }) as void Function();
-  }
 }
 
 

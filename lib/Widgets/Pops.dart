@@ -1,4 +1,4 @@
-// ignore_for_file: avoid_print, unused_local_variable, file_names
+// ignore_for_file: avoid_print, unused_local_variable, file_names, deprecated_member_use
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -51,7 +51,7 @@ class Pops {
         Navigator.pop(context, "");
       }
       if(event == "2"){//Entrar
-      debugPrint("======================================== "+event+" SAINDOO");
+      debugPrint("======================================== $event SAINDOO");
         statePop = false;
         if (focusNodes[0].hasFocus) Navigator.pop(context, str0);
         if (focusNodes[1].hasFocus) Navigator.pop(context, str1);
@@ -231,183 +231,9 @@ class Pops {
             ));
   }
 
-  msgSNnew(BuildContext context, String str) async{
-    Paad paad = Paad(escutar: false);
-    return showDialog(
-      context: context,
-      builder: (_) => _msgSNnew(context,paad,  str)
-    );
-  }
 
   
 
-  _msgSNnew(BuildContext context,Paad paad,String str) { 
-
-
-
-    int contador = 0;
-    bool statePop = true  ; 
-    List<FocusNode> focusNodes = [
-      FocusNode(),
-      FocusNode(),
-    ];
-    
-    FocusScopeNode listViewFocus = FocusScopeNode();
-    String str1 = "Sim";
-    String str0 = "Nao";
-
-
-
-    btn(String str, FocusNode focus) {
-      return Padding(
-        padding: const EdgeInsets.all(8.0),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(30),
-          child: Container(
-            color: Colors.white70,
-            height: 40,
-            child: MaterialButton(
-                focusNode: focus,
-                autofocus: str == str0 ? true : focus.hasFocus,
-                focusColor: Colors.black45,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [ 
-                    Text(str,
-                    style:  const TextStyle(
-                      fontSize: 18,
-                      color: Colors.black ,
-                    )),
-                  ],
-                ),
-                onPressed: () {                  
-                    if (focusNodes[0].hasFocus) Navigator.pop(context, str0);
-                    if (focusNodes[1].hasFocus) Navigator.pop(context, str1);
-                } ),
-          ),
-        ),
-      );
-    }
-
-    escutaPad(String event) {
-      contador++;
-      if(contador < 2) return;
-      if(!statePop) return;
-      debugPrint("=======   Escuta Msg SN  =======");
-      if(event == "ESQUERDA"){//ESQUERDA        
-        listViewFocus.focusInDirection(TraversalDirection.left);
-      }
-      if(event == "DIREITA"){//DIREITA        
-        listViewFocus.focusInDirection(TraversalDirection.right);
-      }
-      if(event == "3"){//START
-        statePop = false;
-        Navigator.pop(context, "");
-      }
-      if(event == "2"){//Entrar
-        statePop = false;
-        if (focusNodes[0].hasFocus) Navigator.pop(context, str0);
-        if (focusNodes[1].hasFocus) Navigator.pop(context, str1);
-      }
-    }
-    
-
-    // paad.escutaPaads(escutaPad);
-
-
-
-    return KeyboardListener(
-      //KeyboardListener
-      focusNode: FocusNode(),
-      onKeyEvent: (KeyEvent event) {
-        if (event is KeyDownEvent) {
-          //  Verifica a tecla pressionada
-          if (event.logicalKey == LogicalKeyboardKey.keyA) {
-            listViewFocus.focusInDirection(TraversalDirection.left);
-            debugPrint(event.logicalKey.toString());
-          } else if (event.logicalKey == LogicalKeyboardKey.keyD) {
-            listViewFocus.focusInDirection(TraversalDirection.right);
-            debugPrint(event.logicalKey.toString());
-          } else if (event.logicalKey == LogicalKeyboardKey.digit3) {
-            statePop = false;
-            Navigator.pop(context, "");
-          } else if (event.logicalKey == LogicalKeyboardKey.digit2) {
-            statePop = false;
-            if (focusNodes[0].hasFocus) Navigator.pop(context, str0);
-            if (focusNodes[1].hasFocus) Navigator.pop(context, str1);
-          }
-        }
-      },
-      child: AlertDialog(
-        backgroundColor: Colors.transparent,
-        contentPadding: const EdgeInsets.all(0),
-        content: ClipRRect(
-          borderRadius: BorderRadius.circular(20),
-          child: Container(
-              height: 200,
-              // width: double.maxFinite,
-              color: Colors.red,
-              child: FocusScope(
-              // autofocus: true,
-              node: listViewFocus,
-              child: Container(
-              height: 200,
-              width: 200,
-              // decoration: decorationBOX,
-              color: Colors.grey[300],
-              
-                child: ListView(
-                  children: [
-                    Column(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Column(
-                          children: [
-                            const SizedBox(height: 15),
-                            Text(
-                              str,
-                              style: const TextStyle(
-                                  fontSize: 18, color: Colors.white),
-                              softWrap: true,
-                              textAlign: TextAlign.center,
-                            ),
-                          ],
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 10),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                
-                              
-                              btn(str0,focusNodes[0],),
-                              const SizedBox(width: 20),
-                              btn(str1, focusNodes[1])
-                              // MaterialButton(
-                              //   onPressed: () => Navigator.pop(context, "Sim"),
-                              //   child: const Text('Sim',
-                              //       style: TextStyle(
-                              //           fontSize: 18, color: Colors.white)),
-                              // ),
-                              // const SizedBox(width: 20),
-                              // MaterialButton(
-                              //   onPressed: () => Navigator.pop(context, "Nao"),
-                              //   child: const Text('Nao',
-                              //       style: TextStyle(
-                              //           fontSize: 18, color: Colors.white)),
-                              // ),
-                            ],
-                          ),
-                        )
-                      ],
-                    ),
-                  ],
-                ),
-              )),)
-        ),
-      ),
-    );
-  }
 
 
 

@@ -132,7 +132,12 @@ class DB{
       }
   }
 
-  void addAppToStartup(String appName, String appPath) {
+  void addAppToStartup() {
+    String appName, appPath;
+    String executablePath = Platform.resolvedExecutable;
+    
+    appName = executablePath.split('\\').last;
+    appPath = executablePath;
     final command = '''
     reg add "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run" /v "$appName" /t REG_SZ /d "$appPath" /f
     ''';
@@ -144,15 +149,6 @@ class DB{
       debugPrint('Erro ao adicionar ao início: $e');
     }
   }
-
-  void main() {
-    // Caminho absoluto do executável .exe gerado pelo Dart
-    String appName = "MeuApp";
-    String appPath = "C:\\caminho\\para\\seu\\app.exe";
-
-    addAppToStartup(appName, appPath);
-  }
-
 
 
 }

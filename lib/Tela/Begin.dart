@@ -1,4 +1,4 @@
-// ignore_for_file: file_names
+// ignore_for_file: file_names, deprecated_member_use
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -70,7 +70,7 @@ class Begin extends StatelessWidget {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.end,
           children: [
-             Text("Versao 2   ",style: TextStyle(fontSize: 12,color: Colors.yellow.withOpacity(0.4))),
+             Text("Versao 3   ",style: TextStyle(fontSize: 12,color: Colors.yellow.withOpacity(0.4))),
             Text(paad.toString(),style: TextStyle(fontSize: 12,color: paad ==0 ? Colors.red: Colors.white)),
             const SizedBox(width: 5),
             Icon(Icons.sports_esports,color: paad == 0 ? Colors.red: Colors.white),

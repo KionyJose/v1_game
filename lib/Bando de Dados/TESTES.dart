@@ -1,4 +1,4 @@
-// ignore_for_file: file_names
+// ignore_for_file: file_names, unnecessary_null_comparison
 
 import 'dart:io';
 
@@ -14,7 +14,8 @@ class TESTES{
     // debugPrint(await teste());
     // asdasd();
     MovimentoSistema.audioMovMent();
-    // DB().addAppToStartup("","");
+
+    DB().addAppToStartup();
     debugPrint("==========================================================");
     debugPrint("==========================================================");
   }

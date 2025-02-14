@@ -23,11 +23,6 @@ class Paad with ChangeNotifier{
     
   }
   
-  @override
-  void dispose() {
-    super.dispose();
-  }
-  
   escutaClickPaad(String event) async {
     // if(event == "")return;
     click = event;
@@ -67,7 +62,6 @@ class Paad with ChangeNotifier{
   escutaPaadsAsync(){
     debugPrint("Procurando controles");
     List<Controller> listCtrl = List.empty(growable: true);
-    int totalPads = 0;
     XInputManager.enableXInput(); // usando pugin xinput_gamepad
     
     for (int controllerIndex in ControllersManager.getIndexConnectedControllers()) {

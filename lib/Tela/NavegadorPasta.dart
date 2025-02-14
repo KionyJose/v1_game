@@ -1,4 +1,4 @@
-// ignore_for_file: file_names, avoid_print, use_build_context_synchronously, must_be_immutable
+// ignore_for_file: file_names, avoid_print, use_build_context_synchronously, must_be_immutable, deprecated_member_use
 
 import 'dart:io';
 import 'package:flutter/material.dart';

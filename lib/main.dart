@@ -5,15 +5,12 @@ import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:v1_game/Bando%20de%20Dados/TESTES.dart';
 import 'package:v1_game/MyApp.dart';
-import 'package:v1_game/Rotas/getRotasConfig.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:y_player/y_player.dart';
 void main() async {
 
   WidgetsFlutterBinding.ensureInitialized();  
   YPlayerInitializer.ensureInitialized();
-  GetRotasConfg getconfig = GetRotasConfg();
-  getconfig.configure();
   
   await TESTES().testes();
   // Solicitar permissão de armazenamento externo

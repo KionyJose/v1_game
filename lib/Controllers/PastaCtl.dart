@@ -7,11 +7,7 @@ import 'package:provider/provider.dart';
 import 'package:v1_game/Bando%20de%20Dados/db.dart';
 import 'package:v1_game/Class/Paad.dart';
 import 'package:v1_game/Controllers/Notificacao.dart';
-import 'package:v1_game/Tela/NavegadorPasta.dart';
-import 'package:v1_game/Widgets/Pops.dart';
-
 import '../Metodos/leituraArquivo.dart';
-import '../Modelos/IconeInicial.dart';
 import '../Modelos/Item.dart';
 import 'MovimentoSistema.dart';
 
@@ -115,10 +111,10 @@ class PastaCtrl {
   }
 
   selectItemDireito(bool hasFocus, int index){
-    debugPrint("object1");print("=================<<<<<<<<<<<  $selectedIndex2");
+    debugPrint("object1");debugPrint("=================<<<<<<<<<<<  $selectedIndex2");
     if (hasFocus) {
       selectedIndex2 = index;
-      print("=================<<<<<<<<<<<  $selectedIndex2");
+      debugPrint("=================<<<<<<<<<<<  $selectedIndex2");
       String extencao = items[index].extencao.toUpperCase();
       if(extencao == "JPG"  || extencao == "PNG" ||  extencao == "JPEG"|| extencao == "WEBP"|| extencao == "GIF" || extencao == "BMP" ) {
         List<String> listAux = listCaminho.last.split('\\');
@@ -152,9 +148,8 @@ class PastaCtrl {
   escutaPad(String event) async {
     if(!stateTela || load || event == "" || loadArquivos ) return;
       debugPrint("Click Paad PASSSTAAACTRLLL: $event  =======");
-    String direction = "";
     try{
-      direction =  MovimentoSistema.direcaoListView(focusScope, event);
+       MovimentoSistema.direcaoListView(focusScope, event);
     }catch(_){}
     if(event == "START"){//START
       // btnMais();

@@ -3,17 +3,12 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
 import 'package:provider/provider.dart';
 import 'package:v1_game/Class/Paad.dart';
 import 'package:v1_game/Global.dart';
-import 'package:v1_game/Rotas/Rotas.dart';
 import 'package:v1_game/Tela/Begin.dart';
-import 'package:v1_game/Tela/PrincipalPage.dart';
-import 'package:xinput_gamepad/xinput_gamepad.dart';
 
 import 'Controllers/Notificacao.dart';
-import 'Widgets/NotificacaoPop.dart';
 
 class MyApp extends StatefulWidget {
   const MyApp({super.key});
@@ -65,7 +60,6 @@ class _MyAppState extends State<MyApp> {
     debugPrint("Iniciado materialApp");
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      onGenerateRoute: Rotas.geradorRotas,
       initialRoute: '/',
       title: 'V1_Games',
       navigatorKey: navigatorKey,
