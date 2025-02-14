@@ -4,7 +4,10 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:v1_game/Class/Paad.dart';
 
+import '../Bando de Dados/db.dart';
 import '../Controllers/MovimentoSistema.dart';
+import '../Modelos/IconeInicial.dart';
+import '../Tela/NavegadorPasta.dart';
 
 class Pops {
   popScren(Widget tela) {
@@ -19,6 +22,7 @@ class Pops {
   }
 
   popMenuTelHome2(BuildContext context) async {
+    try{
     bool statePop = true;
     String retorno = "";
 
@@ -40,13 +44,14 @@ class Pops {
       if(!statePop || event =="") return;
       debugPrint("=======   Escuta Pop Menu  =======");
 
-      Movimentosistema.direcaoListView(focusScope, event);
+      MovimentoSistema.direcaoListView(focusScope, event);
 
       if(event == "3"){//START
         statePop = false;
         Navigator.pop(context, "");
       }
       if(event == "2"){//Entrar
+      debugPrint("======================================== "+event+" SAINDOO");
         statePop = false;
         if (focusNodes[0].hasFocus) Navigator.pop(context, str0);
         if (focusNodes[1].hasFocus) Navigator.pop(context, str1);
@@ -93,10 +98,10 @@ class Pops {
     
     await showDialog(
         context: context,
-        builder: (context) {
+        builder: (_) {
           return Selector<Paad, String>(
-            selector: (context, paad) => paad.click, // Escuta apenas click     
-            builder: (context, valorAtual, child) {
+            selector: (_, paad) => paad.click, // Escuta apenas click     
+            builder: (_, valorAtual, child) {
               // WidgetsBinding.instance.addPostFrameCallback((_) {
                 escutaPad(valorAtual);  // Isso pode chamar o showDialog
               // });
@@ -105,7 +110,7 @@ class Pops {
                 onKeyEvent: (KeyEvent event) {
                   if (event is KeyDownEvent) {
                     // Verifica a tecla pressionada
-                    Movimentosistema.direcaoListView(focusScope, event.logicalKey.keyLabel);
+                    MovimentoSistema.direcaoListView(focusScope, event.logicalKey.keyLabel);
                     if (event.logicalKey == LogicalKeyboardKey.digit3) {
                       Navigator.pop(context, "");
                     } else if (event.logicalKey == LogicalKeyboardKey.digit2) {
@@ -177,6 +182,10 @@ class Pops {
         }).then((value) => retorno = value.toString());
 
     return retorno;
+    }catch(e){
+      debugPrint(e.toString());
+      // Pops().msgSimples(ctx,"ERRO = 1$e");
+    }
   }
 
  
@@ -402,152 +411,200 @@ class Pops {
 
 
 
-  msgSN(BuildContext context, String str) async{
-    return await showDialog(
-      context: context,
-      builder: (ctx) => _msgSN(ctx,str)
-    );
-  }
+
   
-  _msgSN(BuildContext context, String str) {   
-    bool statePop = true; 
-    List<FocusNode> focusNodes = [
-      FocusNode(),
-      FocusNode(),
-    ];
-    
-    FocusScopeNode listViewFocus = FocusScopeNode();
-    String str1 = "Sim";
-    String str0 = "Nao";
-    //teste1
-    btn(String str, FocusNode focus) {
-      return Padding(
-        padding: const EdgeInsets.all(8.0),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(30),
-          child: Container(
-            color: Colors.white70,
-            height: 40,
-            child: MaterialButton(
-                focusNode: focus,
-                autofocus: str == str0 ? true : focus.hasFocus,
-                focusColor: Colors.black45,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [ 
-                    Text(str,
-                    style:  const TextStyle(
-                      fontSize: 18,
-                      color: Colors.black ,
-                    )),
-                  ],
-                ),
-                onPressed: () {                  
-                    if (focusNodes[0].hasFocus) Navigator.pop(context, str0);
-                    if (focusNodes[1].hasFocus) Navigator.pop(context, str1);
-                } ),
-          ),
-        ),
-      );
-    }
+  msgSN(BuildContext context, String str) async { 
+    try{
+      String retorno = "";  
+      bool statePop = true; 
+      List<FocusNode> focusNodes = [
+        FocusNode(),
+        FocusNode(),
+      ];
 
-    
-    escutaPad(String event) {
-      // if(!statePop) return;      
-      debugPrint("=======   Escuta Msg SN  =======");
-      if(event == "ESQUERDA"){//ESQUERDA
-        listViewFocus.focusInDirection(TraversalDirection.left);
-      }
-      if(event == "DIREITA"){//DIREITA
-        listViewFocus.focusInDirection(TraversalDirection.right);
-      }
-      if(event == "CIMA"){//CIMA
-        listViewFocus.focusInDirection(TraversalDirection.up);
-      }
-      if(event == "BAIXO"){//BAIXO
-        listViewFocus.focusInDirection(TraversalDirection.down);
-      }
-      if(event == "3"){//START
-        statePop = false;
-        Navigator.pop(context, "");
-      }
-      if(event == "2"){//Entrar
-        statePop = false;
-        if (focusNodes[0].hasFocus) Navigator.pop(context, str0);
-        if (focusNodes[1].hasFocus) Navigator.pop(context, str1);
-      }
-    }
-
-    return Selector<Paad, String>(
-      selector: (context, paad) => paad.click, // Escuta apenas click      
-      builder: (context, valorAtual, child) {
-        escutaPad(valorAtual);              
-        return KeyboardListener(
-          //KeyboardListener
-          focusNode: FocusNode(),
-          onKeyEvent: (KeyEvent event) {
-            if (event is KeyDownEvent) {
-              // Verifica a tecla pressionada
-              if (event.logicalKey == LogicalKeyboardKey.keyA) {
-                listViewFocus.focusInDirection(TraversalDirection.left);
-                debugPrint(event.logicalKey.toString());
-              } else if (event.logicalKey == LogicalKeyboardKey.keyD) {
-                listViewFocus.focusInDirection(TraversalDirection.right);
-                debugPrint(event.logicalKey.toString());
-              } else if (event.logicalKey == LogicalKeyboardKey.digit3) {
-                statePop = false;
-                Navigator.pop(context, "");
-              } else if (event.logicalKey == LogicalKeyboardKey.digit2) {
-                statePop = false;
-                if (focusNodes[0].hasFocus) Navigator.pop(context, str0);
-                if (focusNodes[1].hasFocus) Navigator.pop(context, str1);
-              }
-            }
-          },
-          child: AlertDialog(
-          backgroundColor: Colors.transparent,
-          contentPadding: const EdgeInsets.all(0),
-          content: ClipRRect(
-            borderRadius: BorderRadius.circular(20),  
-            child: FocusScope(
-                  // autofocus: true,
-                  node: listViewFocus,
-                  child: Container(
-                  height: 200,
-                  width: 200,
-                  // decoration: decorationBOX,
-                  color: Colors.grey[300],
-                  child: Flexible(
-                    flex: 1,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const SizedBox(height: 15),
-                        Text(
-                          str,
-                          style: const TextStyle(fontSize: 18, color: Colors.black),
-                          softWrap: true,
-                          textAlign: TextAlign.center,
-                        ),
-                        const Spacer(),
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 10),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                            children: [
-                              btn(str0,focusNodes[0],),
-                              btn(str1, focusNodes[1])
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  )),
+      FocusScopeNode focusScope = FocusScopeNode();
+      String str1 = "Sim";
+      String str0 = "Nao";
+      //teste1
+      btn(String str, FocusNode focus) {
+        return Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(30),
+            child: Container(
+              color: Colors.white70,
+              height: 60,
+              child: MaterialButton(
+                  focusNode: focus,
+                  autofocus: str == str0 ? true : focus.hasFocus,
+                  focusColor: Colors.black45,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [ 
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 30),
+                        child: Text(str,
+                        style:  const TextStyle(
+                          fontSize: 25,
+                          color: Colors.black ,
+                        )),
+                      ),
+                    ],
+                  ),
+                  onPressed: () {                  
+                      if (focusNodes[0].hasFocus) Navigator.pop(context, str0);
+                      if (focusNodes[1].hasFocus) Navigator.pop(context, str1);
+                  } ),
             ),
           ),
-        ));
+        );
       }
+
+    
+      escutaPad(String event) {
+        if(!statePop || event =="") return;
+        debugPrint("=======   Escuta Pop S/N   =======");
+        debugPrint("Click ==>>  $event");
+        MovimentoSistema.direcaoListView(focusScope, event);
+        if(event == "3"){//START
+          statePop = false;
+          Navigator.pop(context, "");
+        }
+        if(event == "2"){//Entrar
+          statePop = false;
+          if (focusNodes[0].hasFocus) Navigator.pop(context, str0);
+          if (focusNodes[1].hasFocus) Navigator.pop(context, str1);
+        }
+      }
+
+      await showDialog(
+        context: context,
+        builder: (_) => Selector<Paad, String>(
+          selector: (_, paad) => paad.click, // Escuta apenas click      
+          builder: (_, valorAtual, child) {
+            escutaPad(valorAtual);         
+            return KeyboardListener(
+              //KeyboardListener
+              focusNode: FocusNode(),
+              onKeyEvent: (KeyEvent event) {
+                if (event is KeyDownEvent) {
+                  // Verifica a tecla pressionada
+                  if (event.logicalKey == LogicalKeyboardKey.keyA) {
+                    focusScope.focusInDirection(TraversalDirection.left);
+                    debugPrint(event.logicalKey.toString());
+                  } else if (event.logicalKey == LogicalKeyboardKey.keyD) {
+                    focusScope.focusInDirection(TraversalDirection.right);
+                    debugPrint(event.logicalKey.toString());
+                  } else if (event.logicalKey == LogicalKeyboardKey.digit3) {
+                    statePop = false;
+                    Navigator.pop(context, "");
+                  } else if (event.logicalKey == LogicalKeyboardKey.digit2) {
+                    statePop = false;
+                    if (focusNodes[0].hasFocus) Navigator.pop(context, str0);
+                    if (focusNodes[1].hasFocus) Navigator.pop(context, str1);
+                  }
+                }
+              },
+              child: AlertDialog(
+              backgroundColor: Colors.transparent,
+              contentPadding: const EdgeInsets.all(0),
+              content: ClipRRect(
+                borderRadius: BorderRadius.circular(20),  
+                child: Container(
+                height: 250,
+                width: 380,
+                // decoration: decorationBOX,
+                color: Colors.grey[300],
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const SizedBox(height: 15),
+                    Flexible(
+                      flex: 1,
+                      child: Text(
+                        str,
+                        style: const TextStyle(fontSize: 25, color: Colors.black),
+                        softWrap: true,
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                    const Spacer(),
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: FocusScope(
+                      // autofocus: true,
+                      node: focusScope,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                          children: [
+                            btn(str0,focusNodes[0]),
+                            btn(str1, focusNodes[1])
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                )),
+              ),
+            ));
+          }
+        ),
+      ).then((value) => retorno = value.toString());
+      return retorno;
+    }catch(e){
+      debugPrint(e.toString());
+      debugPrint(e.toString());
+    }
+  }
+
+  navPasta(BuildContext context,  String caminho, String tarefa, List<IconInicial> listiconIni, int index) async {    
+    DB db = DB();
+    try{
+    var value = await showDialog(
+      context: context, 
+      builder: (context) => Pops().popScren(const NavPasta()),
     );
+    if (value == null) return;
+    if (value[0] == "caminho") {
+      if(tarefa == "Caminho do game"){
+        listiconIni[index].local = value[1];
+        await db.attDados(listiconIni);
+      }
+      if(tarefa == "Imagem de capa"){
+        listiconIni[index].imgStr = value[1];
+        await db.attDados(listiconIni);
+      }
+      if(tarefa == "Add"){
+        List<String> campos = [];
+
+        String nome = value[1] as String;
+        nome = nome.split('\\').last;
+        nome = nome.split('.').first;
+        
+        if(value[2] != "") nome = value[2];
+
+        campos.add("item-${listiconIni.length}");        
+        campos.add("lugar: ${listiconIni.length}");        
+        campos.add("nome: $nome");        
+        campos.add("local: ${value[1]}");        
+        campos.add("img: ");        
+        campos.add("imgAux: caminho/.png");
+        IconInicial ico = IconInicial(campos);
+        // ico.local = value[1];
+
+        listiconIni.add(ico);
+        await db.attDados(listiconIni);
+      }
+    }
+    if (value[0] == "alterado") {
+      // saveObgrigatorio = true;
+    } else {
+      // saveObgrigatorio = false;
+    }
+    debugPrint("Finalizei navPasta dentro");
+    }catch(e){
+      debugPrint("Erro nav dentro = $e");
+    }
   }
 }

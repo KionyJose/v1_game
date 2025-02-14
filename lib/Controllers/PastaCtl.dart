@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:v1_game/Bando%20de%20Dados/db.dart';
+import 'package:v1_game/Class/Paad.dart';
 import 'package:v1_game/Controllers/Notificacao.dart';
 import 'package:v1_game/Tela/NavegadorPasta.dart';
 import 'package:v1_game/Widgets/Pops.dart';
@@ -14,9 +15,10 @@ import '../Modelos/IconeInicial.dart';
 import '../Modelos/Item.dart';
 import 'MovimentoSistema.dart';
 
-class PastaCtrl with ChangeNotifier{
+class PastaCtrl {
   DB db = DB();
-  BuildContext ctx;
+  late BuildContext ctx;
+  late final Function() attTela;
 
   
   String imgLoadPreview = "";
@@ -25,6 +27,7 @@ class PastaCtrl with ChangeNotifier{
 
   bool stateTela = false;
   bool load = true;
+  bool loadArquivos = false;
       
   FocusScopeNode gridViewFocus1 = FocusScopeNode();
   FocusScopeNode gridViewFocus2 = FocusScopeNode();
@@ -39,21 +42,19 @@ class PastaCtrl with ChangeNotifier{
   LerArquivos lerArquivos = LerArquivos();
   List<String> unidades = [];
   List<Item> items = [];
-
-  attTela() => notifyListeners();
-
+  late Paad paad;
 
 
-  PastaCtrl(this.ctx){
+
+
+  PastaCtrl({required  this.ctx,  required this.attTela} ){
     iniciaTela();
+    
   }
-
   
-
-  @override
-  dispose(){
-    debugPrint("SAIU PAGE CTRL");
-    super.dispose();    
+  disposeCtrl(){
+    // paad.dispose();
+    debugPrint("SAIU PASTA CTRL");
     // focoPrincipal.dispose();
     // for (var node in focusNodeIcones) {
     //   node.dispose();
@@ -61,10 +62,20 @@ class PastaCtrl with ChangeNotifier{
     // listViewFocus.dispose();    
     // ctrlAnimeBgFundo.dispose();
   }
+
+  iniciaEscutaPad()async {
+      // Escutando mudanças no 'click' manualmente
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      paad = Provider.of<Paad>(ctx, listen: false);
+      paad.addListener(() => escutaPad(paad.click));
+    });
+  }
   bool entrei = false;
 
   iniciaTela()async { 
     if(entrei)return;
+    iniciaEscutaPad();
+
     entrei = true;
     // Configuração inicial e carregamento de dados
     unidades = lerArquivos.getUnidadesWindows();
@@ -82,7 +93,10 @@ class PastaCtrl with ChangeNotifier{
     load = false;
     stateTela = true;
     attTela();
+    
+     
   }
+  // late Paad paad;
 
   requerirFoco(){
     if (focusNodeSetas1.isNotEmpty && selectedIndex1 < focusNodeSetas1.length) {
@@ -101,9 +115,10 @@ class PastaCtrl with ChangeNotifier{
   }
 
   selectItemDireito(bool hasFocus, int index){
-    debugPrint("object1");
+    debugPrint("object1");print("=================<<<<<<<<<<<  $selectedIndex2");
     if (hasFocus) {
       selectedIndex2 = index;
+      print("=================<<<<<<<<<<<  $selectedIndex2");
       String extencao = items[index].extencao.toUpperCase();
       if(extencao == "JPG"  || extencao == "PNG" ||  extencao == "JPEG"|| extencao == "WEBP"|| extencao == "GIF" || extencao == "BMP" ) {
         List<String> listAux = listCaminho.last.split('\\');
@@ -120,36 +135,45 @@ class PastaCtrl with ChangeNotifier{
 
   selectItemEsquerdo(bool hasFocus, int index) async {
     if (!hasFocus)  return;
+    String compare = caminhoFinal;
     selectedIndex1= index;
     caminhoFinal = "${unidades[selectedIndex1]}${selectedIndex1==0 ? "" : ":"}";
+    if(compare == caminhoFinal) return;
+    // Inicia Busca Novos arquivos
+    loadArquivos = true;
     items = await lerArquivos.lerDadosPasta(caminhoFinal);
-    if(caminhoFinal != listCaminho.last ) listCaminho.add(caminhoFinal);    
+    loadArquivos = false;
+    if(caminhoFinal != listCaminho.last ) listCaminho.add(caminhoFinal);
+    if(ctx.mounted)attTela();
   }
 
   
 
-  escutaPad(String event)async {
-    if(!stateTela || load || event == "") return;
-    debugPrint("Click Paad: $event  =======");
-    Movimentosistema.direcaoListView(focusScope, event);
+  escutaPad(String event) async {
+    if(!stateTela || load || event == "" || loadArquivos ) return;
+      debugPrint("Click Paad PASSSTAAACTRLLL: $event  =======");
+    String direction = "";
+    try{
+      direction =  MovimentoSistema.direcaoListView(focusScope, event);
+    }catch(_){}
     if(event == "START"){//START
       // btnMais();
     }
-    if(event == "2"){//Entrar
-      btnEntrar();
+    else if(event == "2"){//Entrar
+      await btnEntrar();
     }
-    if(event == "3"){//Sair
-      clickVoltar();
+    else if(event == "3"){//Sair
+      await clickVoltar();
     }
-    if(event == "LB"){// esquerda
+    else if(event == "LB"){// esquerda
       gridViewFocus1.requestFocus();
       focusScope = gridViewFocus1;
     }
-    if(event == "RB"){// Direita
+    else if(event == "RB"){// Direita
       gridViewFocus2.requestFocus();
       focusScope = gridViewFocus2;
     }
-    // attTela();
+    attTela();
   }
 
    btnEntrar() async {
@@ -158,25 +182,46 @@ class PastaCtrl with ChangeNotifier{
         focusScope = gridViewFocus2;
         selectedIndex2 = 0;
         return requerirFoco();
-        
-        
       }
-      else if(focusScope == gridViewFocus2){ // PASTAS E ARQUIVOS
+      else if(focusScope == gridViewFocus2){ // PASTAS E ARQUIVOS Navegação
         // String brs = "\\";
+        // if(selectedIndex2 == 0) return;
         caminhoFinal = items[selectedIndex2].caminho;
-
-        if(!items[selectedIndex2].pasta){
+        
+        
+        if(!items[selectedIndex2].pasta){ // ARQUIVO Selecionado!
+          loadArquivos = true;
           stateTela = false;
-          // await Pops().msgSimples(ctx,"boa");
-          String resposta = await Pops().msgSN (ctx, "Confirmar acão?");
-          if(resposta == "Sim"){
+
+          // String resposta = await Pops().msgSN(ctx, "Confirmar acão?");
+          // if(resposta == "Sim"){
             List<String> listAux = listCaminho.last.split('\\');
             String caminho = "";
             for (var item in listAux) {
               caminho += "$item\\\\";
             }
-            return Navigator.pop(ctx,["caminho", items[selectedIndex2].url ? caminhoFinal : caminho + caminhoFinal]);
-          }
+            return Navigator.pop(
+              ctx,
+              [
+                "caminho",
+                (items[selectedIndex2].url ? caminhoFinal : caminho + caminhoFinal),
+                items[selectedIndex2].url ? items[selectedIndex2].nome : ""
+              ]);
+          // }else{
+            // stateTela = true;
+          // }
+
+          
+           
+        }else{
+          loadArquivos = true;
+          attTela();
+          items = await lerArquivos.lerDadosPasta(caminhoFinal);
+          if(caminhoFinal != listCaminho.last ) listCaminho.add(caminhoFinal);
+          selectedIndex2 = 0;
+          loadArquivos= false;
+          attTela();
+          // requerirFoco();
         }
 
 
@@ -185,9 +230,7 @@ class PastaCtrl with ChangeNotifier{
 
       }
 
-        items = await lerArquivos.lerDadosPasta(caminhoFinal);
-        if(caminhoFinal != listCaminho.last ) listCaminho.add(caminhoFinal);
-        requerirFoco();
+        
 
     }catch(e){ //notificacaoPop = true;
       debugPrint(e.toString());
@@ -195,54 +238,19 @@ class PastaCtrl with ChangeNotifier{
     }
   }
   clickVoltar() async {
-    
+    // if(selectedIndex2 == 0)return;
     if(listCaminho.last.length < 4) stateTela = false;
-    if(listCaminho.last.length < 4) return Navigator.pop(ctx);
+    if(listCaminho.last.length < 4 ) {
+      return Navigator.pop(ctx);
+    }
     listCaminho.removeLast();
     caminhoFinal = listCaminho.last;
+    loadArquivos = true;
+    attTela();
     items = await lerArquivos.lerDadosPasta(caminhoFinal);   
-    // attTela();
+    loadArquivos = false;
+    attTela();
   }
 
-  navPasta(BuildContext context,  String caminho, String tarefa, List<IconInicial> listiconIni, int index) async {
-    var value = await showDialog(
-      context: context,
-      builder: (context) => Pops().popScren(const NavPasta()),
-    );
-    if (value == null) return;
-    if (value[0] == "caminho") {
-      if(tarefa == "Caminho do game"){
-        listiconIni[index].local = value[1];
-        await db.attDados(listiconIni);
-      }
-      if(tarefa == "Imagem de capa"){
-        listiconIni[index].imgStr = value[1];
-        await db.attDados(listiconIni);
-      }
-      if(tarefa == "Add"){
-        
-        List<String> campos = [];
-
-        String nome = value[1] as String;
-        nome = nome.split('\\').last;
-        nome = nome.split('.').first;
-        campos.add("item-${listiconIni.length}");        
-        campos.add("lugar: ${listiconIni.length}");        
-        campos.add("nome: $nome");        
-        campos.add("local: ${value[1]}");        
-        campos.add("img: ");        
-        campos.add("imgAux: caminho/.png");
-        IconInicial ico = IconInicial(campos);
-        // ico.local = value[1];
-
-        listiconIni.add(ico);
-        await db.attDados(listiconIni);
-      }
-    }
-    if (value[0] == "alterado") {
-      // saveObgrigatorio = true;
-    } else {
-      // saveObgrigatorio = false;
-    }
-  }
+  
 }

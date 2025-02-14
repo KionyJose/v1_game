@@ -1,17 +1,51 @@
 // ignore_for_file: file_names
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import 'package:provider/provider.dart';
 import 'package:v1_game/Class/Paad.dart';
 import 'package:v1_game/Global.dart';
+import 'package:v1_game/Rotas/Rotas.dart';
+import 'package:v1_game/Tela/Begin.dart';
 import 'package:v1_game/Tela/PrincipalPage.dart';
 import 'package:xinput_gamepad/xinput_gamepad.dart';
 
 import 'Controllers/Notificacao.dart';
 import 'Widgets/NotificacaoPop.dart';
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  
+   List<String> logs = [];
+   String ultima = "";
+
+  @override
+  void initState() {
+    super.initState();
+    
+    // Redireciona a função print para a função customizada
+    // debugPrint = (String? message, {int? wrapWidth}) {
+    //   // setState(() {
+    //   attTelaLog(message!);
+    //   // });
+    // };
+  }
+  attTelaLog(String message){
+    logs.insert(0,'debugPrint: $message');
+    if(ultima != message){
+      ultima = message;
+      Timer(const Duration(microseconds: 20),(){setState(() {});});
+    }
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -23,77 +57,25 @@ class MyApp extends StatelessWidget {
         //   ChangeNotifierProvider(create: (_) => Servidor()),
         //   ChangeNotifierProvider(create: (_) => User()),
       ],
-      child: Consumer<Notificacao>(builder: (context, notf, child) => body(notf)),
+      child:  materialAppConfig(),
     );
   }
 
-  body(Notificacao notf) {
+  materialAppConfig() {
     debugPrint("Iniciado materialApp");
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      navigatorKey: navigatorKey,
+      onGenerateRoute: Rotas.geradorRotas,
+      initialRoute: '/',
       title: 'V1_Games',
+      navigatorKey: navigatorKey,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
       ),
-      home: SafeArea(
-        child: Scaffold(
-          body: Stack(
-            children: [
-              const PrincipalPage(title: 'V1_Games 007'),
-              if (notf.ativo)const Positioned(bottom: 20, right: 20, child: NotificacaoPop()),
-              escutaPads(),
-            ],
-          ),
-        ),
-      ),
+      home: const Begin()
     );
   }
 
-  escutaPads(){
-    late int total;
-    return Selector<Paad, List<Controller>>(
-      selector: (context, paad) {
-        total = paad.controlesAtivos.length;
-        return paad.controlesAtivos; // Escuta apenas click
-      },
-      builder: (context, valorAtual, child) {
-        // Aguardando o próximo frame para chamar o showDialog
-        return statusPad(total);
-      },
-    );
-  }
-
-  // escutaNotfy(){
-  //   return Selector<Notificacao, String>(
-  //     selector: (context, paad) => paad.click, // Escuta apenas click
-  //     builder: (context, valorAtual, child) {
-  //       debugPrint("Click Paad: $valorAtual" );
-  //       ctrl.escutaPad(valorAtual);
-  //       return scaffold(ctrl);
-  //     },
-  //   );
-  //   if (notf.ativo){
-  //     return  const Positioned(bottom: 20, right: 20, child: NotificacaoPop());
-  //   }
-  //   return Container();
-  // }
-
-  statusPad(int paad){
-    return Align(
-      alignment: Alignment.topRight,
-      child: Padding(
-        padding: const EdgeInsets.all(8),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.end,
-          children: [
-            Text(paad.toString(),style: TextStyle(fontSize: 12,color: paad ==0 ? Colors.red: Colors.white)),
-            const SizedBox(width: 5),
-            Icon(Icons.sports_esports,color: paad == 0 ? Colors.red: Colors.white),
-          ],
-        ),
-      ),
-    );
-  }
+  
 }

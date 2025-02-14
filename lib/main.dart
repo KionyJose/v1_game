@@ -5,10 +5,17 @@ import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:v1_game/Bando%20de%20Dados/TESTES.dart';
 import 'package:v1_game/MyApp.dart';
+import 'package:v1_game/Rotas/getRotasConfig.dart';
 import 'package:window_manager/window_manager.dart';
+import 'package:y_player/y_player.dart';
 void main() async {
-  await TESTES().testes();
+
   WidgetsFlutterBinding.ensureInitialized();  
+  YPlayerInitializer.ensureInitialized();
+  GetRotasConfg getconfig = GetRotasConfg();
+  getconfig.configure();
+  
+  await TESTES().testes();
   // Solicitar permissão de armazenamento externo
   var status = await Permission.storage.request();  
   if (status.isGranted) {
@@ -17,7 +24,7 @@ void main() async {
     // Se a permissão não for concedida, exiba uma mensagem ao usuário ou tome outra ação apropriada
     debugPrint('Permissão de armazenamento não concedida');
   }
-  // windowFunctions();
+  // windowFunctions();flu
   // fullScren();
 }
 
@@ -57,6 +64,8 @@ fullScren() async {
   await windowManager.setSkipTaskbar(false);
   });
 }
+
+
 
 
 //============================================================================================

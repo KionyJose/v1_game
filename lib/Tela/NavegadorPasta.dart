@@ -1,11 +1,8 @@
 // ignore_for_file: file_names, avoid_print, use_build_context_synchronously, must_be_immutable
 
 import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:provider/provider.dart';
-import 'package:v1_game/Class/Paad.dart';
 import 'package:v1_game/Controllers/MovimentoSistema.dart';
 import 'package:v1_game/Controllers/PastaCtl.dart';
 import 'package:v1_game/Modelos/Item.dart';
@@ -20,27 +17,41 @@ class NavPasta extends StatefulWidget {
 
 class _NavPastaState extends State<NavPasta> {
 
+
+  late PastaCtrl ctrl;
+  
+  void atualizarTela() {
+    if(mounted) { setState((){});}
+    else{dispose();}
+  }
+
+  @override
+  void initState() {
+    ctrl = PastaCtrl(
+      ctx: context,
+      attTela: () => atualizarTela(),
+    );
+    super.initState();
+  }
+
+  @override
+  void dispose() {
+    if(!mounted) return;
+    ctrl.disposeCtrl();
+    super.dispose();
+  }
+
+
+
+
   @override
   Widget build(BuildContext context) {
-    
-    return ChangeNotifierProvider(
-      create: (context) => PastaCtrl(context), // Cria o controlador aqui
-      child: Consumer<PastaCtrl>(
-        builder: (context,ctrl,child) {
-          // ctrl.ctx = context;
-          // WidgetsBinding.ins tance.addPostFrameCallback((_) => ctrl.focusScope = ctrl.gridViewFocus2); 
-          return escutas(ctrl);
-        }
-      ),
-    );
-  }
-  escutas(PastaCtrl ctrl){
     return KeyboardListener(
       child: escutaPadWid(ctrl),
       focusNode: FocusNode(),
       onKeyEvent: (KeyEvent event) {
         if (event is KeyDownEvent) {            
-          Movimentosistema.direcaoListView(ctrl.focusScope, event.logicalKey.keyLabel);            
+          MovimentoSistema.direcaoListView(ctrl.focusScope, event.logicalKey.keyLabel);            
           if(event.logicalKey == LogicalKeyboardKey.digit2){//entrar
             // openFile("C:\\Users\\Public\\Documents\\Bingo Grandioso\\BingoPresencial.exe");
             ctrl.btnEntrar();
@@ -65,16 +76,13 @@ class _NavPastaState extends State<NavPasta> {
   }
 
   escutaPadWid(PastaCtrl ctrl){
-    return Selector<Paad, String>(
-      selector: (context, paad) => paad.click, // Escuta apenas click
-      builder: (context, valorAtual, child) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          ctrl.escutaPad(valorAtual); 
-        });
-          
-        return ctrl.load ? const LoadingIco() : body(ctrl);
-      },
-    );
+    // return Selector<Paad, String>(
+    //   selector: (context, paad) => paad.click, // Escuta apenas click
+    //   builder: (context, valorAtual, child) {
+        // ctrl.escutaPad(valorAtual);
+        return ctrl.load? const LoadingIco() : body(ctrl);
+    //   },
+    // );
   }
 
   body(PastaCtrl ctrl){
@@ -82,7 +90,7 @@ class _NavPastaState extends State<NavPasta> {
       color: Colors.white70,
       height: MediaQuery.of(context).size.height * 0.90,
       width: MediaQuery.of(context).size.width * 0.90,
-      child:   Column(
+      child: Column(
         children: [
           FittedBox (child:  Text("Navegando ${ctrl.listCaminho.last }",style: const TextStyle(fontSize: 20),)),
           Flexible(
@@ -140,9 +148,12 @@ class _NavPastaState extends State<NavPasta> {
   ladoDireito(PastaCtrl ctrl){
     return Flexible(
       child: Stack(
-        children: [                              
-          listItemsList(ctrl),                              
-          fotoAux(ctrl)
+        children: [
+          if(ctrl.loadArquivos)const Center(child: LoadingIco(),),
+          if(!ctrl.loadArquivos)...[
+            listItemsList(ctrl),                              
+            fotoAux(ctrl)
+          ]
         ],
       ),
     );

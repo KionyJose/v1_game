@@ -1,3 +1,5 @@
+//extends ValueNotifier<bool>
+
 // ignore_for_file: file_names
 
 import 'dart:async';
@@ -5,15 +7,19 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:xinput_gamepad/xinput_gamepad.dart';
 
-class Paad with ChangeNotifier{
+class PaadGet extends ValueNotifier<bool>{
 
   List<Controller> controlesAtivos = List.empty(growable: true);
   String click = "";
   bool blockClick = false;
   bool pressionando = false;
+  attTela(){
+    value = false;
+    value = true;
+  }
 
-  Paad({required bool escutar}){
-    if(escutar) escutaPaadsAsync();
+  PaadGet(): super(true){
+    escutaPaadsAsync();
   }
   attSequencia() {
     notifyListeners();
@@ -23,11 +29,7 @@ class Paad with ChangeNotifier{
     
   }
   
-  @override
-  void dispose() {
-    super.dispose();
-  }
-  
+
   escutaClickPaad(String event) async {
     // if(event == "")return;
     click = event;

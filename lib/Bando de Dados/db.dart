@@ -58,9 +58,21 @@ class DB{
     // img: C:\\Users\\kiony\\OneDrive\\Imagens\\Walpappers\\1102284.jpg
     // imgAux: caminho/.png
   }
-  
+  verificaDocInicio(){
+    // Verifica se o arquivo existe
+    File dbFile = File(dbPath);
+    if (!dbFile.existsSync()) {
+      // Cria o arquivo se ele não existir
+      dbFile.createSync(recursive: true); // recursive: true para criar diretórios se necessário
+      // dbFile.writeAsStringSync("Arquivo criado com sucesso!"); // Escreve conteúdo inicial, se necessário
+      debugPrint("Arquivo criado em: $dbPath");
+    } else {
+      debugPrint("Arquivo já existe em: $dbPath");
+    }
+  }
 
   leituraDeDados() async {
+    verificaDocInicio();
     var file = File(dbPath);
     bool start = false;
 
@@ -109,14 +121,36 @@ class DB{
   }
 
   openUrl(String filePath){
+    String str = filePath.replaceAll(r'\\', r'\');
     try{      
-      Process.run('explorer', [filePath]);
+      Process.run('explorer', [str]);
     } on ProcessException catch (e) {
         debugPrint('Erro ao abrir o URL: $e');
         // openUrl(filePath);
       } catch (e) {
         debugPrint('Erro desconhecido: $e');
       }
+  }
+
+  void addAppToStartup(String appName, String appPath) {
+    final command = '''
+    reg add "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run" /v "$appName" /t REG_SZ /d "$appPath" /f
+    ''';
+
+    try {
+      Process.runSync('powershell', ['-Command', command]);
+      debugPrint('Aplicativo adicionado ao iniciar com o Windows.');
+    } catch (e) {
+      debugPrint('Erro ao adicionar ao início: $e');
+    }
+  }
+
+  void main() {
+    // Caminho absoluto do executável .exe gerado pelo Dart
+    String appName = "MeuApp";
+    String appPath = "C:\\caminho\\para\\seu\\app.exe";
+
+    addAppToStartup(appName, appPath);
   }
 
 

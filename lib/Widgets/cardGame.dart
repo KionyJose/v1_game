@@ -7,7 +7,7 @@ import 'package:v1_game/Modelos/IconeInicial.dart';
 class CardGame extends StatelessWidget {
   late IconInicial iconInitial;
   late bool focus;
-  CardGame({super.key,required this.iconInitial,required this.focus});
+    CardGame({super.key,required this.iconInitial,required this.focus});
   @override
   Widget build(BuildContext context) {
     bool imgFundo = iconInitial.imgStr != "";
@@ -28,8 +28,8 @@ class CardGame extends StatelessWidget {
                 //Image.asset('assets/BGdefault.jpeg',fit: BoxFit.cover),),
               ),
         ),
-        height: 200,
-        width: 135,
+        // height: 200,
+        // width: 135,
         child: focus ? Column(
           mainAxisAlignment: MainAxisAlignment.end,
           children: [texto()],
