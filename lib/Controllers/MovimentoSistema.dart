@@ -9,10 +9,40 @@ class MovimentoSistema {
 
   static String vertical = "Vertical";
   static String horizontal = "Horizontal";
-  static audioMovMent() async{
+  static audioDirection() async{
+    try{
+      final AudioPlayer audioPlayer = AudioPlayer();
+      await audioPlayer.play(AssetSource("som_movimento.mp3")); // Caminho do asset
+      Timer(const Duration(seconds: 1), () => audioPlayer.dispose());
+    }catch(erro){
+      debugPrint(erro.toString());
+    }
+
+  }
+  static audioCheat() async{
+    try{
+      final AudioPlayer audioPlayer = AudioPlayer();
+      await audioPlayer.play(AssetSource("som_cheat.mp3")); // Caminho do asset
+      Timer(const Duration(seconds: 1), () => audioPlayer.dispose());
+    }catch(erro){
+      debugPrint(erro.toString());
+    }
+
+  }
+  static audioPim() async{
     try{
       final AudioPlayer audioPlayer = AudioPlayer();
       await audioPlayer.play(AssetSource("movimenta2.mp3")); // Caminho do asset
+      Timer(const Duration(seconds: 1), () => audioPlayer.dispose());
+    }catch(erro){
+      debugPrint(erro.toString());
+    }
+
+  }
+  static audClick() async{
+    try{
+      final AudioPlayer audioPlayer = AudioPlayer();
+      await audioPlayer.play(AssetSource("som_click.mp3")); // Caminho do asset
       Timer(const Duration(seconds: 1), () => audioPlayer.dispose());
     }catch(erro){
       debugPrint(erro.toString());
@@ -38,8 +68,9 @@ class MovimentoSistema {
         focusScope.focusInDirection(TraversalDirection.down);
         estilo = vertical;
       }
+      if(estilo.isEmpty)audClick();
+      if(estilo.isNotEmpty)audioDirection();
     return estilo;
-      // audioMovMent();
   }
 
   static String convertKeyBoard(String key){

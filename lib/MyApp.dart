@@ -46,13 +46,13 @@ class _MyAppState extends State<MyApp> {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => Paad(escutar: true)),
+        ChangeNotifierProvider(create: (ctx) => Paad(ctx: ctx , escutar: true)),
         ChangeNotifierProvider(create: (_) => Notificacao()),
         //   ChangeNotifierProvider(create: (_) => HomePageCtrl()),
         //   ChangeNotifierProvider(create: (_) => Servidor()),
         //   ChangeNotifierProvider(create: (_) => User()),
       ],
-      child:  materialAppConfig(),
+      child: materialAppConfig(),
     );
   }
 

@@ -105,18 +105,23 @@ class DB{
     return listIconsInicial;
   }
 
+  Process? _process; // Variável para armazenar o processo
+
   openFile(String filePath) async {
     try {
-
-      final process = await Process.start(filePath, ["-h"]);
-      await process.stderr.drain();
-      debugPrint('Erro ao abrir 1\ncode: ${await process.exitCode}');
+      // Verifica se o processo já foi iniciado e está em execução
       
+
+      // Se o processo não está em execução, inicia um novo processo
+      _process = await Process.start(filePath, ["-h"]);
+      await _process!.stderr.drain();
+      debugPrint('Arquivo aberto com sucesso');
+
     } on ProcessException catch (e) {
       debugPrint('Erro ao abrir o arquivo: $e');
       openUrl(filePath);
     } catch (e) {
-      debugPrint('Erro 2 desconhecido: $e');
+      debugPrint('Erro desconhecido: $e');
     }
   }
 

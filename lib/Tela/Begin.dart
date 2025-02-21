@@ -70,7 +70,7 @@ class Begin extends StatelessWidget {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.end,
           children: [
-             Text("Versao 3   ",style: TextStyle(fontSize: 12,color: Colors.yellow.withOpacity(0.4))),
+             Text("Versao 4   ",style: TextStyle(fontSize: 12,color: Colors.yellow.withOpacity(0.4))),
             Text(paad.toString(),style: TextStyle(fontSize: 12,color: paad ==0 ? Colors.red: Colors.white)),
             const SizedBox(width: 5),
             Icon(Icons.sports_esports,color: paad == 0 ? Colors.red: Colors.white),

@@ -1,9 +1,11 @@
 // ignore_for_file: use_build_context_synchronously, file_names, deprecated_member_use
 import 'dart:io';
+import 'dart:math';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:snappy_list_view/snappy_list_view.dart';
+import 'package:v1_game/Class/MouseCtrl.dart';
 import 'package:v1_game/Class/Paad.dart';
 import 'package:v1_game/Controllers/PrincipalCtrl.dart';
 import 'package:v1_game/Widgets/YouTubeTela.dart';
@@ -31,8 +33,20 @@ class _PrincipalPageState extends State<PrincipalPage> with WidgetsBindingObserv
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);// en teste!
+    // simulateGamepadInput();
   }
+  
 
+  void simulateGamepadInput() {
+    // Movimentos simulados do joystick (substituir com lógica real)
+    final random = Random();
+    int dx = random.nextInt(11) - 5; // Valores entre -5 e 5
+    int dy = random.nextInt(11) - 5;
+   
+
+    // Atualizar continuamente
+    Future.delayed(const Duration(milliseconds: 50), simulateGamepadInput);
+  }
   
 
   @override
@@ -55,6 +69,9 @@ class _PrincipalPageState extends State<PrincipalPage> with WidgetsBindingObserv
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   } 
+
+
+  
   
   
 
@@ -81,10 +98,13 @@ class _PrincipalPageState extends State<PrincipalPage> with WidgetsBindingObserv
     return Selector<Paad, String>(
       selector: (context, paad) => paad.click, // Escuta apenas click
       builder: (context, valorAtual, child) {
-        // Aguardando o próximo frame para chamar o showDialog
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          ctrl.escutaPad(valorAtual);// Isso pode chamar o showDialog
-        });
+        
+        // Aguardando o próximo frame para chamar o showDialog   if(event == "HOME" && !home){
+        if(!ctrl.home){
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            ctrl.escutaPad(valorAtual);// Isso pode chamar o showDialog
+          });
+        }
         return body(ctrl);
       },
     );
@@ -124,7 +144,7 @@ class _PrincipalPageState extends State<PrincipalPage> with WidgetsBindingObserv
     return Stack(
       children: [
       backGroundAnimado(ctrl), // Fundo animado
-      if (ctrl.telaIniciada) listIcones(ctrl),// Ícones horizontais
+      if (ctrl.telaIniciada)listIcones(ctrl),// Ícones horizontais
       escurecerTela(ctrl),// Escurecer tela      
       if (ctrl.videoAtivo)
       videoAtivo(ctrl),// Player de vídeo
@@ -151,8 +171,57 @@ class _PrincipalPageState extends State<PrincipalPage> with WidgetsBindingObserv
     );
   }
 
-  listIcones(PrincipalCtrl ctrl){
+  listaIcones(PrincipalCtrl ctrl){
+    double tamanho = 0.24;
+    try{
+    if(ctrl.focusScope == ctrl.focusScopeIcones)tamanho = 0.35;
+    }catch(e){}
+    return  Align(
+      alignment: Alignment.topLeft,
+      child: FocusScope(
+        node: ctrl.focusScopeIcones,
+        child: AnimatedContainer(          
+          height: MediaQuery.of(context).size.height * tamanho,  // Altura do carrossel
+          duration: const Duration(milliseconds: 100),
+          width: double.infinity,
+          child: CarouselSlider.builder(
+            carouselController: ctrl.carouselIconesCtrl,
+            itemCount: ctrl.focusNodeIcones.length,
+            itemBuilder: (context, i, realIndex) {
+              bool isFoco = ctrl.selectedIndexIcone == i;
+              return FittedBox(
+                child: Container(
+                margin: const EdgeInsets.symmetric(vertical: 35),
+                height: isFoco ? 1100 : 500, 
+                width: 1000,
+                  child: Focus(
+                    focusNode: ctrl.focusNodeIcones[i],
+                    onFocusChange: (hasFocus) => ctrl.onFocusChangeIcones(hasFocus, i),              
+                    child: ctrl.listIconsInicial.isEmpty ? cardAnimadoAdd(ctrl, i) :  cardAnimado(ctrl, i),
+                  ),
+                ),
+              );
+            },            
+            options: CarouselOptions(              
+              height: MediaQuery.of(context).size.height, // Altura do carrossel
+              aspectRatio: 14.5,
+              initialPage: 0, // Inicia no primeiro item
+              enableInfiniteScroll: false,
+              viewportFraction: 0.17, // Tamanho do item visível
+              enlargeCenterPage: false, // Desativa o aumento do item central
+              disableCenter: true, // Desativa o alinhamento central
+              padEnds: false, // Remove o espaçamento nas extremidades
+              scrollDirection: Axis.horizontal,
+              // Outras opções conforme necessário
+              ),
+          ),
+            
+        ),
+      ),
+    );
+  }
 
+  listIcones(PrincipalCtrl ctrl){
     return Align(
       alignment: Alignment.topLeft,
       child: FocusScope(
@@ -390,70 +459,10 @@ class _PrincipalPageState extends State<PrincipalPage> with WidgetsBindingObserv
   }
 
   floatBtns(){
-    return Row(
+    return  Row(
       mainAxisAlignment: MainAxisAlignment.end,
       children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 4),
-          child: Container(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12),                  
-              color: Colors.white54,
-            ),
-            height: 40,
-            width: 40,
-            child: const FittedBox(
-              child: Text("◼",textAlign: TextAlign.center,style:  TextStyle(fontSize: 20)
-                
-              ),
-            ),
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 4),
-          child: Container(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12),                  
-              color: Colors.white54,
-            ),
-            height: 40,
-            width: 40,
-            child: const FittedBox(
-              child: Text("▲",textAlign: TextAlign.center,style:  TextStyle(fontSize: 20)
-                
-              ),
-            ),
-          ),
-        ),Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 4),
-          child: Container(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12),                  
-              color: Colors.white54,
-            ),
-            height: 40,
-            width: 40,
-            child: const Center(
-              child: Text("◯", textAlign: TextAlign.center,style:  TextStyle(fontSize: 20, fontWeight: FontWeight.bold)
-                
-              ),
-            ),
-          ),
-        ),Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 4),
-          child: Container(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12),                  
-              color: Colors.white54,
-            ),
-            height: 40,
-            width: 40,
-            child: const Center(
-              child: Text("✕",textAlign: TextAlign.center,style:  TextStyle(fontSize: 20,fontWeight: FontWeight.bold)
-              ),
-            ),
-          ),
-        ),
+        Text("Desenvolvido por: @KionyJose",style: TextStyle(color: Colors.yellowAccent.withOpacity(0.2)),)
       ],
     );
   }

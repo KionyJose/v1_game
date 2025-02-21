@@ -240,6 +240,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "4.6.6"
+  horizontal_scroll_view:
+    dependency: "direct main"
+    description:
+      name: horizontal_scroll_view
+      sha256: "4063046ede7a0fef52ec1df13131e95025f2796975a3dbc52853353436b2f754"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.0.5"
   html:
     dependency: transitive
     description:
@@ -846,7 +854,7 @@ packages:
     source: hosted
     version: "1.1.0"
   win32:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: win32
       sha256: "68d1e89a91ed61ad9c370f9f8b6effed9ae5e0ede22a270bdfa6daf79fc2290a"
@@ -902,5 +910,5 @@ packages:
     source: hosted
     version: "2.3.9"
 sdks:
-  dart: ">=3.4.0 <4.0.0"
+  dart: ">=3.4.1 <4.0.0"
   flutter: ">=3.22.0"

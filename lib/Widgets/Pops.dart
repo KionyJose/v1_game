@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:v1_game/Class/Paad.dart';
+import 'package:v1_game/Widgets/LoadWid.dart';
 
 import '../Bando de Dados/db.dart';
 import '../Controllers/MovimentoSistema.dart';
@@ -21,6 +22,59 @@ class Pops {
     );
   }
 
+  carregandoGames(BuildContext ctx) {
+    return showModalBottomSheet(
+      context: ctx,
+      isScrollControlled: true, // Permite expandir o conteúdo
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      transitionAnimationController: AnimationController(
+        vsync: Navigator.of(ctx),
+        duration: const Duration(seconds: 1), // Tempo reduzido para 200ms
+      ),
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return Container(
+          padding: const EdgeInsets.symmetric(vertical: 50),
+          margin: const EdgeInsets.only(bottom: 65),
+          width: 2000,
+          // height: MediaQuery.of(context).size.height * 0.20,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(40),
+            color: Colors.black87,            
+            boxShadow:  [
+              BoxShadow(
+                blurRadius: 30,
+                color: Colors.deepPurple.withOpacity(0.2),
+                spreadRadius: 1
+              ),
+              BoxShadow(
+                blurRadius: 30,
+                color: Colors.blue.withOpacity(0.2),
+                spreadRadius: 1
+              ),
+            ]
+          ),
+          child: const Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              LoadingIco(),
+              SizedBox(height: 15),
+              Text("Entrando no game...",style: TextStyle(color: Colors.white),),
+              
+              
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+
+  List<String> commandos = [];
+  
   popMenuTelHome2(BuildContext context) async {
     try{
     bool statePop = true;
@@ -39,10 +93,26 @@ class Pops {
     String str2 = "Imagem de capa";
     String str3 = "Excluir Card";
     String str4 = "Add";
+    comandos(BuildContext context, String event){
+    int total = 0;
+    if(commandos.length == 2){
+      commandos.removeAt(0);
+      commandos.add(event);
+      if(commandos[0] == "SELECT")total++;
+      if(commandos[1] == "SELECT")total++;
+      if(total == 2) Navigator.pop(context, "");
+      if(total == 2) return false;
+    }
+    commandos.add(event);
+    return true;
+  }
 
     escutaPad(String event) {
       if(!statePop || event =="") return;
       debugPrint("=======   Escuta Pop Menu  =======");
+
+      statePop = comandos(context, event);
+      
 
       MovimentoSistema.direcaoListView(focusScope, event);
 

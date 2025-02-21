@@ -2,15 +2,20 @@
 // // ignore_for_file: file_names
 
 import 'dart:async';
+import 'dart:math';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 import 'package:v1_game/Bando%20de%20Dados/dbYoutube.dart';
+import 'package:v1_game/Class/MouseCtrl.dart';
 import 'package:v1_game/Class/TickerProvider.dart';
 import 'package:v1_game/Controllers/JanelaCtrl.dart';
 import 'package:v1_game/Controllers/MovimentoSistema.dart';
 import 'package:v1_game/Metodos/videoYT.dart';
+import 'package:v1_game/Widgets/LoadWid.dart';
 import '../Bando de Dados/db.dart';
+import '../Class/Paad.dart';
 import '../Modelos/IconeInicial.dart';
 import '../Widgets/Pops.dart';
 
@@ -24,6 +29,7 @@ class PrincipalCtrl with ChangeNotifier{
   late List<FocusNode> focusNodeIcones;  
   List<FocusNode> focusNodeVideos = List.generate(6, (index) => FocusNode());
   CarouselSliderController carouselVideosCtrl = CarouselSliderController();
+   CarouselSliderController carouselIconesCtrl =  CarouselSliderController();
   late FocusScopeNode focusScope;
   FocusScopeNode focusScopeIcones = FocusScopeNode();
   FocusScopeNode focusScopeVideos = FocusScopeNode();
@@ -31,18 +37,19 @@ class PrincipalCtrl with ChangeNotifier{
   PageController slideIconesCtrl = PageController();
   int selectedIndexIcone = 0;
   int selectedIndexVideo = 0;
-  
-  bool isWindowFocused = true;
-  bool videoAtivo = false;
+
+  bool gameIniciado = false;
+  bool videoAtivo = false;  
   bool stateTela = true;
   bool telaIniciada = false;
   bool mood = false;
   bool showNewImage = false;
   String imgFundoStr = "";
+  bool home = false;
   List<VideoYT> videosYT= [];
 
 
-  List<String> tagVideo = ["gameplay","montage","funny","clip","dica","tutorial de"];  
+  List<String> tagVideo = ["gameplay","montage","funny","clip","dica","tutorial de","Shorts"];  
   List<String> comandoSequencia = [];
   
   late AnimationController ctrlAnimeBgFundo;
@@ -62,7 +69,7 @@ class PrincipalCtrl with ChangeNotifier{
     if(listIconsInicial.isNotEmpty){
       focusNodeIcones = List.generate(listIconsInicial.length, (index) => FocusNode());
       imgFundoStr = listIconsInicial.first.imgStr;      
-      pesquisaVideosYT(listIconsInicial.first.nome);
+      // pesquisaVideosYT(listIconsInicial.first.nome);
     }
     if(listIconsInicial.isEmpty) focusNodeIcones = [FocusNode()];
     telaIniciada = true;
@@ -70,7 +77,10 @@ class PrincipalCtrl with ChangeNotifier{
     stateTela = true;
     keyboradEscutaNode.requestFocus();
     focusNodeIcones[0].requestFocus();
-    attTela();
+    home = false;
+    attTela();   
+
+    // JanelaCtrl.restoreWindow("v1_game");
   }
 
   @override
@@ -81,10 +91,10 @@ class PrincipalCtrl with ChangeNotifier{
 
   pesquisaVideosYT(String nomeGame) async {
     if(nomeGame.isEmpty)return;
-    videosYT = [];
     try{
-      videosYT = await DbYoutube().buscarVideosNoYouTube("$nomeGame gameplay noticias");
-      // attTela();
+      String aux = tagVideo[Random().nextInt(tagVideo.length)];
+      videosYT = await DbYoutube().buscarVideosNoYouTube("$nomeGame $aux");
+      attTela();
     }catch(e){
       debugPrint(e.toString());
       debugPrint(e.toString());
@@ -102,18 +112,20 @@ class PrincipalCtrl with ChangeNotifier{
 
   onFocusChangeIcones(bool hasFocus, int index){     
     if (hasFocus) {      
-      debugPrint("FOCO ATT ICONE");          
+      debugPrint("FOCO ATT ICONE $index");          
       showNewImage = false;             
       selectedIndexIcone = index;
       slideIconesCtrl.animateToPage(selectedIndexIcone, duration: const Duration(milliseconds: 700), curve: Curves.decelerate);
       
-      // scrollToNextIcon();
-      // carouselIconesCtrl.animateToPage(index);s
+      // if(selectedIndexIcone < index)carouselIconesCtrl.animateToPage(index);
+      // if(selectedIndexIcone > index) carouselIconesCtrl.previousPage();
+      
+      videosYT = [];
       Future.delayed(const Duration(milliseconds: 350),() {
         showNewImage = true;        
         if(listIconsInicial.isNotEmpty){
           imgFundoStr = listIconsInicial[index].imgStr;
-          pesquisaVideosYT(listIconsInicial[selectedIndexIcone].nome);
+          // pesquisaVideosYT(listIconsInicial[selectedIndexIcone].nome);
         }
       });
     }
@@ -133,6 +145,9 @@ class PrincipalCtrl with ChangeNotifier{
     if(!stateTela) return;
     if(listIconsInicial.isEmpty) return btnMais();
     await db.openFile(listIconsInicial[selectedIndexIcone].local);
+    gameIniciado = true;
+    await Pops().carregandoGames(ctx);
+    gameIniciado = false;
     // Garantir que o foco volte para o escopo correto após abrir o arquivo
     focusScopeIcones.requestFocus();
     focusScope = focusScopeIcones;
@@ -177,54 +192,32 @@ class PrincipalCtrl with ChangeNotifier{
     }
   }
 
-  addSequencia(String event){    
-    if(event == "")return;
-    if(comandoSequencia.length == 5){
-      comandoSequencia.removeAt(0);
-      comandoSequencia.add(event);
-      verificaSequencia();
-    }else{        
-      comandoSequencia.add(event);
-    }
-    debugPrint("=--------------------  $comandoSequencia");
-    
-  }
-  verificaSequencia(){
-    int total = 0;
-    // RestauraTela
-    if(comandoSequencia[0] == "START")total++;
-    if(comandoSequencia[1] == "START")total++;
-    if(comandoSequencia[2] == "LB")total++;
-    if(comandoSequencia[3] == "RB")total++;
-    if(comandoSequencia[4] == "2")total++;
-    if(total == 5){
-      JanelaCtrl.restoreWindow("v1_game");
-      MovimentoSistema.audioMovMent();
-    }
-  }
+  
 
+  
 
-  escutaPad(String event) async {
-    addSequencia(event);
+  escutaPad(String event) async {    
     try{
+      //   if(event == "HOME" && !home){
+      //   home = true;
+      //   debugPrint("Tela resetada");
+      //   return iniciaTela();
+      // }
       if(!stateTela || event == "") return;
-      verificaFocoJanela();
-      debugPrint(" ===== Click Paad: => $event" );
+      debugPrint(" ===== Click Paad: => $event" );     
+      if(focusScope == focusScopeIcones)movIcones(event); 
+      if(focusScope == focusScopeVideos )movVideos(event);
       
-      // debugPrint("=======   Escuta Principal  =======");
-      if (isWindowFocused){
-        if(focusScope == focusScopeIcones)movIcones(event);
-        if(focusScope == focusScopeVideos )movVideos(event);
-      }else{
-        debugPrint("isWindowFocused  FALSOOO");
-      }
     }catch(erro){
       debugPrint("ERRO ESCUTA PAD CLICK$erro");
     }
-    if(event == "HOME"){
-      JanelaCtrl.restoreWindow("v1_game");
-      MovimentoSistema.audioMovMent();
-      // iniciaTela();
+    if(event == "HOME" ){
+      home = true;
+      Provider.of<Paad>(ctx, listen: false).click = "";
+      debugPrint("Tela resetada");
+      iniciaTela();
+      Provider.of<Paad>(ctx, listen: false).attTela();
+
     }
   }
 
@@ -252,22 +245,39 @@ class PrincipalCtrl with ChangeNotifier{
   }
   movIcones(String event){
      try{
-      MovimentoSistema.direcaoListView(focusScope, event); 
-      if(event=="BAIXO"){
-        debugPrint("Lista VIDEOS :${videosYT.length}");
-        if(videosYT.isNotEmpty){
-          focusScopeVideos.requestFocus();
-          focusScope = focusScopeVideos;
+      if(gameIniciado) {
+        if(event == "3") Navigator.pop(ctx);
+        return;
+      }
+      String result = MovimentoSistema.direcaoListView(focusScope, event);
+      debugPrint(result);
+
+      if(result == MovimentoSistema.horizontal || result == MovimentoSistema.vertical  ){
+        // int totalIndex = event == "ESQUERDA" ? selectedIndexIcone-1 : selectedIndexIcone+1;
+        // if(totalIndex < focusNodeIcones.length && totalIndex >= 0) selectedIndexIcone = totalIndex;
+        // carouselIconesCtrl.animateToPage(selectedIndexIcone, duration: const Duration(milliseconds: 700), curve: Curves.decelerate);
+          
+        
+        if(event=="BAIXO"){
+          debugPrint("Lista VIDEOS :${videosYT.length}");
+          if(videosYT.isNotEmpty){
+            focusScopeVideos.requestFocus();
+            focusScope = focusScopeVideos;
+          }
         }
       }
+      
+      
       if (event == "START")btnMais();      
       if (event == "2")btnEntrar();
+      // if(event == "4")mostrarBottomSheet();
       
     }catch(e){
       debugPrint(e.toString());
       Pops().msgSimples(ctx,"ERRO = 1$e");
     }
   }
+  
 
   clickVideo() async {    
     if(videoAtivo) {
@@ -283,7 +293,7 @@ class PrincipalCtrl with ChangeNotifier{
 
   
   keyPress(KeyEvent key) async {
-    if (key is KeyDownEvent) {
+    if (key is KeyDownEvent || key is KeyRepeatEvent) {
       debugPrint("Teclado Press: ${key.logicalKey.debugName}");
       String event = MovimentoSistema.convertKeyBoard(key.logicalKey.keyLabel);
       escutaPad(event);
@@ -296,7 +306,6 @@ class PrincipalCtrl with ChangeNotifier{
     final appWindow = WidgetsBinding.instance.window;
     bool visible = appWindow.viewInsets.bottom == 0;
     visible = naTela();
-    isWindowFocused = visible;
   }
 
   bool naTela(){

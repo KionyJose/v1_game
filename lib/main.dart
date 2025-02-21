@@ -21,7 +21,7 @@ void main() async {
     // Se a permissão não for concedida, exiba uma mensagem ao usuário ou tome outra ação apropriada
     debugPrint('Permissão de armazenamento não concedida');
   }
-  // windowFunctions();flu
+  windowFunctions();
   // fullScren();
 }
 
@@ -35,15 +35,15 @@ Future windowFunctions() async {
   await DesktopWindow.toggleFullScreen();
   await DesktopWindow.setFullScreen(true);
   // final screenSize = ui.window.physicalSize / ui.window.devicePixelRatio;
-  await DesktopWindow.setWindowSize(const Size(1920,1080));
+  // await DesktopWindow.setWindowSize(const Size(1920,1080));
 
-  await DesktopWindow.setMinWindowSize(const Size(400,400));
-  await DesktopWindow.setMaxWindowSize(const Size(800,800));
+  // await DesktopWindow.setMinWindowSize(const Size(400,400));
+  // await DesktopWindow.setMaxWindowSize(const Size(800,800));
 
   await DesktopWindow.resetMaxWindowSize();
   // bool isFullScreen = await DesktopWindow.getFullScreen();
   await DesktopWindow.setFullScreen(true);
-  await DesktopWindow.setFullScreen(false);
+  // await DesktopWindow.setFullScreen(false);
 }
 
 fullScren() async {  

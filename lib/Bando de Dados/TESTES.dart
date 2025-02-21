@@ -13,7 +13,7 @@ class TESTES{
     debugPrint("==========================================================");
     // debugPrint(await teste());
     // asdasd();
-    MovimentoSistema.audioMovMent();
+    MovimentoSistema.audioPim();
 
     DB().addAppToStartup();
     debugPrint("==========================================================");
