@@ -4,12 +4,15 @@ import 'package:flutter/material.dart';
 import 'package:y_player/y_player.dart';
 
 class YoutubeTela extends StatelessWidget {
-  const YoutubeTela({required this.url, super.key});
+  const YoutubeTela({required this.func, required this.url, super.key});
+  final  Function(YPlayerController) func;
   final String url;
 
   @override
   Widget build(BuildContext context) {
     return  YPlayer(
+      
+      onControllerReady: func,
       placeholder: const Icon(Icons.play_arrow),
       color: Colors.red,
       aspectRatio: 200,

@@ -22,7 +22,7 @@ class Pops {
     );
   }
 
-  carregandoGames(BuildContext ctx) {
+  carregandoGames(BuildContext ctx,String str) {
     return showModalBottomSheet(
       context: ctx,
       isScrollControlled: true, // Permite expandir o conteúdo
@@ -56,13 +56,13 @@ class Pops {
               ),
             ]
           ),
-          child: const Column(
+          child:  Column(
             mainAxisAlignment: MainAxisAlignment.center,
             mainAxisSize: MainAxisSize.min,
             children: [
-              LoadingIco(),
-              SizedBox(height: 15),
-              Text("Entrando no game...",style: TextStyle(color: Colors.white),),
+              const LoadingIco(),
+              const SizedBox(height: 15),
+              Text(str,style:const  TextStyle(color: Colors.white),),
               
               
             ],

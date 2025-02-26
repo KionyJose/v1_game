@@ -1,7 +1,6 @@
 // ignore_for_file: file_names
 
 import 'package:flutter/material.dart';
-import 'package:horizontal_scroll_view/horizontal_scroll_view.dart';
 
 class ListHorizontalIcons extends StatefulWidget {
   const ListHorizontalIcons({super.key});
@@ -17,7 +16,7 @@ class _ListHorizontalIconsState extends State<ListHorizontalIcons> {
   void _scrollToPage(int page) {
     _controller.animateToPage(
       page,
-      duration: Duration(milliseconds: 500),
+      duration: const Duration(milliseconds: 500),
       curve: Curves.easeInOut,
     );
     setState(() {
@@ -49,7 +48,7 @@ class _ListHorizontalIconsState extends State<ListHorizontalIcons> {
                   child: Transform.scale(
                     scale: scale,
                     child: Container(
-                      margin: EdgeInsets.symmetric(horizontal: 10),
+                      margin: const EdgeInsets.symmetric(horizontal: 10),
                       decoration: BoxDecoration(
                         color: backgroundColor,
                         borderRadius: BorderRadius.circular(10),
@@ -71,7 +70,7 @@ class _ListHorizontalIconsState extends State<ListHorizontalIcons> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             IconButton(
-              icon: Icon(Icons.arrow_back),
+              icon:const Icon(Icons.arrow_back),
               onPressed: () {
                 if (_currentPage > 0) {
                   _scrollToPage(_currentPage - 1);
@@ -79,7 +78,7 @@ class _ListHorizontalIconsState extends State<ListHorizontalIcons> {
               },
             ),
             IconButton(
-              icon: Icon(Icons.arrow_forward),
+              icon: const Icon(Icons.arrow_forward),
               onPressed: () {
                 if (_currentPage < 11) {
                   _scrollToPage(_currentPage + 1);

@@ -5,10 +5,11 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:v1_game/Class/Paad.dart';
+import 'package:v1_game/Controllers/JanelaCtrl.dart';
 import 'package:v1_game/Global.dart';
 import 'package:v1_game/Tela/Begin.dart';
 
-import 'Controllers/Notificacao.dart';
+import '../Controllers/Notificacao.dart';
 
 class MyApp extends StatefulWidget {
   const MyApp({super.key});
@@ -48,7 +49,7 @@ class _MyAppState extends State<MyApp> {
       providers: [
         ChangeNotifierProvider(create: (ctx) => Paad(ctx: ctx , escutar: true)),
         ChangeNotifierProvider(create: (_) => Notificacao()),
-        //   ChangeNotifierProvider(create: (_) => HomePageCtrl()),
+        ChangeNotifierProvider(create: (_) => JanelaCtrl(escuta: true)),
         //   ChangeNotifierProvider(create: (_) => Servidor()),
         //   ChangeNotifierProvider(create: (_) => User()),
       ],

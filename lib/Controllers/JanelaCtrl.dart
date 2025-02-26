@@ -4,6 +4,7 @@ import 'dart:ffi';
 import 'dart:async'; // Para usar o Future.delayed
 import 'package:ffi/ffi.dart';
 import 'package:flutter/material.dart';
+import 'package:window_manager/window_manager.dart';
 
 final user32 = DynamicLibrary.open('user32.dll');
 
@@ -40,16 +41,70 @@ typedef IsWindowVisibleDart = int Function(int hWnd);
 
 
 
-class JanelaCtrl {
+class JanelaCtrl with ChangeNotifier, WindowListener{
+
+  
   String nomeJanelaSistema = "v1_game"; 
   static const int SW_MINIMIZE = 6;
   static const int SW_RESTORE = 9;  
-  static const int SW_SHOWNORMAL = 1;
-
-  
+  static const int SW_SHOWNORMAL = 1;  
   static final hWnd = user32.lookupFunction<FindWindowC, FindWindowDart>('FindWindowW')(nullptr, "v1_game".toNativeUtf16());
 
-  static void restoreWindow(String windowName) {
+  bool ativa = false;
+  bool telaPresa = true;
+  
+  
+  
+  attTela() => notifyListeners();
+  JanelaCtrl({bool escuta = false}){    
+    if(escuta)windowManager.addListener(this);
+  }
+
+  telaPresaReverse({bool usarEstado = false, bool estado = false}) {
+    if(usarEstado){
+      telaPresa = estado;
+    }else{
+      telaPresa = !telaPresa;
+    }
+    attTela();
+  }
+  
+  @override
+  void dispose() {
+    debugPrint("SAIU PAGE JANELA");
+    // ctrl.dispose();
+    windowManager.removeListener(this);
+    super.dispose();
+  } 
+
+  @override
+  void onWindowEvent(String eventName) async {
+    debugPrint('============================================================================ $eventName');    
+  }
+  
+  @override void onWindowFocus() => ativa = true;
+  @override void onWindowBlur() {
+     ativa = false;
+     if(telaPresa && !ativa) restoreWindow();
+  }
+
+  static janelaAtiva () async => await windowManager.isFocused();
+
+
+
+  static void restoreWindow () async {
+    // if(await windowManager.isVisible()) return;
+    await windowManager.minimize();
+    await windowManager.minimize();
+    Future.delayed(const Duration(milliseconds: 200));
+    await windowManager.maximize();
+    await windowManager.maximize();
+    // windowManager.show();    
+    // windowManager.focus();
+    debugPrint("Restart Tela Tras pra frente =======================================");
+  }
+
+  static void restoreWindow2(String windowName) {
 
     // final findWindow = user32.lookupFunction<FindWindowC, FindWindowDart>('FindWindowW');
     final showWindow = user32.lookupFunction<ShowWindowC, ShowWindowDart>('ShowWindow');
@@ -64,8 +119,9 @@ class JanelaCtrl {
 
       // Aguarda e então restaura a janela e a traz para a frente
       Future.delayed(const Duration(milliseconds: 100), () {
-        showWindow(hWnd, SW_RESTORE); // Restaura a janela
         setForegroundWindow(hWnd);    // Traz a janela para frente
+        showWindow(hWnd, SW_SHOWNORMAL); // Restaura a janela
+        showWindow(hWnd, SW_RESTORE); // Restaura a janela
       });
     } else {
       debugPrint("Janela não encontrada.");
@@ -77,7 +133,7 @@ class JanelaCtrl {
 
     final isWindowVisible = user32.lookupFunction<IsWindowVisibleC, IsWindowVisibleDart>('IsWindowVisible');
     final visible = isWindowVisible(hWnd) != 0;
-    print(visible ? 'A janela está visível' : 'A janela está oculta');
+    debugPrint(visible ? 'A janela está visível' : 'A janela está oculta');
     return visible;
   }
 

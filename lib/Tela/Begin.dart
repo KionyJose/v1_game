@@ -1,7 +1,10 @@
 // ignore_for_file: file_names, deprecated_member_use
 
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:v1_game/Controllers/JanelaCtrl.dart';
 import 'package:xinput_gamepad/xinput_gamepad.dart';
 
 import '../Class/Paad.dart';
@@ -14,7 +17,7 @@ class Begin extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<Notificacao>(builder: (context, notf, child){
+    return Consumer2<Notificacao,JanelaCtrl>(builder: (context, notf,janela, child){
       return SafeArea(
           child: Scaffold(
             body: Stack(
@@ -56,27 +59,71 @@ class Begin extends StatelessWidget {
       },
       builder: (context, valorAtual, child) {
         // Aguardando o próximo frame para chamar o showDialog
-        return statusPad(total);
+        return statusPad(context, total);
       },
     );
   }
 
   // escutaNotfy(){
-  statusPad(int paad){
+  statusPad(BuildContext ctx, int paad){
     return Align(
       alignment: Alignment.topRight,
-      child: Padding(
-        padding: const EdgeInsets.only(top: 48,right: 10),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.end,
-          children: [
-             Text("Versao 4   ",style: TextStyle(fontSize: 12,color: Colors.yellow.withOpacity(0.4))),
-            Text(paad.toString(),style: TextStyle(fontSize: 12,color: paad ==0 ? Colors.red: Colors.white)),
-            const SizedBox(width: 5),
-            Icon(Icons.sports_esports,color: paad == 0 ? Colors.red: Colors.white),
-          ],
+      child: SizedBox(
+        height: MediaQuery.of(ctx).size.height * 0.04,
+        child: FittedBox(
+          child: Container(
+            margin: const EdgeInsets.only(top: 6,right: 6),
+            padding: const EdgeInsets.only(right: 12),
+            decoration: BoxDecoration(
+              color: Colors.black54,
+              borderRadius: BorderRadius.circular(15)
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                btnPrenderTela(),
+                const SizedBox(width: 20),
+                Text("Versao 5   ",style: TextStyle(fontSize: 12,color: Colors.yellow.withOpacity(0.4))),
+                Text(paad.toString(),style: TextStyle(fontSize: 12,color: paad ==0 ? Colors.red: Colors.white)),
+                const SizedBox(width: 5),
+                Icon(Icons.sports_esports,color: paad == 0 ? Colors.red: Colors.white),
+                const SizedBox(width: 10),
+                btnFechaApp(),
+              ],
+            ),
+          ),
         ),
       ),
+    );
+  }
+  btnFechaApp(){
+    return MaterialButton(
+      padding: EdgeInsets.zero,
+      minWidth: 10,
+      onPressed: () => exit(0),
+      child: const Icon(Icons.close,color: Colors.white)
+    );
+  }
+  btnPrenderTela(){
+
+    return Selector<JanelaCtrl, bool>(
+      selector: (context, jnl) => jnl.telaPresa,
+      builder: (context, preso, child) {
+        return Transform.scale(
+          scale: 1.25, // Ajuste a escala conforme desejado(
+          child: Switch(
+            hoverColor: Colors.white,
+            padding: EdgeInsets.zero,
+            inactiveThumbColor: Colors.white,
+            inactiveTrackColor: Colors.green,
+            activeTrackColor: Colors.red,
+            thumbIcon: MaterialStateProperty.all(const Icon(Icons.lock,color: Colors.black)),
+            value: preso,
+            onChanged: (s) =>Provider.of<JanelaCtrl>(context, listen: false).telaPresaReverse()
+          ),
+        );
+      },
     );
   }
 }

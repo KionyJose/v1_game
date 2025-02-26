@@ -4,6 +4,7 @@ import 'dart:async';
 
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:v1_game/Class/TecladoCtrl.dart';
 import 'package:xinput_gamepad/xinput_gamepad.dart';
 
@@ -37,13 +38,14 @@ class Paad with ChangeNotifier{
   }
   
   escutaClickPaad(String event) async {
+    // debugPrint(event);
     if(event == "SELECT"){
       // await audioPlayer.play(AssetSource("som_movimento.mp3")); // Caminho do asset
     }
     addSequencia(event);
     if(isMouse) return mouseAdapt(event);
     click = event;
-    if(naTela() && !delay)notifyListeners();
+    if(await naTela() && !delay)notifyListeners();
 
     // X  10.000 >>  32.512
     // X -10.000 << -32.768
@@ -54,23 +56,32 @@ class Paad with ChangeNotifier{
     notifyListeners();
   }
 
-  bool naTela(){
-    bool value = false;
-    final AppLifecycleState? estadoAtual = WidgetsBinding.instance.lifecycleState;
-    if (estadoAtual == AppLifecycleState.resumed) {
-      // debugPrint("O aplicativo está na frente (ativo).");
-      value = true;
-    } else if (estadoAtual == AppLifecycleState.inactive) {
-      debugPrint(" ===== Aplicativo está INATIVO. =====");
-      value = false;
-    } else if (estadoAtual == AppLifecycleState.paused) {
-      debugPrint("O aplicativo está em segundo plano (pausado).");
-      value = false;
-    } else {      
-      debugPrint("ESTADO ALTERNATIVO:  $estadoAtual");
-      value = true;
-    }
-    return value;
+ Future <bool> naTela() async {
+    
+    bool it =  await JanelaCtrl.janelaAtiva();
+    if (!it) debugPrint(" ===== Aplicativo está INATIVO. =====");
+    if (it) debugPrint(" ===== NA TELA =====");
+    return it;
+    // bool value = false;
+    // final AppLifecycleState? estadoAtual = WidgetsBinding.instance.lifecycleState;
+    // if (estadoAtual == AppLifecycleState.resumed) {
+    //   // debugPrint("O aplicativo está na frente (ativo).");
+    //   value = true;
+    // } else if (estadoAtual == AppLifecycleState.inactive) {
+    //   debugPrint(" ===== Aplicativo está INATIVO. =====");
+    //   value = false;
+    // } else if (estadoAtual == AppLifecycleState.paused) {
+    //   debugPrint("O aplicativo está em segundo plano (pausado).");
+    //   value = false;
+    // } else {      
+    //   debugPrint("ESTADO ALTERNATIVO:  $estadoAtual");
+    //   value = true;
+    // }
+    // return value;
+
+
+     
+      // Verifica o estado de foco inicial da janela
   }
 
   addSequencia(String event){    
@@ -100,7 +111,7 @@ class Paad with ChangeNotifier{
   }
   voltarAoSistema(){
 
-    JanelaCtrl.restoreWindow("v1_game");
+    JanelaCtrl.restoreWindow();
     MovimentoSistema.audioCheat();
     delay = true;
     // Provider.of<PrincipalCtrl>(ctx, listen: false).focusScope.requestFocus();
@@ -121,10 +132,17 @@ class Paad with ChangeNotifier{
     if(comandoSequencia[2] == "LB")total++;
     if(comandoSequencia[3] == "RB")total++;
     if(comandoSequencia[4] == "4")total++;
-    if(total == 5){
-      isMouse = !isMouse;
-      MovimentoSistema.audioCheat();
-    }
+    if(total == 5) ativaMouse();
+    
+  }
+  ativaMouse({bool usarEstado = false, bool estado = false}){
+    if(usarEstado){
+      isMouse = estado;
+    }else{
+      isMouse = !isMouse;      
+    }    
+    JanelaCtrl().telaPresa = isMouse;
+    MovimentoSistema.audioCheat();
   }
 
   teclaEnter(){
@@ -195,10 +213,10 @@ class Paad with ChangeNotifier{
     XInputManager.enableXInput(); // usando pugin xinput_gamepad
     
     for (int controllerIndex in ControllersManager.getIndexConnectedControllers()) {
-      final Controller controller = Controller(index: controllerIndex, buttonMode: ButtonMode. PRESS);
+      final Controller controller = Controller(index: controllerIndex, buttonMode: ButtonMode.PRESS);
+
       
       controller.buttonsMapping = {
-        
         // controller.vibrate(const Duration(seconds: 3));
         ControllerButton.A_BUTTON: () => escutaClickPaad("2"),
         ControllerButton.B_BUTTON: () => escutaClickPaad("3"),
@@ -209,7 +227,7 @@ class Paad with ChangeNotifier{
         ControllerButton.DPAD_LEFT: () => escutaClickPaad("ESQUERDA"),
         ControllerButton.DPAD_RIGHT: () => escutaClickPaad("DIREITA"),
         ControllerButton.LEFT_SHOULDER: () => escutaClickPaad("LB"),
-        ControllerButton.RIGHT_SHOULDER: () => escutaClickPaad("RB"),        
+        ControllerButton.RIGHT_SHOULDER: () => escutaClickPaad("RB"),      
         ControllerButton.LEFT_THUMB: () => escutaClickPaad("L3"),
         ControllerButton.RIGHT_THUMB: () => escutaClickPaad("R3"),
         ControllerButton.START: () => escutaClickPaad("START"),

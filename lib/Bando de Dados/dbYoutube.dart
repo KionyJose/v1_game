@@ -12,13 +12,13 @@ class DbYoutube{                                                              //
     List<VideoYT> videosFake = [];
     for (Map<String, dynamic> map in fake['items']) {      
       VideoYT videoFake = VideoYT();
-      videoFake.fromMap(map);
+      videoFake.fromMap(map,"Fake");
       videosFake.add(videoFake);
     }
     return videosFake;
   }
 
-  Future<List<VideoYT>> buscarVideosNoYouTube(String palavraChave) async {
+  Future<List<VideoYT>> buscarVideosNoYouTube(String palavraChave,String nomegame) async {
    if(palavraChave.isNotEmpty) return fakeVideos();
     final url = Uri.https(
       'www.googleapis.com',
@@ -41,7 +41,7 @@ class DbYoutube{                                                              //
 
         for (Map<String, dynamic> map in dados['items']) {
           VideoYT video = VideoYT();
-          video.fromMap(map);
+          video.fromMap(map,nomegame);
           // final videoId = item['id']['videoId'];
           // final videoUrl = 'https://www.youtube.com/watch?v=$videoId';
           videos.add(video);
@@ -237,7 +237,40 @@ class DbYoutube{                                                              //
             "liveBroadcastContent": "none",
             "publishTime": "2024-08-05T21:07:41Z"
           }
-        }
+        },{
+          "kind": "youtube#searchResult",
+          "etag": "rRRd2oKtbKywJuzqFSkBlagud4E",
+          "id": {
+            "kind": "youtube#video",
+            "videoId": "A1BaZr82XJI"
+          },
+          "snippet": {
+            "publishedAt": "2023-06-07T18:37:18Z",
+            "channelId": "UCcv8cb3woqO0n7WW4NEaK_Q",
+            "title": "Se nao aprender PROGRAMAÇÃO com esse video. - ̗̀  DESISTE   ̖́-",
+            "description": "Caso voce queira aprender JAVA comigo - https://encurtador.com.br/OgEam Está procurando um curso de PROGRAMAÇÃO?",
+            "thumbnails": {
+              "default": {
+                "url": "https://i.ytimg.com/vi/A1BaZr82XJI/default.jpg",
+                "width": 120,
+                "height": 90
+              },
+              "medium": {
+                "url": "https://i.ytimg.com/vi/A1BaZr82XJI/mqdefault.jpg",
+                "width": 320,
+                "height": 180
+              },
+              "high": {
+                "url": "https://i.ytimg.com/vi/A1BaZr82XJI/hqdefault.jpg",
+                "width": 480,
+                "height": 360
+              }
+            },
+            "channelTitle": "Fiasco",
+            "liveBroadcastContent": "none",
+            "publishTime": "2023-06-07T18:37:18Z"
+          }
+        },
       ]
     };
   }

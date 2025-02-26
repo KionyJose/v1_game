@@ -10,12 +10,13 @@ class VideoYT{
   late String canal;
   late String data;
   late String videoID;
+  late String nomeGame;
 
   VideoYT();
 
    // Factory para criar um objeto VideoYT a partir de um map
-  fromMap(Map<String, dynamic> map) {
-    
+  fromMap(Map<String, dynamic> map, String nomeGme) {
+      nomeGame = nomeGme;
       titulo = map['snippet']['title'];
       urlVideo = 'https://www.youtube.com/watch?v=${map['id']['videoId']}';
       capaP = map['snippet']['thumbnails']['default']['url'];

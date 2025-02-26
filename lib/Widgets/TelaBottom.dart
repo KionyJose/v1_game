@@ -31,7 +31,7 @@ class TelaBottom extends StatelessWidget {
                 const SizedBox(height: 20),
                 ElevatedButton(
                   onPressed: () => Navigator.pop(context),
-                  child: Text('Fechar'),
+                  child:const Text('Fechar'),
                 )
               ],
             ),
@@ -44,11 +44,11 @@ class TelaBottom extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Bottom Sheet')),
+      appBar: AppBar(title:const Text('Bottom Sheet')),
       body: Center(
         child: ElevatedButton(
           onPressed: () => _mostrarBottomSheet(context),
-          child: Text('Abrir Pop-up'),
+          child: const Text('Abrir Pop-up'),
         ),
       ),
     );

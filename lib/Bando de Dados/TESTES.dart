@@ -7,6 +7,8 @@ import 'package:path_provider/path_provider.dart';
 import 'package:v1_game/Bando%20de%20Dados/db.dart';
 import 'package:v1_game/Controllers/MovimentoSistema.dart';
 
+import '../Class/MouseCtrl.dart';
+
 class TESTES{
   testes() async {
     debugPrint("==========================================================");
@@ -14,7 +16,7 @@ class TESTES{
     // debugPrint(await teste());
     // asdasd();
     MovimentoSistema.audioPim();
-
+    
     DB().addAppToStartup();
     debugPrint("==========================================================");
     debugPrint("==========================================================");

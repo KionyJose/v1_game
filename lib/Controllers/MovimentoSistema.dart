@@ -82,11 +82,14 @@ class MovimentoSistema {
       case"D":return "DIREITA";       
       case"W":return "CIMA";
       case"S":return "BAIXO";
+
+      case"E": return"RB";
+      case"Q": return"LB";
       
-      case"Arrow Right":return "DIREITA";
-      case"Arrow Left":return "ESQUERDA";      
-      case"Arrow Up":return "CIMA";
-      case"Arrow Down":return "BAIXO";
+      // case"Arrow Right":return "DIREITA";
+      // case"Arrow Left":return "ESQUERDA";      
+      // case"Arrow Up":return "CIMA";
+      // case"Arrow Down":return "BAIXO";
       
       default: return "";
     }

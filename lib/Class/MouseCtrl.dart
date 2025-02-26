@@ -1,7 +1,9 @@
 // ignore_for_file: file_names
 
 import 'dart:ffi';
+import 'dart:io';
 import 'package:ffi/ffi.dart';
+import 'package:flutter/material.dart';
 
 final user32 = DynamicLibrary.open('user32.dll');
 
@@ -45,6 +47,45 @@ final class MouseCtrl extends Struct {
     // Clicar
     mouseClick(0x0002, x, y, 0, 0);  // Pressionar o botão esquerdo do mouse (MOUSEEVENTF_LEFTDOWN)
     mouseClick(0x0004, x, y, 0, 0);  // Liberar o botão esquerdo do mouse (MOUSEEVENTF_LEFTUP)
+  }
+
+  static primeiroMovimento() async {
+
+    // Obtém o caminho completo do executável em execução
+  String caminhoExecutavel = Platform.resolvedExecutable;
+
+  // Cria um objeto File a partir do caminho do executável
+  File arquivoExecutavel = File(caminhoExecutavel);
+
+  // Obtém o diretório onde o executável está localizado
+  Directory diretorioAtual = arquivoExecutavel.parent;
+
+  // Obtém o diretório pai do diretório atual
+  Directory diretorioPai = diretorioAtual.parent;
+
+    
+    //C:\_Flutter\Game Interfacie\v1_game\build\windows\x64\runner\Debug\assets\Scripts
+    // String? minhaPasta = Platform.environment['SystemRoot'];
+    // Caminho do aplicativo que você deseja usar para abrir o arquivo
+    String caminhoAssets = "${diretorioAtual.path}\\data\\flutter_assets\\assets\\Scripts\\";
+    var caminhoDoAplicativo = '${caminhoAssets}AutoHotkeyA32.exe';
+    // Caminho do arquivo que você deseja abrir
+    var caminhoDoArquivo = '${caminhoAssets}moovMouse.ahk';
+
+    // Verifica se o aplicativo existe
+    var aplicativo = File(caminhoDoAplicativo);
+    if (await aplicativo.exists()) {
+      // Verifica se o arquivo existe
+      var arquivo = File(caminhoDoArquivo);
+      if (await arquivo.exists()) {
+        // Inicia um novo processo para abrir o arquivo com o aplicativo especificado
+        Process.start(caminhoDoAplicativo, [caminhoDoArquivo]);
+      } else {
+        debugPrint('Arquivo não encontrado: $caminhoDoArquivo');
+      }
+    } else {
+      debugPrint('Aplicativo não encontrado: $caminhoDoAplicativo');
+    }
   }
 
 

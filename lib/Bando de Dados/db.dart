@@ -11,11 +11,8 @@ class DB{
   // String dbPath = "C:\\Users\\kiony\\OneDrive\\Área de Trabalho\\testeDBLocal.txt"; 
   String dbPath = "C:\\Users\\Public\\Documents\\testeDBLocal.txt"; 
 
-  leiaBanco() async {
-    return await leituraDeDados();
-
-
-  }
+  leiaBanco() async =>  await leituraDeDados();
+  
   attDados(List<IconInicial> list) async {
     // Solicitar permissão para escrever na área de trabalho
     var status = await Permission.storage.request();
@@ -29,9 +26,6 @@ class DB{
       // Se a permissão não for concedida, exiba uma mensagem ao usuário ou tome outra ação apropriada
       debugPrint('Permissão para escrever na área de trabalho não concedida');
     }
-
-  }
-  addNovoCard(IconInicial ico){
 
   }
 
@@ -82,25 +76,22 @@ class DB{
     Stream<String> lines = file.openRead()
       .transform(utf8.decoder) // Decode bytes to UTF-8.
       .transform(const LineSplitter()); // Convert stream to individual lines.
-    try {
-      await for (String line in lines) {
-
+   
+      await for (String line in lines) {        
         if(line.contains("item-") && start){
-
           IconInicial iconIni =  IconInicial(itemCard);
           listIconsInicial.add(iconIni);
           itemCard.clear();
-
         }
         start =true;
         itemCard.add(line);
+
 
       }
       if(itemCard.isNotEmpty){        
         IconInicial iconIni =  IconInicial(itemCard);
         listIconsInicial.add(iconIni);
       }
-    } catch (_) {}
     debugPrint(listIconsInicial.length.toString());
     return listIconsInicial;
   }
@@ -121,7 +112,7 @@ class DB{
       debugPrint('Erro ao abrir o arquivo: $e');
       openUrl(filePath);
     } catch (e) {
-      debugPrint('Erro desconhecido: $e');
+      debugPrint('Erro d  onhecido: $e');
     }
   }
 
