@@ -86,7 +86,7 @@ class PrincipalCtrl with ChangeNotifier{
   PrincipalCtrl(this.ctx,){
     iniciaTela();
   }
-  urlFilme(int i ){
+  urlImgFilme(int i ){
     String str = listCinema[i].imgLocal;
     return str;
   }
@@ -263,6 +263,8 @@ class PrincipalCtrl with ChangeNotifier{
       await Pops().carregandoGames(ctx,"Entrando no game..." );
       gameIniciado = false;
       Provider.of<JanelaCtrl>(ctx, listen: false).telaPresaReverse();
+      // Desativa o uso do mouse;
+      Provider.of<Paad>(ctx, listen: false).ativaMouse( usarEstado: true,  estado: false);
       // Garantir que o foco volte para o escopo correto após abrir o arquivo
       focusNodeIcones[selectedIndexIcone].requestFocus();
       focusScopeIcones.requestFocus();

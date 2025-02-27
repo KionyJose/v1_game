@@ -57,7 +57,7 @@ class TecladoCtrl{
   }  
   static void teclaF11(){
     final input = calloc<INPUT>();
-    input.  ref.type = INPUT_TYPE.INPUT_KEYBOARD;
+    input.    ref.type = INPUT_TYPE.INPUT_KEYBOARD;
     input.ref.ki.wVk = VIRTUAL_KEY.VK_F11; // Código da tecla espaço
   
     // Pressionar tecla
@@ -68,5 +68,102 @@ class TecladoCtrl{
     SendInput(1, input, sizeOf<INPUT>());
   
     calloc.free(input);
+  }
+  static void fecharAltF4() {
+    final input = calloc<INPUT>(2);
+
+    input[0].type = INPUT_TYPE.INPUT_KEYBOARD;
+    input[0].ki.wVk = VIRTUAL_KEY.VK_MENU;
+
+    input[1].type = INPUT_TYPE.INPUT_KEYBOARD;
+    input[1].ki.wVk = VIRTUAL_KEY.VK_F4;
+
+    SendInput(2, input, sizeOf<INPUT>());
+
+    input[0].ki.dwFlags = KEYBD_EVENT_FLAGS.KEYEVENTF_KEYUP;
+    input[1].ki.dwFlags = KEYBD_EVENT_FLAGS.KEYEVENTF_KEYUP;
+    SendInput(2, input, sizeOf<INPUT>());
+
+    calloc.free(input);
+  }
+
+  static void teclaEsc() {
+    final input = calloc<INPUT>();
+    input.ref.type = INPUT_TYPE.INPUT_KEYBOARD;
+    input.ref.ki.wVk = VIRTUAL_KEY.VK_ESCAPE;
+
+    SendInput(1, input, sizeOf<INPUT>());
+
+    input.ref.ki.dwFlags = KEYBD_EVENT_FLAGS.KEYEVENTF_KEYUP;
+    SendInput(1, input, sizeOf<INPUT>());
+
+    calloc.free(input);
+  }
+
+  static void teclaWindows() {
+    final input = calloc<INPUT>();
+    input.ref.type = INPUT_TYPE.INPUT_KEYBOARD;
+    input.ref.ki.wVk = VIRTUAL_KEY.VK_LWIN;
+
+    SendInput(1, input, sizeOf<INPUT>());
+
+    input.ref.ki.dwFlags = KEYBD_EVENT_FLAGS.KEYEVENTF_KEYUP;
+    SendInput(1, input, sizeOf<INPUT>());
+
+    calloc.free(input);
+  }
+
+  static void holdShift() {
+    final input = calloc<INPUT>();
+    input.ref.type = INPUT_TYPE.INPUT_KEYBOARD;
+    input.ref.ki.wVk = VIRTUAL_KEY.VK_SHIFT;
+
+    SendInput(1, input, sizeOf<INPUT>());
+    calloc.free(input);
   } 
+  static void soltaShift(){
+    final input = calloc<INPUT>();
+    input.ref.type = INPUT_TYPE.INPUT_KEYBOARD;
+    input.ref.ki.wVk = VIRTUAL_KEY.VK_SHIFT;
+    input.ref.ki.dwFlags = KEYBD_EVENT_FLAGS.KEYEVENTF_KEYUP; //=========================================================//============================================================//============================================================//==========================================================================================================================
+
+    SendInput(1, input, sizeOf<INPUT>());
+    calloc.free(input);
+  }
+  static void pressAltTab() {
+    final input = calloc<INPUT>(2);
+
+    input[0].type = INPUT_TYPE.INPUT_KEYBOARD;
+    input[0].ki.wVk = VIRTUAL_KEY.VK_MENU; // Alt
+
+    input[1].type = INPUT_TYPE.INPUT_KEYBOARD;
+    input[1].ki.wVk = VIRTUAL_KEY.VK_TAB; // Tab
+
+    SendInput(2, input, sizeOf<INPUT>());
+
+    input[1].ki.dwFlags = KEYBD_EVENT_FLAGS.KEYEVENTF_KEYUP;
+    input[0].ki.dwFlags = KEYBD_EVENT_FLAGS.KEYEVENTF_KEYUP;
+    SendInput(2, input, sizeOf<INPUT>());
+
+    calloc.free(input);
+  }
+
+  static void pressWinTab() {
+    final input = calloc<INPUT>(2);
+
+    input[0].type = INPUT_TYPE.INPUT_KEYBOARD;
+    input[0].ki.wVk = VIRTUAL_KEY.VK_LWIN; // Windows
+
+    input[1].type = INPUT_TYPE.INPUT_KEYBOARD;
+    input[1].ki.wVk = VIRTUAL_KEY.VK_TAB; // Tab
+
+    SendInput(2, input, sizeOf<INPUT>());
+
+    input[1].ki.dwFlags = KEYBD_EVENT_FLAGS.KEYEVENTF_KEYUP;
+    input[0].ki.dwFlags = KEYBD_EVENT_FLAGS.KEYEVENTF_KEYUP;
+    SendInput(2, input, sizeOf<INPUT>());
+
+    calloc.free(input);
+  }
+
 }

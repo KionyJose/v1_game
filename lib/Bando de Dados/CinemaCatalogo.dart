@@ -2,6 +2,8 @@
 
 import 'package:v1_game/Modelos/CinemaCanal.dart';
 
+import '../Global.dart';
+
 class CinemaCatalogo{
 
   static List<String> listaCatalogoNomes = ["Netflix","Prime Video","MAX","Apple TV","Disney +", "Globo Play","TeleCine","CrunchyRoll","Paramount+"];
@@ -11,47 +13,47 @@ class CinemaCatalogo{
   static _meuCatalogo(){  
     List<CinemaCanal> list = [];
     list.add(CinemaCanal(
-      imgLocal: "assets/StreamingCapa/Netflix.png",
+      imgLocal: "${assetsPath}StreamingCapa\\Netflix.png",
       nome: "Netflix",
       url: "https://www.netflix.com/br/"
     ));
     list.add(CinemaCanal(
-      imgLocal: "assets/StreamingCapa/PrimeVideo.png",
+      imgLocal: "${assetsPath}StreamingCapa\\PrimeVideo.png",
       nome: "Prime Video",
       url: "https://www.primevideo.com/"
     ));
     list.add(CinemaCanal(
-      imgLocal: "assets/StreamingCapa/Max.png",
+      imgLocal: "${assetsPath}StreamingCapa\\Max.png",
       nome: "MAX",
       url: "https://www.max.com/br"
     ));
     list.add(CinemaCanal(
-      imgLocal: "assets/StreamingCapa/AppleTv.png",
+      imgLocal: "${assetsPath}StreamingCapa\\AppleTv.png",
       nome: "Apple TV",
       url: "https://tv.apple.com/br/"
     ));
     list.add(CinemaCanal(
-      imgLocal: "assets/StreamingCapa/Disney+.png",
+      imgLocal: "${assetsPath}StreamingCapa\\Disney+.png",
       nome: "Disney +",
       url: "https://www.disneyplus.com/pt-br"
     ));
     list.add(CinemaCanal(
-      imgLocal: "assets/StreamingCapa/GloboPlay.png",
+      imgLocal: "${assetsPath}StreamingCapa\\GloboPlay.png",
       nome: "Globo Play",
       url: "https://globoplay.globo.com/"
     ));
     list.add(CinemaCanal(
-      imgLocal: "assets/StreamingCapa/TeleCine.png",
+      imgLocal: "${assetsPath}StreamingCapa\\TeleCine.png",
       nome: "TeleCine",
       url: "https://www.telecine.com.br/"
     ));
     list.add(CinemaCanal(
-      imgLocal: "assets/StreamingCapa/CrunchyRoll.png",
+      imgLocal: "${assetsPath}StreamingCapa\\CrunchyRoll.png",
       nome: "CrunchyRoll",
       url: "https://www.crunchyroll.com/pt-br"
     ));
     list.add(CinemaCanal(
-      imgLocal: "assets/StreamingCapa/Paramount+.png",
+      imgLocal: "${assetsPath}StreamingCapa\\Paramount+.png",
       nome: "Paramount+",
       url: "https://www.paramountplus.com/br/"
     ));

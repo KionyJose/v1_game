@@ -69,7 +69,7 @@ class Begin extends StatelessWidget {
     return Align(
       alignment: Alignment.topRight,
       child: SizedBox(
-        height: MediaQuery.of(ctx).size.height * 0.04,
+        height: MediaQuery.of(ctx).size.height * 0.054,
         child: FittedBox(
           child: Container(
             margin: const EdgeInsets.only(top: 6,right: 6),
@@ -85,9 +85,14 @@ class Begin extends StatelessWidget {
                 btnPrenderTela(),
                 const SizedBox(width: 20),
                 Text("Versao 5   ",style: TextStyle(fontSize: 12,color: Colors.yellow.withOpacity(0.4))),
-                Text(paad.toString(),style: TextStyle(fontSize: 12,color: paad ==0 ? Colors.red: Colors.white)),
+                if(paad == 0) Icon(Icons.sports_esports,color: paad == 0 ? Colors.red: Colors.white),
+                for(int i = 0; i < paad;i++)
+                const Padding(
+                  padding: EdgeInsets.only(left: 6),
+                  child: Icon(Icons.sports_esports,color: Colors.white),
+                ),
+                // Text(paad.toString(),style: TextStyle(fontSize: 12,color: paad ==0 ? Colors.red: Colors.white)),
                 const SizedBox(width: 5),
-                Icon(Icons.sports_esports,color: paad == 0 ? Colors.red: Colors.white),
                 const SizedBox(width: 10),
                 btnFechaApp(),
               ],

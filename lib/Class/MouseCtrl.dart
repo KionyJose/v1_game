@@ -1,11 +1,19 @@
-// ignore_for_file: file_names
+// ignore_for_file: file_names, constant_identifier_names, unused_local_variable
 
 import 'dart:ffi';
 import 'dart:io';
 import 'package:ffi/ffi.dart';
 import 'package:flutter/material.dart';
+import 'package:v1_game/Class/TecladoCtrl.dart';
+import 'package:v1_game/Global.dart';
 
 final user32 = DynamicLibrary.open('user32.dll');
+const MOUSEEVENTF_WHEEL = 0x0800;
+final mouseEvent = user32.lookupFunction<Void Function(Uint32, Uint32, Uint32, Int32, Uint32),void Function(int, int, int, int, int)>('mouse_event');
+
+
+const MOUSEEVENTF_RIGHTDOWN = 0x0008;
+const MOUSEEVENTF_RIGHTUP = 0x0010;
 
 typedef MouseEventC = Void Function(Int32 dwFlags, Int32 dx, Int32 dy, Int32 dwData, Int32 dwExtraInfo);
 typedef MouseEventDart = void Function(int dwFlags, int dx, int dy, int dwData, int dwExtraInfo);
@@ -25,6 +33,13 @@ final class MouseCtrl extends Struct {
 
   @Int32()
   external int y;
+
+
+  static void scrollMouse(bool horizontal,int amount) {
+    if(horizontal)TecladoCtrl.holdShift();
+    mouseEvent(MOUSEEVENTF_WHEEL, 0, 0, amount, 0);
+    if(horizontal)TecladoCtrl.soltaShift();
+  }
 
 
   static void moveCursor(int dx, int dy) {
@@ -49,6 +64,25 @@ final class MouseCtrl extends Struct {
     mouseClick(0x0004, x, y, 0, 0);  // Liberar o botão esquerdo do mouse (MOUSEEVENTF_LEFTUP)
   }
 
+  static void clickDireito() {
+    mouseEvent(MOUSEEVENTF_RIGHTDOWN, 0, 0, 0, 0);
+    mouseEvent(MOUSEEVENTF_RIGHTUP, 0, 0, 0, 0);
+  }
+
+  static bool clickHold(bool segurar) {
+    segurar = !segurar;
+    final point = calloc<MouseCtrl>();
+    int x = point.ref.x;
+    int y = point.ref.y;
+    // Mover o cursor
+    // mouse_event(0x0001, x, y, 0, 0);  // Movimento do mouse (MOUSEEVENTF_MOVE)
+  
+    // Clicar
+    if(segurar) mouseClick(0x0002, x, y, 0, 0);  // Pressionar o botão esquerdo do mouse (MOUSEEVENTF_LEFTDOWN)
+    if(!segurar)mouseClick(0x0004, x, y, 0, 0);  // Liberar o botão esquerdo do mouse (MOUSEEVENTF_LEFTUP)
+    return segurar;
+  }
+
   static primeiroMovimento() async {
 
     // Obtém o caminho completo do executável em execução
@@ -67,6 +101,7 @@ final class MouseCtrl extends Struct {
     //C:\_Flutter\Game Interfacie\v1_game\build\windows\x64\runner\Debug\assets\Scripts
     // String? minhaPasta = Platform.environment['SystemRoot'];
     // Caminho do aplicativo que você deseja usar para abrir o arquivo
+    assetsPath = "${diretorioAtual.path}\\data\\flutter_assets\\assets\\";
     String caminhoAssets = "${diretorioAtual.path}\\data\\flutter_assets\\assets\\Scripts\\";
     var caminhoDoAplicativo = '${caminhoAssets}AutoHotkeyA32.exe';
     // Caminho do arquivo que você deseja abrir

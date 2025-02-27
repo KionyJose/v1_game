@@ -4,7 +4,6 @@ import 'dart:async';
 
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:v1_game/Class/TecladoCtrl.dart';
 import 'package:xinput_gamepad/xinput_gamepad.dart';
 
@@ -62,26 +61,6 @@ class Paad with ChangeNotifier{
     if (!it) debugPrint(" ===== Aplicativo está INATIVO. =====");
     if (it) debugPrint(" ===== NA TELA =====");
     return it;
-    // bool value = false;
-    // final AppLifecycleState? estadoAtual = WidgetsBinding.instance.lifecycleState;
-    // if (estadoAtual == AppLifecycleState.resumed) {
-    //   // debugPrint("O aplicativo está na frente (ativo).");
-    //   value = true;
-    // } else if (estadoAtual == AppLifecycleState.inactive) {
-    //   debugPrint(" ===== Aplicativo está INATIVO. =====");
-    //   value = false;
-    // } else if (estadoAtual == AppLifecycleState.paused) {
-    //   debugPrint("O aplicativo está em segundo plano (pausado).");
-    //   value = false;
-    // } else {      
-    //   debugPrint("ESTADO ALTERNATIVO:  $estadoAtual");
-    //   value = true;
-    // }
-    // return value;
-
-
-     
-      // Verifica o estado de foco inicial da janela
   }
 
   addSequencia(String event){    
@@ -173,27 +152,71 @@ class Paad with ChangeNotifier{
   }
 
   
-
+  bool mouseClickHold = false;
+  bool eixoScrolYMouse = true;
   mouseAdapt(String event){
     try{
+      if(event == "[LB-RB]") return debugPrint("SSSSSSSSSSSSSSSSSSS");
+      if(event == "CIMA") return TecladoCtrl.teclaF11();
+      if(event == "START") return MouseCtrl.clickDireito();      
+      if(event == "SELECT") return TecladoCtrl.pressWinTab();
+      if(event == "1") return mouseClickHold = MouseCtrl.clickHold(mouseClickHold);
       if(event == "2") return MouseCtrl.simularClique();
+      if(event == "3") return TecladoCtrl.teclaEsc();
+      if(event == "4") return TecladoCtrl.teclaWindows();
+      // if(event =="R3") return eixoScrolYMouse = !eixoScrolYMouse;
+      if(event == "ST-SL") return TecladoCtrl.fecharAltF4();
+      
+      if(event.contains("ANALOGICO ESQUERDO")){
+        //Verifica e convert em valor pro mouse locomover na velocidade
+        List<String> list = event.split(',');
+        int valor = int.parse(list.last);
+        bool negtv = valor.isNegative;
+        valor += negtv ? (valor.abs() *2) : 0;
+        int valorReturn = 0;
+        // debugPrint("${list[1]}$valor");
+        if(valor > 2000 && valor < 10000) valorReturn = negtv ? -1 : 1; 
+        if(valor > 10000 && valor < 20000) valorReturn = negtv ? -5 : 5;        
+        if(valor > 20000 && valor < 30000) valorReturn = negtv ? - 15 : 15;
+        if(valor > 30000) valorReturn = negtv ? -35 : 35;
+        int  xy = list[1] == "Y" ? valorReturn : valorReturn;
+        String retorno ="${list[0]},${list[1]},$xy";
+        debugPrint("  ${list[1]}  ==  $xy");
+        mousecontroler(retorno);
+        return retorno;
+      }
+      if(event.contains("ANALOGICO DIREITO")){
+        // Verifica e convert em valor pro Scrol do mouse locomover na velocidade
+        // Define Variaveis usada no metodo ===========================
+        List<String> list = event.split(',');
+        int valor = int.parse(list.last);
+        bool negtv = valor.isNegative;
+        valor += negtv ? (valor.abs() *2) : 0;
+        int valorReturn = 0;
+        //=============================================================
 
-      //Verifica e convert em valor pro mouse locomover na velocidade
-      List<String> list = event.split(',');
-      int valor = int.parse(list.last);
-      bool negtv = valor.isNegative;
-      valor += negtv ? (valor.abs() *2) : 0;
-      int valorReturn = 0;
-      // debugPrint("${list[1]}$valor");
-      if(valor > 4000 && valor < 10000) valorReturn = negtv ? -1 : 1; 
-      if(valor > 10000 && valor < 20000) valorReturn = negtv ? -5 : 5;        
-      if(valor > 20000 && valor < 30000) valorReturn = negtv ? - 15 : 15;
-      if(valor > 30000) valorReturn = negtv ? -35 : 35;
-      int  xy = list[1] == "Y" ? valorReturn : valorReturn;
-      String retorno ="${list[0]},${list[1]},$xy";
-      debugPrint("  ${list[1]}  ==  $xy");
-      mousecontroler(retorno);
-      return retorno;
+        // Calcula Quanditade a Movimentar ============================
+        if(valor > 4000 && valor < 10000) valorReturn = negtv ? -15 : 15; 
+        if(valor > 10000 && valor < 20000) valorReturn = negtv ? -25 : 25;        
+        if(valor > 20000 && valor < 30000) valorReturn = negtv ? - 145 : 145;
+        if(valor > 30000) valorReturn = negtv ? -35 : 35;        
+        //=============================================================
+        
+        // Altera Eixo de Scrol usando Tecla Alt =====================
+        if(valor > 30000 && list[1] == "X") eixoScrolYMouse = false;
+        if(valor > 30000 && list[1] == "Y") eixoScrolYMouse = true;
+        String eixo = eixoScrolYMouse ? "Y" : "X";
+        if(list[1] != eixo) return; // Caso eixo nao setado
+        int  xy = list[1] == "Y" ? valorReturn : valorReturn;
+        // if(eixo == "X")TecladoCtrl.pressionarShift();    
+        //=============================================================
+
+        // Envia Valor para Movimentar Scrol ==========================
+        MouseCtrl.scrollMouse(eixo == "X" ,eixo == "X" ? -xy : xy);
+        debugPrint("  ${list[1]}  ==  $xy");
+        return;
+        //=============================================================
+      }
       
     }catch(_){}
     return "";
@@ -234,7 +257,8 @@ class Paad with ChangeNotifier{
         ControllerButton.BACK: () => escutaClickPaad("SELECT"),
       };
       controller.buttonsCombination = {
-        { ControllerButton.LEFT_SHOULDER,ControllerButton.RIGHT_SHOULDER }: () => escutaClickPaad("[LB; RB]"),
+        { ControllerButton.LEFT_SHOULDER,ControllerButton.RIGHT_SHOULDER }: () => escutaClickPaad("[LB-RB]"),
+        { ControllerButton.START, ControllerButton.BACK} :() => escutaClickPaad("ST-SL"),
         { ControllerButton.LEFT_THUMB, ControllerButton.RIGHT_THUMB}: () => escutaClickPaad("[L3; R3]"),
         { ControllerButton.LEFT_SHOULDER, ControllerButton.RIGHT_SHOULDER, ControllerButton.A_BUTTON }: () => escutaClickPaad("[LB; RB; A (2)]"),
         { ControllerButton.LEFT_SHOULDER,ControllerButton.RIGHT_SHOULDER,ControllerButton.A_BUTTON,ControllerButton.DPAD_DOWN }: () => escutaClickPaad("HOME"),

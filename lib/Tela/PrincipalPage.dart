@@ -8,6 +8,7 @@ import 'package:scroll_snap_list/scroll_snap_list.dart';
 import 'package:snappy_list_view/snappy_list_view.dart';
 import 'package:v1_game/Class/Paad.dart';
 import 'package:v1_game/Controllers/PrincipalCtrl.dart';
+import 'package:v1_game/Global.dart';
 import 'package:v1_game/Widgets/YouTubeTela.dart';
 import 'package:v1_game/Widgets/cardGame.dart';
 import 'package:v1_game/Widgets/videoSliders.dart';
@@ -332,7 +333,7 @@ btnFilmes(PrincipalCtrl ctrl, int i){
           decoration: BoxDecoration(
             image: DecorationImage(
               fit: BoxFit.cover,
-              image: FileImage(File(ctrl.urlFilme(i))),
+              image: FileImage(File(ctrl.urlImgFilme(i))),
             ),
             border: focu ? Border.all(
               color: Colors.white, // Cor da borda
@@ -665,8 +666,8 @@ btnFilmes(PrincipalCtrl ctrl, int i){
           child: ClipRRect(
             borderRadius: BorderRadius.circular(30),
             child: Container(
-              decoration: const BoxDecoration(
-                image: DecorationImage( fit: BoxFit.cover, image: AssetImage('assets/BGICOdefault.png'),
+              decoration:  BoxDecoration(
+                image: DecorationImage( fit: BoxFit.cover, image:FileImage(File("${assetsPath}BGICOdefault.png")), //AssetImage('assets/BGICOdefault.png'),
               ),),
               height: 200,
               width: 135,
@@ -714,9 +715,10 @@ btnFilmes(PrincipalCtrl ctrl, int i){
   }
   
   imagemFundo(PrincipalCtrl ctrl) {
-    final item = BoxDecoration( image: DecorationImage( fit: BoxFit.cover, image: FileImage(File('assets/BGdefault.jpeg'),scale: 5)));
+    final item = BoxDecoration( image: DecorationImage( fit: BoxFit.cover, image: FileImage(File("${assetsPath}BGdefault.jpeg"),scale: 5)));
     if(ctrl.listIconsInicial.isEmpty){
-      return Image.asset('assets/BGdefault.jpeg',
+      
+      return Image.asset("${assetsPath}BGdefault.jpeg",
       fit: BoxFit.cover,
       );      
     }
