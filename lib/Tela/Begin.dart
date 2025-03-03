@@ -22,26 +22,9 @@ class Begin extends StatelessWidget {
           child: Scaffold(
             body: Stack(
               children: [
-                const PrincipalPage(title: 'V1_Games 007'),
+                const PrincipalPage(title: 'V1_Games 001'),
                 if (notf.ativo)const Positioned(bottom: 20, right: 20, child: NotificacaoPop()),
                 escutaPads(),
-                // Tela de log com opacidade
-                // Positioned.fill(
-                //   child: Container(
-                //     color: Colors.black.withOpacity(0.5), // Opacidade
-                //     child: Center(
-                //       child: ListView.builder(
-                //         itemCount: logs.length,
-                //         itemBuilder: (context, index) {
-                //           return Text(
-                //             logs[index],
-                //             style: const TextStyle(color: Colors.white, fontSize: 18),
-                //           );
-                //         },
-                //       ),
-                //     ),
-                //   ),
-                // ),
               ],
             ),
           ),

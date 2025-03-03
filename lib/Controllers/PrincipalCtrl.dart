@@ -7,18 +7,19 @@ import 'package:carousel_slider/carousel_slider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import 'package:v1_game/Bando%20de%20Dados/CinemaCatalogo.dart';
-import 'package:v1_game/Bando%20de%20Dados/dbYoutube.dart';
+import 'package:v1_game/Bando%20de%20Dados/MediaCatalogo.dart';
 import 'package:v1_game/Class/TickerProvider.dart';
+import 'package:v1_game/Class/WebScrap.dart';
 import 'package:v1_game/Controllers/JanelaCtrl.dart';
 import 'package:v1_game/Controllers/MovimentoSistema.dart';
 import 'package:v1_game/Controllers/NavWebCtrl.dart';
-import 'package:v1_game/Modelos/CinemaCanal.dart';
-import 'package:v1_game/Metodos/videoYT.dart';
+import 'package:v1_game/Modelos/MediaCanal.dart';
+import 'package:v1_game/Modelos/videoYT.dart';
 import 'package:y_player/y_player.dart';
 import '../Bando de Dados/db.dart';
 import '../Class/Paad.dart';
 import '../Modelos/IconeInicial.dart';
+import '../Tela/SeletorImagens.dart';
 import '../Widgets/Pops.dart';
 
 class PrincipalCtrl with ChangeNotifier{
@@ -28,17 +29,20 @@ class PrincipalCtrl with ChangeNotifier{
   attTela() => notifyListeners();
   List<IconInicial> listIconsInicial = [];
   FocusNode keyboradEscutaNode = FocusNode();
+
   late List<FocusNode> focusNodeIcones; 
-  
+  late List<FocusNode> focusNodeMusica; 
   late List<FocusNode> focusNodeCinema; 
   late List<FocusNode> focusNodeAbaGuias;  
   List<FocusNode> focusNodeTagVid = List.generate(8, (index) => FocusNode());
-  List<FocusNode> focusNodeVideos = List.generate(6, (index) => FocusNode());
+  List<FocusNode> focusNodeVideos = [];
   
   CarouselSliderController carouselVideosCtrl = CarouselSliderController();
    CarouselSliderController carouselIconesCtrl =  CarouselSliderController();
 
   FocusScopeNode focusScope = FocusScopeNode();
+  
+  FocusScopeNode focusScopeMusica = FocusScopeNode();
   FocusScopeNode focusScopeCinema = FocusScopeNode();
   FocusScopeNode focusScopeAbaGuias = FocusScopeNode();
   FocusScopeNode focusScopeIcones = FocusScopeNode();
@@ -46,6 +50,7 @@ class PrincipalCtrl with ChangeNotifier{
 
   ScrollController scrolListIcones = ScrollController();  
   ScrollController scrolListStream = ScrollController();
+  ScrollController scrolListMusica = ScrollController();
   
   ScrollController scrolListAbaGuias = ScrollController();
 
@@ -54,6 +59,7 @@ class PrincipalCtrl with ChangeNotifier{
   int selectedIndexVideo = 0;  
   int selectedIndexCinema = 0;
   int selectedIndexAbaGuias = 0;
+  int selectedIndexMusica = 0;
 
   // final ValueNotifier<int> selectedIndexNotifier = ValueNotifier<int>(0);
   bool gameIniciado = false;
@@ -65,16 +71,21 @@ class PrincipalCtrl with ChangeNotifier{
   bool showNewImage = false;
   String imgFundoStr = "";
   bool home = true;
+  bool load = false;
   List<VideoYT> videosYT= [];
+  
 
   PageController bodyCtrl = PageController();
 
   YPlayerController ctrlVideo = YPlayerController();
   List<String> tagVideo = ["gameplay","montage","funny","clip","dica","tutorial de","Shorts"];
   
-  List<String> listAbaGuias= ["Games","Cinema"];
+  List<String> listAbaGuias= ["Games","Cinema","Musica"];
+  static String cine = "Cine";
+  static String musc = "Musc";
   
-  List<CinemaCanal> listCinema = [];
+  List<MediaCanal> listCinema = [];
+  List<MediaCanal> listMusica = [];
   List<List<VideoYT>> videosIndexYT = [];
 
   List<String> comandoSequencia = [];
@@ -99,8 +110,10 @@ class PrincipalCtrl with ChangeNotifier{
     selectedIndexIcone = 0;
     animaFundo();
     listIconsInicial = await db.leituraDeDados();
-    listCinema = CinemaCatalogo.catalogo();
+    listCinema = MediaCatalogo.catalogoCine();
+    listMusica = MediaCatalogo.catalogoMusc();
     focusNodeCinema = List.generate(listCinema.length, (index) => FocusNode());
+    focusNodeMusica = List.generate(listMusica.length, (index) => FocusNode());
     if(listIconsInicial.isNotEmpty){
       focusNodeIcones = List.generate(listIconsInicial.length, (index) => FocusNode());
       videosIndexYT = List.generate(listIconsInicial.length, (index) => []);
@@ -130,9 +143,12 @@ class PrincipalCtrl with ChangeNotifier{
     try{
       if(videosIndexYT[index].isEmpty) {
         String aux = tagVideo[Random().nextInt(tagVideo.length)];
-        videosIndexYT[index] = await DbYoutube().buscarVideosNoYouTube("$nomeGame $aux",nomeGame);        
+        // Busca Pela Api Youtube
+        // videosIndexYT[index] = await DbYoutube().buscarVideosNoYouTube("$nomeGame $aux",nomeGame);
+        videosIndexYT[index] = await WebScrap.buscaVideosYT("$nomeGame $aux",nomeGame);        
       }
       videosYT = videosIndexYT[index];
+      focusNodeVideos = List.generate(videosYT.length, (index) => FocusNode());
       videosShow = true;
       attTela();
     }catch(e){
@@ -163,18 +179,22 @@ class PrincipalCtrl with ChangeNotifier{
   mouseFora(int index,double tamanho){
 
   }
-  onFocusChangeCinema(bool hasFocus, int index){ 
-    if (hasFocus) {
-      // debugPrint("FOCO ATT VIDEO");
-      selectedIndexCinema = index;
-      // carouselVideosCtrl.animateToPage(index);
-      attTela();
-    }
+
+
+  
+  onFocusChangeGrid(int index, String tipo ){
+  
+    // debugPrint("FOCO ATT VIDEO");
+    if(tipo == cine) selectedIndexCinema = index;    
+    if(tipo == musc) selectedIndexMusica = index;
+    attTela();
+    
   }
 
   onFocusChangeVideos(bool hasFocus, int index){ 
     if (hasFocus) {
       // debugPrint("FOCO ATT VIDEO");
+      // print(index);
       selectedIndexVideo = index;
       carouselVideosCtrl.animateToPage(index);
       attTela();
@@ -255,7 +275,8 @@ class PrincipalCtrl with ChangeNotifier{
       if(!stateTela) return;
       if(listIconsInicial.isEmpty) return btnMais();
       await db.openFile(listIconsInicial[selectedIndexIcone].local);
-      gameIniciado = true;      
+      gameIniciado = true;
+      videosIndexYT = List.generate(listIconsInicial.length, (index) => []);
       Provider.of<JanelaCtrl>(ctx, listen: false).telaPresaReverse(usarEstado: true, estado: false);
       await moverIcoPosicaoInicial(listIconsInicial[selectedIndexIcone]);
       attTela();
@@ -291,11 +312,34 @@ class PrincipalCtrl with ChangeNotifier{
       String retorno = await Pops().popMenuTelHome2(ctx);
       debugPrint(retorno);
     
-      if (retorno == "Caminho do game" || retorno == "Imagem de capa" || retorno == "Add") {
+      if (retorno == "Caminho do game" || retorno == "Caminho de Imagem" || retorno == "Add") {
         debugPrint("Entrei navPasta");
-        await Pops().navPasta(ctx, "", retorno, listIconsInicial, selectedIndexIcone);
-        debugPrint("Sai navPasta");       
+        final nome = await Pops().navPasta(ctx, "", retorno, listIconsInicial, selectedIndexIcone);
+        if(retorno=="Add" && nome != null && nome != ""){
+          await Pops.popTela(ctx, SeletorImagens(nome: nome));
+        }
+        debugPrint("Sai navPasta");
         Timer(const Duration(milliseconds: 500), () => iniciaTela());  
+      }else if(retorno == "Imagem da Download"){
+        stateTela = false;
+        String nomeJogo = listIconsInicial[selectedIndexIcone].nome;
+        var result = await Pops.popTela(ctx, SeletorImagens(nome: nomeJogo));
+        if(result == null){ 
+          stateTela = true;
+          return debugPrint("Retorno NULO img Download"); // ERRO NULO PARA AQUI
+        }
+        String novoCaminho = result as String;
+        stateTela = true;        
+        novoCaminho = await WebScrap.downloadImage(novoCaminho,listIconsInicial[selectedIndexIcone].nome);
+        if(novoCaminho.contains("Erro::")) return debugPrint(novoCaminho); // ERRO SALVAMENTO PARA AQUI
+
+        listIconsInicial[selectedIndexIcone].imgStr = novoCaminho;
+        await db.attDados(listIconsInicial);
+        load = true;
+        attTela();
+        Timer(const Duration(milliseconds: 100), (){load=false;attTela();});
+        return;
+        // return iniciaTela();
       }
       else if (retorno == "Excluir Card") {        
         Timer(const Duration(milliseconds: 500  ),() async {
@@ -327,14 +371,9 @@ class PrincipalCtrl with ChangeNotifier{
 
   escutaPad(String event) async {    
     try{
-      //   if(event == "HOME" && !home){
-      //   home = true;
-      //   debugPrint("Tela resetada");
-      //   return iniciaTela();
-      // }
       if(!stateTela || event == "") return;
       debugPrint(" ===== Click Paad: => $event" );
-      if(event == "RB"||event=="LB"){
+      if((event == "RB"||event=="LB") && !videoAtivo){
         movAbaGuias(event);}
       else if(focusScope == focusScopeIcones && selectedIndexAbaGuias == 0){
         movIcones(event);}
@@ -342,7 +381,8 @@ class PrincipalCtrl with ChangeNotifier{
         movVideos(event);}
       else if(focusScope == focusScopeCinema && selectedIndexAbaGuias == 1){
         movFilmes(event);}
-      
+      else if(focusScope == focusScopeMusica && selectedIndexAbaGuias == 2){
+        movMusica(event);}      
     }catch(erro){
       debugPrint("ERRO ESCUTA PAD CLICK$erro");
     }
@@ -352,9 +392,7 @@ class PrincipalCtrl with ChangeNotifier{
       debugPrint("Tela resetada");
       iniciaTela();
       Provider.of<Paad>(ctx, listen: false).attTela();
-
-    }
-    
+    }    
     Provider.of<Paad>(ctx, listen: false).click = "";
     Provider.of<Paad>(ctx, listen: false).attTela();
   }
@@ -378,10 +416,13 @@ class PrincipalCtrl with ChangeNotifier{
         //START
         btnMais();
       }
-      if (event == "2") {    
-        if(videoAtivo) return videoAtivo = true;
-        videoAtivo = true;
+      if (event == "2") {
+        videoAtivo = false;
         attTela();
+        Timer( const Duration(milliseconds: 100), (){          
+          videoAtivo = true;
+          attTela();
+        });
       }
       if (event == "3" || event == "BAIXO"){
         videoAtivo = false;
@@ -389,63 +430,90 @@ class PrincipalCtrl with ChangeNotifier{
       }
       // attTela();
     }catch(e){
-      debugPrint("ERRO LCICK PAD VIDEOS  $e");
+      debugPrint("ERRO CLICK PAD VIDEOS  $e");
     }
 
   }
 
-  movAbaGuias(String event){    
-    if(event=="LB"){
-      focusScope = focusScopeIcones;
-      focusScopeAbaGuias.focusInDirection(TraversalDirection.left);
-      focusNodeIcones[selectedIndexIcone].requestFocus();
-      bodyCtrl.previousPage(duration: const Duration(milliseconds: 500), curve: Curves.decelerate); 
-    }
-    if(event=="RB"){
-      
-      focusNodeCinema[selectedIndexCinema].requestFocus();
-      focusScope = focusScopeCinema;
-      focusScopeAbaGuias.focusInDirection(TraversalDirection.right);
-      bodyCtrl.nextPage(duration: const Duration(milliseconds: 500), curve: Curves.decelerate);
-    }
-  }
-
-  movFilmes(String event) async {
+  sairDaTelaMedia(String url, String texto)async {
     
-    MovimentoSistema.direcaoListView(focusScope, event);
-
-    if(gameIniciado) {
-      if(event == "3") Navigator.pop(ctx);
-      return;
-    }
-    if (event == "2"){
       gameIniciado = true;
       // Liberar Tela do sistema
       Provider.of<JanelaCtrl>(ctx, listen: false).telaPresaReverse(usarEstado: true, estado: false);
       // Ativar Mouse
       Provider.of<Paad>(ctx, listen: false).ativaMouse(usarEstado: true,  estado: true);
-
-      await NavWebCtrl.openLink(listCinema[selectedIndexCinema].url);
-
+      await NavWebCtrl.openLink(url);
       // await Future.delayed(const Duration(milliseconds: 650));
-      await Pops().carregandoGames(ctx, "Cinema Ativo");
+      await Pops().carregandoGames(ctx, texto);
       // Desativa o uso do mouse;
       Provider.of<Paad>(ctx, listen: false).ativaMouse( usarEstado: true,  estado: false);
       // Trava na tela novamente
       // Provider.of<JanelaCtrl>(ctx, listen: false).telaPresaReverse();
       gameIniciado = false;
+  }
 
+  movAbaGuias(String event){
+    
+    if(event=="LB"){
+      // focusScope = focusScopeIcones;
+      if(focusScope == focusScopeCinema){
+        focusScope = focusScopeIcones;
+        focusNodeIcones[selectedIndexIcone].requestFocus();
+      }
+      else if(focusScope == focusScopeMusica){
+        focusScope = focusScopeCinema;
+        focusNodeCinema[selectedIndexCinema].requestFocus();
+      }
+      focusScopeAbaGuias.focusInDirection(TraversalDirection.left);
+      // focusNodeIcones[selectedIndexIcone].requestFocus();
+      bodyCtrl.previousPage(duration: const Duration(milliseconds: 500), curve: Curves.decelerate); 
+    }
+    if(event=="RB"){      
+      // focusNodeCinema[selectedIndexCinema].requestFocus();
+      if(focusScope == focusScopeIcones){
+        focusScope = focusScopeCinema;
+        focusNodeCinema[selectedIndexCinema].requestFocus();
+      }
+      else if(focusScope == focusScopeCinema){
+        focusScope = focusScopeMusica;
+        focusNodeMusica[selectedIndexMusica].requestFocus();
+      }
+      
+      focusScopeAbaGuias.focusInDirection(TraversalDirection.right);
+      bodyCtrl.nextPage(duration: const Duration(milliseconds: 500), curve: Curves.decelerate);
+    }
+  }
+  
+  movMusica(String event) async {    
+    MovimentoSistema.direcaoListView(focusScope, event);
+    if(gameIniciado) {
+      if(event == "3") Navigator.pop(ctx);
+      return;
+    }
+    if (event == "2"){
+      await sairDaTelaMedia(listMusica[selectedIndexMusica].url, "Festa Ativa!");
+      // Garantir que o foco volte para o escopo correto após abrir o arquivo
+      focusNodeMusica[selectedIndexMusica].requestFocus();
+      focusScopeMusica.requestFocus();
+      focusScope = focusScopeMusica;
+    }
+  }
+
+  movFilmes(String event) async {    
+    MovimentoSistema.direcaoListView(focusScope, event);
+    if(gameIniciado) {
+      if(event == "3") Navigator.pop(ctx);
+      return;
+    }
+    if (event == "2"){
+      await sairDaTelaMedia(listCinema[selectedIndexCinema].url, "Comendo pipoca.");
       // Garantir que o foco volte para o escopo correto após abrir o arquivo
       focusNodeCinema[selectedIndexCinema].requestFocus();
       focusScopeCinema.requestFocus();
       focusScope = focusScopeCinema;
-
-      // attTela();
     }
-    // await Future.delayed(const Duration(milliseconds: 300));
-    // attTela();
-
   }
+
   movIcones(String event){
      try{
       if(gameIniciado) {
@@ -464,6 +532,7 @@ class PrincipalCtrl with ChangeNotifier{
         if(event=="BAIXO"){
           debugPrint("Lista VIDEOS :${videosYT.length}");
           if(videosYT.isNotEmpty){
+            focusNodeVideos[selectedIndexVideo].requestFocus();
             focusScopeVideos.requestFocus();
             focusScope = focusScopeVideos;
           }

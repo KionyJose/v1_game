@@ -11,15 +11,27 @@ import '../Modelos/IconeInicial.dart';
 import '../Tela/NavegadorPasta.dart';
 
 class Pops {
-  popScren(Widget tela) {
-    return AlertDialog(
-      backgroundColor: Colors.transparent,
-      contentPadding: const EdgeInsets.all(0),
-      content: ClipRRect(
-        borderRadius: BorderRadius.circular(20),
-        child: tela,
+  static popTela(BuildContext ctx, Widget tela) {
+    return showDialog(
+      context: ctx,
+      builder: (_) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(20),
+          child: tela,
+        ),
       ),
-    );
+    );        
+  }
+  popScren( Widget tela) {
+    return AlertDialog(
+        backgroundColor: Colors.transparent,
+        contentPadding: const EdgeInsets.all(0),
+        content: ClipRRect(
+          borderRadius: BorderRadius.circular(20),
+          child: tela
+        )
+    );        
   }
 
   carregandoGames(BuildContext ctx,String str) {
@@ -79,20 +91,18 @@ class Pops {
     try{
     bool statePop = true;
     String retorno = "";
-
-    List<FocusNode> focusNodes = [
-      FocusNode(),
-      FocusNode(),
-      FocusNode(),
-      FocusNode(),
-      FocusNode()
-    ];
+    int total = 6;
     FocusScopeNode focusScope = FocusScopeNode();
     String str0 = "Abrir";
     String str1 = "Caminho do game";
-    String str2 = "Imagem de capa";
-    String str3 = "Excluir Card";
-    String str4 = "Add";
+    String str2 = "Caminho de Imagem";
+    String str3 = "Imagem da Download";
+    String str4 = "Excluir Card";
+    String str5 = "Add";
+
+    List<FocusNode> focusNodes = List.generate(total, (value)=> FocusNode());
+
+
     comandos(BuildContext context, String event){
     int total = 0;
     if(commandos.length == 2){
@@ -128,6 +138,7 @@ class Pops {
         if (focusNodes[2].hasFocus) Navigator.pop(context, str2);
         if (focusNodes[3].hasFocus) Navigator.pop(context, str3);
         if (focusNodes[4].hasFocus) Navigator.pop(context, str4);
+        if (focusNodes[5].hasFocus) Navigator.pop(context, str5);
         statePop = true;
       }
     }
@@ -188,7 +199,8 @@ class Pops {
                       if (focusNodes[1].hasFocus) Navigator.pop(context, str1);
                       if (focusNodes[2].hasFocus) Navigator.pop(context, str2);
                       if (focusNodes[3].hasFocus) Navigator.pop(context, str3);
-                      if (focusNodes[4].hasFocus) Navigator.pop(context, str4);
+                      if (focusNodes[4].hasFocus) Navigator.pop(context, str4);                      
+                      if (focusNodes[5].hasFocus) Navigator.pop(context, str5);
                     }
                     debugPrint(event.logicalKey.toString());
                   }
@@ -225,14 +237,15 @@ class Pops {
                               btn(str1, focusNodes[1], false, null),
                               btn(str2, focusNodes[2], false, null),
                               btn(str3, focusNodes[3], false, null),
+                              btn(str4, focusNodes[4], false, null),
                               // const Spacer(),
               
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.end,
                                 children: [
                                   btn(
-                                    str4,
-                                    focusNodes[4],
+                                    str5,
+                                    focusNodes[5],
                                     true,
                                     const Icon(
                                       Icons.add,
@@ -489,8 +502,9 @@ class Pops {
         IconInicial ico = IconInicial(campos);
         // ico.local = value[1];
 
-        listiconIni.add(ico);
+        listiconIni.insert(0,ico);
         await db.attDados(listiconIni);
+        return nome;
       }
     }
     if (value[0] == "alterado") {

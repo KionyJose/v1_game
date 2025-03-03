@@ -85,24 +85,7 @@ final class MouseCtrl extends Struct {
 
   static primeiroMovimento() async {
 
-    // Obtém o caminho completo do executável em execução
-  String caminhoExecutavel = Platform.resolvedExecutable;
-
-  // Cria um objeto File a partir do caminho do executável
-  File arquivoExecutavel = File(caminhoExecutavel);
-
-  // Obtém o diretório onde o executável está localizado
-  Directory diretorioAtual = arquivoExecutavel.parent;
-
-  // Obtém o diretório pai do diretório atual
-  Directory diretorioPai = diretorioAtual.parent;
-
-    
-    //C:\_Flutter\Game Interfacie\v1_game\build\windows\x64\runner\Debug\assets\Scripts
-    // String? minhaPasta = Platform.environment['SystemRoot'];
-    // Caminho do aplicativo que você deseja usar para abrir o arquivo
-    assetsPath = "${diretorioAtual.path}\\data\\flutter_assets\\assets\\";
-    String caminhoAssets = "${diretorioAtual.path}\\data\\flutter_assets\\assets\\Scripts\\";
+    String caminhoAssets = "$localPath\\data\\flutter_assets\\assets\\Scripts\\";
     var caminhoDoAplicativo = '${caminhoAssets}AutoHotkeyA32.exe';
     // Caminho do arquivo que você deseja abrir
     var caminhoDoArquivo = '${caminhoAssets}moovMouse.ahk';

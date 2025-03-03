@@ -13,13 +13,14 @@ class TESTES{
     debugPrint("==========================================================");
     debugPrint("==========================================================");
     // debugPrint(await teste());
-    // asdasd();
+    // asdasd();testandoTeclado
     MovimentoSistema.audioPim();
     
     DB().addAppToStartup();
     debugPrint("==========================================================");
     debugPrint("==========================================================");
   }
+
 
 
   Future<String> getDesktopPath() async {

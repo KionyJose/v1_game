@@ -9,6 +9,7 @@ import 'package:snappy_list_view/snappy_list_view.dart';
 import 'package:v1_game/Class/Paad.dart';
 import 'package:v1_game/Controllers/PrincipalCtrl.dart';
 import 'package:v1_game/Global.dart';
+import 'package:v1_game/Widgets/LoadWid.dart';
 import 'package:v1_game/Widgets/YouTubeTela.dart';
 import 'package:v1_game/Widgets/cardGame.dart';
 import 'package:v1_game/Widgets/videoSliders.dart';
@@ -89,7 +90,7 @@ class _PrincipalPageState extends State<PrincipalPage> with WindowListener {
             ctrl.escutaPad(valorAtual);// Isso pode chamar o showDialog
           });
         }if(!ctrl.telaIniciada) return Container();
-        return body(ctrl);
+        return ctrl.load ? const LoadingIco(color: Colors.pink,) : body(ctrl);
       },
     );
   }
@@ -138,7 +139,7 @@ class _PrincipalPageState extends State<PrincipalPage> with WindowListener {
   }
 
   body(PrincipalCtrl ctrl){
-    bool filmes = ctrl.focusScope == ctrl.focusScopeCinema;
+    bool filmes = ctrl.focusScope == ctrl.focusScopeCinema || ctrl.focusScope == ctrl.focusScopeMusica;
     return Stack(
       children: [
       backGroundAnimado(ctrl), // Fundo animado
@@ -301,7 +302,32 @@ class _PrincipalPageState extends State<PrincipalPage> with WindowListener {
   //     ),
   //   );
   // }
- Widget bodyIconesCinema(PrincipalCtrl ctrl, double tamanhoBloco) {
+  Widget bodyIconesMusica(PrincipalCtrl ctrl, double tamanhoBloco) {
+  return FocusScope(
+    node: ctrl.focusScopeMusica,
+    child: Container(
+      margin: const EdgeInsets.only(top: 60,left: 40,bottom: 20,right: 40),
+      width: MediaQuery.of(context).size.width + tamanhoBloco * 3,
+      alignment: Alignment.center,
+      child: GridView.builder(
+        padding: const EdgeInsets.all(9),
+        controller: ctrl.scrolListMusica,
+        itemCount: ctrl.listMusica.length,
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 3,
+          crossAxisSpacing: 9,
+          mainAxisSpacing: 9,
+          childAspectRatio: 1.5, // Largura 2x maior que a altura
+        ),
+        itemBuilder: (context, index) {
+          bool foco = index == ctrl.selectedIndexMusica;
+          return btnMedia(ctrl,index, foco, PrincipalCtrl.musc);
+        }
+      ),
+    ),
+  );
+}
+ Widget bodyIconesCinema(PrincipalCtrl ctrl, double tamanhoBloco) { 
   return FocusScope(
     node: ctrl.focusScopeCinema,
     child: Container(
@@ -318,24 +344,27 @@ class _PrincipalPageState extends State<PrincipalPage> with WindowListener {
           mainAxisSpacing: 9,
           childAspectRatio: 1.5, // Largura 2x maior que a altura
         ),
-        itemBuilder: (context, index) => btnFilmes(ctrl,index),
+        itemBuilder: (context, index) {
+          bool foco = index == ctrl.selectedIndexCinema;
+          return btnMedia(ctrl,index, foco, PrincipalCtrl.cine);
+        }
       ),
     ),
   );
 }
-btnFilmes(PrincipalCtrl ctrl, int i){
-  bool focu = i == ctrl.selectedIndexCinema;
+btnMedia(PrincipalCtrl ctrl, int i, bool foco, String tipo){
+  const sdw = Shadow(blurRadius: 20,color: Colors.black);
     return Focus(
-      focusNode: ctrl.focusNodeCinema[i],
-      onFocusChange: (hasFocus) => ctrl.onFocusChangeCinema(hasFocus, i),
+      focusNode: tipo == PrincipalCtrl.cine ?  ctrl.focusNodeCinema[i] : ctrl.focusNodeMusica[i],
+      onFocusChange: (hasFocus) => hasFocus ? ctrl.onFocusChangeGrid(i,tipo) : null,
       child: FittedBox(
         child: Container(
           decoration: BoxDecoration(
             image: DecorationImage(
               fit: BoxFit.cover,
-              image: FileImage(File(ctrl.urlImgFilme(i))),
+              image: FileImage(File(tipo == PrincipalCtrl.cine ?ctrl.listCinema[i].imgLocal : ctrl.listMusica[i].imgLocal)),
             ),
-            border: focu ? Border.all(
+            border: foco ? Border.all(
               color: Colors.white, // Cor da borda
               width: 3,                // Espessura da borda
             ) : null,
@@ -344,7 +373,10 @@ btnFilmes(PrincipalCtrl ctrl, int i){
           // margin: const EdgeInsets.all(40),
           height: 200,        
           width: 300,
-          child:  focu ? const Icon(Icons.play_arrow_rounded,color: Colors.white,) : Container(),
+          child:  foco ? const Padding(
+            padding: EdgeInsets.all(5),
+            child: Icon(Icons.keyboard_double_arrow_up,shadows: [sdw,sdw], color: Colors.white,),
+          ) : Container(),
         ),
       ),
     );
@@ -360,7 +392,8 @@ btnFilmes(PrincipalCtrl ctrl, int i){
       controller: ctrl.bodyCtrl,
       children: [
         bodyIconesJogos(ctrl, tamanhoBloco),
-        if(ctrl.selectedIndexAbaGuias == 1) bodyIconesCinema(ctrl, tamanhoBloco),        
+        if(ctrl.selectedIndexAbaGuias != 0) bodyIconesCinema(ctrl, tamanhoBloco), 
+        if(ctrl.selectedIndexAbaGuias != 0) bodyIconesMusica(ctrl, tamanhoBloco),
       ],      
     ); 
   }
@@ -531,17 +564,17 @@ btnFilmes(PrincipalCtrl ctrl, int i){
         child: Column(
           mainAxisAlignment: MainAxisAlignment.end,
           children: [
-            if(ctrl.focusScopeVideos.hasFocus)
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                for(int i = 0; i < ctrl.tagVideo.length; i++)
-                 Focus(
-                 focusNode: ctrl.focusNodeTagVid[i],
-                 onFocusChange: (hasFocus) => ctrl.onFocusChangeTagVid(hasFocus, i),
-                 child: botaoTag(ctrl.tagVideo[i])),
-              ],
-            ),
+            // if(ctrl.focusScopeVideos.hasFocus)
+            // Row(
+            //   mainAxisAlignment: MainAxisAlignment.center,
+            //   children: [
+            //     for(int i = 0; i < ctrl.tagVideo.length; i++)
+            //      Focus(
+            //      focusNode: ctrl.focusNodeTagVid[i],
+            //      onFocusChange: (hasFocus) => ctrl.onFocusChangeTagVid(hasFocus, i),
+            //      child: botaoTag(ctrl.tagVideo[i])),
+            //   ],
+            // ),
             const SizedBox(height: 20),
             FocusScope(
               node: ctrl.focusScopeVideos,
@@ -559,6 +592,10 @@ btnFilmes(PrincipalCtrl ctrl, int i){
                       enableInfiniteScroll: true,
                       viewportFraction: tamanho, // Tamanho do item visível
                       initialPage: ctrl.selectedIndexVideo,
+                      onPageChanged: (index, asd){
+                        ctrl.selectedIndexVideo = index;
+                        // print(index);
+                      },
                       // scrollDirection: Axis.vertical
                       enlargeStrategy: CenterPageEnlargeStrategy.zoom
                     ),

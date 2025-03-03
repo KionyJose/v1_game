@@ -42,6 +42,7 @@ class Paad with ChangeNotifier{
       // await audioPlayer.play(AssetSource("som_movimento.mp3")); // Caminho do asset
     }
     addSequencia(event);
+    if(delay) return;
     if(isMouse) return mouseAdapt(event);
     click = event;
     if(await naTela() && !delay)notifyListeners();
@@ -70,7 +71,7 @@ class Paad with ChangeNotifier{
       comandoSequencia.add(event);
       teclaEspaco();
       teclaEnter();
-      verificaSequencia();
+      voltaTela();
       mouseMoov();
     }else{        
       comandoSequencia.add(event);
@@ -78,7 +79,7 @@ class Paad with ChangeNotifier{
     // if(!isMouse)debugPrint("=--------------------  $comandoSequencia");
     
   }
-  verificaSequencia(){
+  voltaTela(){
     int total = 0;
     // RestauraTela
     if(comandoSequencia[0] == "SELECT")total++;
@@ -97,8 +98,8 @@ class Paad with ChangeNotifier{
     Timer(const Duration(microseconds: 1245), () {
 
       delay = false;
-      click = "HOME";
-      notifyListeners();
+      // click = "HOME";
+      // notifyListeners();
       // click = "";
       // notifyListeners();
     });     
@@ -119,8 +120,12 @@ class Paad with ChangeNotifier{
       isMouse = estado;
     }else{
       isMouse = !isMouse;      
-    }    
+    }
+    delay = true;
+    // Provider.of<PrincipalCtrl>(ctx, listen: false).focusScope.requestFocus();
+    Timer(const Duration(microseconds: 1245), () => delay = false );   
     JanelaCtrl().telaPresa = isMouse;
+    // MouseCtrl.primeiroMovimento();
     MovimentoSistema.audioCheat();
   }
 
@@ -156,6 +161,9 @@ class Paad with ChangeNotifier{
   bool eixoScrolYMouse = true;
   mouseAdapt(String event){
     try{
+      if(event == "R3") return TecladoCtrl.abrirTecladoVirtual();      
+      if(event == "LB") return TecladoCtrl.previusPage();
+      if(event == "RB") return TecladoCtrl.nextPage();
       if(event == "[LB-RB]") return debugPrint("SSSSSSSSSSSSSSSSSSS");
       if(event == "CIMA") return TecladoCtrl.teclaF11();
       if(event == "START") return MouseCtrl.clickDireito();      

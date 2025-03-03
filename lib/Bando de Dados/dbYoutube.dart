@@ -2,7 +2,7 @@
 
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:v1_game/Metodos/videoYT.dart';
+import 'package:v1_game/Modelos/videoYT.dart';
 class DbYoutube{                                                              // TESTE DB                                 // V1 GAME
   static String chaveAPI = "AIzaSyCaZ85AK0n2Str5xB39MP4CCVdCrwslSJU";//AIzaSyCWnlJPV5St9wxuV29jPx-CmNBACLIsAMA  //AIzaSyCaZ85AK0n2Str5xB39MP4CCVdCrwslSJU
 
@@ -19,7 +19,7 @@ class DbYoutube{                                                              //
   }
 
   Future<List<VideoYT>> buscarVideosNoYouTube(String palavraChave,String nomegame) async {
-   if(palavraChave.isNotEmpty) return fakeVideos();
+   if(palavraChave.isEmpty) return fakeVideos();
     final url = Uri.https(
       'www.googleapis.com',
       '/youtube/v3/search',
@@ -55,6 +55,8 @@ class DbYoutube{                                                              //
       throw Exception('Erro durante a requisição: $e');
     }
   }
+
+  
 
 
   Map<String, dynamic>mapFake(){
