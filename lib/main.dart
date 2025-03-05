@@ -55,6 +55,7 @@ localizaCaminhos(){
   //C:\_Flutter\Game Interfacie\v1_game\build\windows\x64\runner\Debug\assets\Scripts
   // String? minhaPasta = Platform.environment['SystemRoot'];
   // Caminho do aplicativo que você deseja usar para abrir o arquivo
+  localPai = diretorioPai.path;
   localPath = diretorioAtual.path;
   assetsPath = "${diretorioAtual.path}\\data\\flutter_assets\\assets\\";
 }

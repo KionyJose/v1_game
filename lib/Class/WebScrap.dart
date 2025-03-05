@@ -102,8 +102,9 @@ class WebScrap{
 
 
   static Future<List<VideoYT>> buscaVideosYT(String query, String nomeJogo) async {
-    List<VideoYT> listVideos = [];
-    try{      
+    List<VideoYT> listVideosFinal = [];
+    try{ 
+      List<VideoYT> listVideos = [];    
       final url = 'https://www.youtube.com/results?search_query=$query';
       final response = await http.get(Uri.parse(url));
 
@@ -120,13 +121,33 @@ class WebScrap{
           video.capaG = 'https://img.youtube.com/vi/$videoId/0.jpg';
           return video;
         }).toList();
+
+        
+        
         
       } else {
         throw Exception('Falha ao carregar a página do YouTube');
       }
+      listVideosFinal = limpaUrlsRepetidas(listVideos);
     }catch(e){debugPrint(e.toString());}
+    
 
-    return listVideos;
+    return listVideosFinal;
+  }
+
+  static List<VideoYT> limpaUrlsRepetidas(List<VideoYT>listVideos){
+    // Conjunto para armazenar URLs únicas
+    Set<String> urlsVistas = {};
+
+    // Filtra a lista original, mantendo apenas vídeos com URLs únicas
+    List<VideoYT> listaFiltrada = listVideos.where((video) {
+    // Tenta adicionar a URL ao conjunto. Se já existir, add retorna false.
+    return urlsVistas.add(video.urlVideo);
+    }).toList();
+
+    // A lista filtrada agora contém apenas vídeos com URLs únicas
+    debugPrint('Total de vídeos após remoção de duplicatas: ${listaFiltrada.length}');
+    return listaFiltrada;
   }
 
 

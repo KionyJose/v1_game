@@ -10,10 +10,13 @@ import 'package:v1_game/Class/Paad.dart';
 import 'package:v1_game/Controllers/PrincipalCtrl.dart';
 import 'package:v1_game/Global.dart';
 import 'package:v1_game/Widgets/LoadWid.dart';
+import 'package:v1_game/Widgets/TituloGames.dart';
 import 'package:v1_game/Widgets/YouTubeTela.dart';
 import 'package:v1_game/Widgets/cardGame.dart';
+import 'package:v1_game/Widgets/isosceles.dart';
 import 'package:v1_game/Widgets/videoSliders.dart';
 import 'package:window_manager/window_manager.dart';
+import 'package:y_player/y_player.dart';
 
 class PrincipalPage extends StatefulWidget {
   const PrincipalPage({super.key, required this.title});
@@ -78,7 +81,19 @@ class _PrincipalPageState extends State<PrincipalPage> with WindowListener {
       ),
     );
   }
-
+  scaffold(PrincipalCtrl ctrl){   
+    return Scaffold(
+      backgroundColor: Colors.black,
+      floatingActionButton: floatBtns(),
+      body: KeyboardListener( // Escuta teclado Press;
+            includeSemantics: false,
+            focusNode: ctrl.keyboradEscutaNode,//ctrl.focoPrincipal,
+            autofocus: false,
+            onKeyEvent: (KeyEvent event) => ctrl.keyPress(event),
+            child: escutaPadWid(ctrl)
+          ),
+    );
+  }
   escutaPadWid(PrincipalCtrl ctrl){
     return Selector<Paad, String>(
       selector: (context, paad) => paad.click, // Escuta apenas click
@@ -90,23 +105,33 @@ class _PrincipalPageState extends State<PrincipalPage> with WindowListener {
             ctrl.escutaPad(valorAtual);// Isso pode chamar o showDialog
           });
         }if(!ctrl.telaIniciada) return Container();
-        return ctrl.load ? const LoadingIco(color: Colors.pink,) : body(ctrl);
+        return ctrl.load ? const LoadingIco(color: Colors.pink,)
+        : body(ctrl);
       },
     );
   }
-  scaffold(PrincipalCtrl ctrl){
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: KeyboardListener( // Escuta teclado Press;
-            includeSemantics: false,
-            focusNode: ctrl.keyboradEscutaNode,//ctrl.focoPrincipal,
-            autofocus: false,
-            onKeyEvent: (KeyEvent event) => ctrl.keyPress(event),
-            child: escutaPadWid(ctrl)
-          ),
-      floatingActionButton: floatBtns(),
+
+  body(PrincipalCtrl ctrl){
+    bool filmes = ctrl.focusScope == ctrl.focusScopeCinema || ctrl.focusScope == ctrl.focusScopeMusica;
+    return Stack(
+      children: [
+      backGroundAnimado(ctrl), // Fundo animado
+      cabeca(),
+      desfoqueTela(filmes),
+      if (ctrl.telaIniciada)bodys(ctrl),// Ícones horizontais
+      abaGuias(ctrl),
+      escurecerTela(ctrl),// Escurecer tela      
+      if (ctrl.videoAtivo)
+      videoAtivo(ctrl),// Player de vídeo
+      if (ctrl.videosYT.isNotEmpty && ctrl.telaIniciada && ctrl.videosCarregados && ctrl.selectedIndexAbaGuias == 0 )
+      VideoSliders(child: listVideos(ctrl)),// Lista de vídeos
+    ],
     );
+  } 
+  cabeca(){
+    return TituloGames(nome: ctrlOff.listIconsInicial[ctrlOff.selectedIndexIcone].nome,imerso: ctrlOff.imersao);
   }
+  
   escurecerTela(PrincipalCtrl ctrl){
     return  AnimatedOpacity( // Anima A Opacidade.
       opacity: ctrl.videoAtivo ? 1.0 : 0.0,
@@ -138,22 +163,7 @@ class _PrincipalPageState extends State<PrincipalPage> with WindowListener {
     );
   }
 
-  body(PrincipalCtrl ctrl){
-    bool filmes = ctrl.focusScope == ctrl.focusScopeCinema || ctrl.focusScope == ctrl.focusScopeMusica;
-    return Stack(
-      children: [
-      backGroundAnimado(ctrl), // Fundo animado
-      desfoqueTela(filmes),
-      if (ctrl.telaIniciada)bodys(ctrl),// Ícones horizontais
-      abaGuias(ctrl),
-      escurecerTela(ctrl),// Escurecer tela      
-      if (ctrl.videoAtivo)
-      videoAtivo(ctrl),// Player de vídeo
-      if (ctrl.videosYT.isNotEmpty && ctrl.telaIniciada && ctrl.videosShow && ctrl.selectedIndexAbaGuias == 0)
-      VideoSliders(child: listVideos(ctrl)),// Lista de vídeos
-    ],
-    );
-  }
+  
 
   abaGuias(PrincipalCtrl ctrl){
     double tamanhoBloco = 80;
@@ -233,15 +243,21 @@ class _PrincipalPageState extends State<PrincipalPage> with WindowListener {
 
 
   videoAtivo(PrincipalCtrl ctrl){
+    double height = MediaQuery.of(context).size.height;
     return Align(
       alignment: Alignment.center,
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 80),
-        height: MediaQuery.of(context).size.height * 0.70,
-        width: MediaQuery.of(context).size.height * 0.70 * 1.809, // Aspect ratio 16:9
+      child: AnimatedContainer(
+        curve: Curves.easeInOut,
+        duration: const Duration(seconds: 3),
+        margin: ctrl.imersaoVideos ? const EdgeInsets.all(10) : const EdgeInsets.only(bottom: 80),
+        height: ctrl.imersaoVideos ? height : height * 0.70,
+        width:  ctrl.imersaoVideos ? MediaQuery.of(context).size.width * 0.95 : height * 0.70 * 1.809, // Aspect ratio 16:9
         child: ClipRRect(
           borderRadius: BorderRadius.circular(50),
           child: YoutubeTela(
+            status: (status)  => status == YPlayerStatus.stopped ?  ctrl.carregaNovoVideo(ctrl.selectedIndexVideo) :null,
+              
+            
             url: ctrl.videosYT[ctrl.selectedIndexVideo].urlVideo,
             func: (controlador) => ctrl.ctrlVideo = controlador,
           ),
@@ -250,58 +266,6 @@ class _PrincipalPageState extends State<PrincipalPage> with WindowListener {
     );
   }
 
-  // listaIcones(PrincipalCtrl ctrl){
-  //   double tamanho = 0.24;
-  //   try{
-  //   if(ctrl.focusScope == ctrl.focusScopeIcones)tamanho = 0.35;
-  //   }catch(_){}
-  //   return  Align(
-  //     alignment: Alignment.topLeft,
-  //     child: FocusScope(
-  //       node: ctrl.focusScopeIcones,
-  //       child: AnimatedContainer(          
-  //         height: MediaQuery.of(context).size.height * tamanho,  // Altura do carrossel
-  //         duration: const Duration(milliseconds: 100),
-  //         width: double.infinity,
-  //         child: CarouselSlider.builder(
-            
-  //           // snapAlignment: SnapAlignment. custom((i) =>  0.03 ),
-  //           // snapOnItemAlignment: SnapAlignment. custom((i) =>  0.03 ),
-  //           carouselController: ctrl.carouselIconesCtrl,
-  //           itemCount: ctrl.focusNodeIcones.length,
-  //           itemBuilder: (context, i, realIndex) {
-  //             bool isFoco = ctrl.selectedIndexIcone == i;
-  //             return FittedBox(
-  //               child: Container(
-  //               margin: const EdgeInsets.symmetric(vertical: 35),
-  //               height: isFoco ? 1100 : 500, 
-  //               width: 1000,
-  //                 child: Focus(
-  //                   focusNode: ctrl.focusNodeIcones[i],
-  //                   onFocusChange: (hasFocus) => ctrl.onFocusChangeIcones(hasFocus, i),              
-  //                   child: ctrl.listIconsInicial.isEmpty ? cardAnimadoAdd(ctrl, i) :  cardAnimado(ctrl, i),
-  //                 ),
-  //               ),
-  //             );
-  //           },            
-  //           options: CarouselOptions(              
-  //             height: MediaQuery.of(context).size.height, // Altura do carrossel
-  //             aspectRatio: 14.5,
-  //             initialPage: 0, // Inicia no primeiro item
-  //             enableInfiniteScroll: false,
-  //             viewportFraction: 0.17, // Tamanho do item visível
-  //             enlargeCenterPage: false, // Desativa o aumento do item central
-  //             disableCenter: true, // Desativa o alinhamento central
-  //             padEnds: false, // Remove o espaçamento nas extremidades
-  //             scrollDirection: Axis.horizontal,
-  //             // Outras opções conforme necessário
-  //             ),
-  //         ),
-            
-  //       ),
-  //     ),
-  //   );
-  // }
   Widget bodyIconesMusica(PrincipalCtrl ctrl, double tamanhoBloco) {
   return FocusScope(
     node: ctrl.focusScopeMusica,
@@ -553,90 +517,117 @@ btnMedia(PrincipalCtrl ctrl, int i, bool foco, String tipo){
 
   listVideos(PrincipalCtrl ctrl){
     double tamanho = 0.2;
+    const sdw = Shadow(color: Colors.black,blurRadius: 010);
+    bool focoScop = false;
     try{
-    if(ctrl.focusScope == ctrl.focusScopeVideos && !ctrl.videoAtivo)tamanho = 0.27;
+    if(ctrl.focusScope == ctrl.focusScopeVideos && !ctrl.videoAtivo){
+      tamanho = 0.27;
+      focoScop = true;
+    }
     }catch(_){}
     
     return  Align(
       alignment: Alignment.bottomLeft,
-      child: Padding(
-        padding: const EdgeInsets.only(bottom: 20),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.end,
-          children: [
-            // if(ctrl.focusScopeVideos.hasFocus)
-            // Row(
-            //   mainAxisAlignment: MainAxisAlignment.center,
-            //   children: [
-            //     for(int i = 0; i < ctrl.tagVideo.length; i++)
-            //      Focus(
-            //      focusNode: ctrl.focusNodeTagVid[i],
-            //      onFocusChange: (hasFocus) => ctrl.onFocusChangeTagVid(hasFocus, i),
-            //      child: botaoTag(ctrl.tagVideo[i])),
-            //   ],
-            // ),
-            const SizedBox(height: 20),
-            FocusScope(
-              node: ctrl.focusScopeVideos,
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 100),
-                height: MediaQuery.of(context).size.height * tamanho,
-                width: double.infinity,
-                child: CarouselSlider(
-                  carouselController: ctrl.carouselVideosCtrl,
-                    options: CarouselOptions(
-                      pageSnapping: true,                    
-                      height: MediaQuery.of(context).size.height * tamanho, // Altura do carrossel
-                      autoPlay: ctrl.focusScopeVideos.hasFocus ? false : true, // Habilita autoplay quando nao focado.
-                      enlargeCenterPage: true, // Centraliza e destaca o item ativo
-                      enableInfiniteScroll: true,
-                      viewportFraction: tamanho, // Tamanho do item visível
-                      initialPage: ctrl.selectedIndexVideo,
-                      onPageChanged: (index, asd){
-                        ctrl.selectedIndexVideo = index;
-                        // print(index);
-                      },
-                      // scrollDirection: Axis.vertical
-                      enlargeStrategy: CenterPageEnlargeStrategy.zoom
-                    ),
-                    items: [
-                      for(int i = 0; i < ctrl.videosYT.length; i++)
-                      Focus(
-                        focusNode: ctrl.focusNodeVideos[i],
-                        onFocusChange: (hasFocus) => ctrl.onFocusChangeVideos(hasFocus, i),              
-                        child: Container(
-                          margin: const EdgeInsets.symmetric(horizontal: 16),
-                          width: MediaQuery.of(context).size.width,
-                          // margin: const EdgeInsets.symmetric(horizontal: 5.0),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(25),
-                            color: Colors.white12,
-                            image: DecorationImage(
-                              opacity: 0.9,
-                              image: NetworkImage(ctrl.videosYT[i].capaG),
-                              fit: BoxFit.cover,
-                            ),
-                            border: ctrl.selectedIndexVideo == i && ctrl.focusScopeVideos.hasFocus ? Border.all(
-                              color: Colors.blueAccent, // Cor da borda
-                              width: 3,                // Espessura da borda
-                            ) : null,
-                          ),
-                          child: const Center(
-                            child: Icon(
-                              Icons.play_circle_fill,
-                              size: 60.0,
-                              color: Colors.white70,
-                            ),
-                          ),
-                        ),
-                      ),
-                        
-                      
-                    ]
-                  ),
+      child: AnimatedOpacity(
+        opacity: ctrl.imersaoVideos ? 0.02 : 1.0,
+        duration: const Duration(seconds: 2),
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: 20),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              // if(ctrl.focusScopeVideos.hasFocus)
+              // Row(
+              //   mainAxisAlignment: MainAxisAlignment.center,
+              //   children: [
+              //     for(int i = 0; i < ctrl.tagVideo.length; i++)
+              //      Focus(
+              //      focusNode: ctrl.focusNodeTagVid[i],
+              //      onFocusChange: (hasFocus) => ctrl.onFocusChangeTagVid(hasFocus, i),
+              //      child: botaoTag(ctrl.tagVideo[i])),
+              //   ],
+              // ),
+              // if(ctrl.focusScopeVideos.hasFocus)
+              AnimatedOpacity(
+                duration: const Duration(milliseconds: 300),
+                opacity: focoScop ? 1.0 : 0.0,
+                child: SizedBox(
+                  height: MediaQuery.of(context).size.height * 0.03,
+                    child:  FittedBox(
+                      child: Text(
+                        ctrl.videosYT[ctrl.selectedIndexVideo].titulo,
+                        style: const TextStyle(color: Colors.white,
+                          shadows: [sdw,sdw] ),),
+                    )
+                  
+                ),
               ),
-            ),
-          ],
+              const SizedBox(height: 5),
+              FocusScope(
+                node: ctrl.focusScopeVideos,
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 100),
+                  height: MediaQuery.of(context).size.height * tamanho,
+                  width: double.infinity,
+                  child: CarouselSlider(
+                    carouselController: ctrl.carouselVideosCtrl,
+                      options: CarouselOptions(
+                        pageSnapping: true,                    
+                        height: MediaQuery.of(context).size.height * tamanho, // Altura do carrossel
+                        autoPlay: ctrl.focusScopeVideos.hasFocus ? false : true, // Habilita autoplay quando nao focado.
+                        enlargeCenterPage: true, // Centraliza e destaca o item ativo
+                        enableInfiniteScroll: true,
+                        viewportFraction: tamanho, // Tamanho do item visível
+                        initialPage: ctrl.selectedIndexVideo,
+                        onPageChanged: (index, asd){
+                          ctrl.selectedIndexVideo = index;
+                          // print(index);
+                        },
+                        // scrollDirection: Axis.vertical
+                        enlargeStrategy: CenterPageEnlargeStrategy.zoom
+                      ),
+                      items: [
+                        for(int i = 0; i < ctrl.videosYT.length; i++)
+                        cardVideo(ctrl, i)                         
+                        
+                      ]
+                    ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+  cardVideo(PrincipalCtrl ctrl, int i){
+    if(i < 0 || i > ctrl.videosYT.length) return Container();
+    return Focus(
+      focusNode: ctrl.focusNodeVideos[i],
+      onFocusChange: (hasFocus) => ctrl.onFocusChangeVideos(hasFocus, i),              
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 16),
+        width: MediaQuery.of(context).size.width,
+        // margin: const EdgeInsets.symmetric(horizontal: 5.0),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(25),
+          color: Colors.white12,
+          image: DecorationImage(
+            opacity: 0.9,
+            image: NetworkImage(ctrl.videosYT[i].capaG),
+            fit: BoxFit.cover,
+          ),
+          border: ctrl.selectedIndexVideo == i && ctrl.focusScopeVideos.hasFocus ? Border.all(
+            color: Colors.blueAccent, // Cor da borda
+            width: 3,                // Espessura da borda
+          ) : null,
+        ),
+        child: const Center(
+          child: Icon(
+            Icons.play_circle_fill,
+            size: 60.0,
+            color: Colors.white70,
+          ),
         ),
       ),
     );
@@ -653,6 +644,7 @@ btnMedia(PrincipalCtrl ctrl, int i, bool foco, String tipo){
       child: CardGame(
         iconInitial: ctrl.listIconsInicial[index],
         focus: ctrl.selectedIndexIcone == index,
+        imersao: ctrl.imersao,
       ),
     );
   }

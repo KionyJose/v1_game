@@ -2,6 +2,7 @@
 // // ignore_for_file: file_names
 
 import 'dart:async';
+import 'dart:io';
 import 'dart:math';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:flutter/material.dart';
@@ -13,8 +14,10 @@ import 'package:v1_game/Class/WebScrap.dart';
 import 'package:v1_game/Controllers/JanelaCtrl.dart';
 import 'package:v1_game/Controllers/MovimentoSistema.dart';
 import 'package:v1_game/Controllers/NavWebCtrl.dart';
+import 'package:v1_game/Global.dart';
 import 'package:v1_game/Modelos/MediaCanal.dart';
 import 'package:v1_game/Modelos/videoYT.dart';
+import 'package:v1_game/Widgets/ImagemFullScren.dart';
 import 'package:y_player/y_player.dart';
 import '../Bando de Dados/db.dart';
 import '../Class/Paad.dart';
@@ -62,11 +65,17 @@ class PrincipalCtrl with ChangeNotifier{
   int selectedIndexMusica = 0;
 
   // final ValueNotifier<int> selectedIndexNotifier = ValueNotifier<int>(0);
+  Timer? timerLoadVideos;
+  Timer? timerImersaoVideos;
+  Timer? timerImersao;
+
+  bool imersao = false;
+  bool imersaoVideos = false;
   bool gameIniciado = false;
   bool videoAtivo = false;  
   bool stateTela = true;
   bool telaIniciada = false;
-  bool videosShow = false;
+  bool videosCarregados = false;
   bool mood = false;
   bool showNewImage = false;
   String imgFundoStr = "";
@@ -78,7 +87,7 @@ class PrincipalCtrl with ChangeNotifier{
   PageController bodyCtrl = PageController();
 
   YPlayerController ctrlVideo = YPlayerController();
-  List<String> tagVideo = ["gameplay","montage","funny","clip","dica","tutorial de","Shorts"];
+  List<String> tagVideo = ["gameplay","montage","funny","clip","dica","tutorial de","Shorts","Engraçado","lool","noticias","Novidades","Update"];
   
   List<String> listAbaGuias= ["Games","Cinema","Musica"];
   static String cine = "Cine";
@@ -103,6 +112,7 @@ class PrincipalCtrl with ChangeNotifier{
   }
   //initState
   iniciaTela() async {
+    // ctrlVideo.onStateChanged!((value){});
     focusNodeAbaGuias = List.generate(listAbaGuias.length, (index) => FocusNode());
     focusNodeAbaGuias[0].requestFocus();
     focusScopeIcones.requestFocus();
@@ -134,6 +144,9 @@ class PrincipalCtrl with ChangeNotifier{
 
   @override
   dispose(){
+    timerImersao?.cancel();
+    timerImersaoVideos?.cancel();
+    timerLoadVideos?.cancel();
     debugPrint("SAIU PAGE CTRL");
     super.dispose();
   }
@@ -147,9 +160,9 @@ class PrincipalCtrl with ChangeNotifier{
         // videosIndexYT[index] = await DbYoutube().buscarVideosNoYouTube("$nomeGame $aux",nomeGame);
         videosIndexYT[index] = await WebScrap.buscaVideosYT("$nomeGame $aux",nomeGame);        
       }
-      videosYT = videosIndexYT[index];
+      videosYT = List.generate(videosIndexYT[index].length, (i) => videosIndexYT[index][i]);// videosIndexYT[index];
       focusNodeVideos = List.generate(videosYT.length, (index) => FocusNode());
-      videosShow = true;
+      videosCarregados = true;
       attTela();
     }catch(e){
       debugPrint(e.toString());
@@ -212,10 +225,37 @@ class PrincipalCtrl with ChangeNotifier{
     attTela();
   }
 
-  onFocusChangeIcones(bool hasFocus, int index,{ double tamanho = 0}){
+  imersaoRestart() async {
+    if(imersao){
+      imersao = false;
+      attTela();
+      await Future.delayed(const Duration(milliseconds: 10));
+    }
+    timerImersao?.cancel();
+    timerImersao = Timer(const Duration(seconds: 5), () {
+      imersao = true;
+      attTela();
+    });    
+  }
+  imersaoVideoRestart() async {
+    if(!videoAtivo) return imersaoVideos = false;
+    if(imersaoVideos){
+      imersaoVideos = false;
+      attTela();
+      await Future.delayed(const Duration(milliseconds: 10));
+    }
+    timerImersaoVideos?.cancel();
+    timerImersaoVideos = Timer(const Duration(seconds: 5), () {
+      imersaoVideos = true;
+      attTela();
+    });    
+  }
+
+  onFocusChangeIcones(bool hasFocus, int index,{ double tamanho = 0}) async{
     if (!hasFocus || selectedIndexIcone == index) return;
     try{    
-      debugPrint("FOCO ATT ICONE $index");          
+      debugPrint("FOCO ATT ICONE $index");      
+      await imersaoRestart();
       showNewImage = false;
       if(selectedIndexIcone != index){
         //PAusar somente quando click estiver acionado;
@@ -233,11 +273,9 @@ class PrincipalCtrl with ChangeNotifier{
       );
       // print(listIconsInicial[selectedIndexIcone].nome);
       // print(videosYT[index].nomeGame);
-      String nm = "";
-      if(videosYT.isNotEmpty) nm = videosYT.last.nomeGame;
-
-      
-      if(listIconsInicial[index].nome != nm && nm != "Fake" && nm.isNotEmpty) videosShow = false;
+      // String nm = "";
+      // if(videosYT.isNotEmpty) nm = videosYT.first.nomeGame;      
+      // if(listIconsInicial[index].nome != nm && nm != "Fake" && nm.isNotEmpty) videosCarregados = false;
       attTela();
       // });
       // slideIconesCtrl.animateToPage(selectedIndexIcone, duration: const Duration(milliseconds: 700), curve: Curves.decelerate);
@@ -246,19 +284,43 @@ class PrincipalCtrl with ChangeNotifier{
       // if(selectedIndexIcone > index) carouselIconesCtrl.previousPage();
       
       
-      Future.delayed(const Duration(milliseconds: 350),() {
+      
+      videosYT.clear();
+      videosCarregados = false;
+      timerLoadVideos?.cancel();
+      timerLoadVideos = Timer(const Duration(milliseconds: 350), () {
         if(selectedIndexAbaGuias != 0)return;
         showNewImage = true;        
         if(listIconsInicial.isNotEmpty){
           imgFundoStr = listIconsInicial[index].imgStr;
-          // attTela();
-          if(!videosShow) pesquisaVideosYT(listIconsInicial[selectedIndexIcone].nome,index);
+          pesquisaVideosYT(listIconsInicial[selectedIndexIcone].nome,index);
         }
       });
     }catch(e){
       debugPrint(e.toString());
       debugPrint(e.toString());
       }
+  }
+
+  carregaNovoVideo(int index){
+    if(!videoAtivo) return;
+    if(index == selectedIndexVideo){
+      int total = videosYT.length;
+      bool primeiro = total ==index;
+      primeiro ? selectedIndexVideo = 0 : selectedIndexVideo = index + 1;
+    }
+   
+    videoAtivo = false;
+    attTela();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {  
+      Timer( const Duration(milliseconds: 100), (){    
+        videoAtivo = true;
+        attTela();
+          // carouselVideosCtrl.animateToPage(selectedIndexVideo); 
+        // MovimentoSistema.direcaoListView(focusScope, "DIREITA");
+      });
+    });
   }
   animaFundo(){
     ctrlAnimeBgFundo = AnimationController(
@@ -279,6 +341,8 @@ class PrincipalCtrl with ChangeNotifier{
       videosIndexYT = List.generate(listIconsInicial.length, (index) => []);
       Provider.of<JanelaCtrl>(ctx, listen: false).telaPresaReverse(usarEstado: true, estado: false);
       await moverIcoPosicaoInicial(listIconsInicial[selectedIndexIcone]);
+      selectedIndexIcone = 0;
+      focusNodeIcones[selectedIndexIcone].requestFocus();
       attTela();
       await Future.delayed(const Duration(milliseconds: 650));
       await Pops().carregandoGames(ctx,"Entrando no game..." );
@@ -286,6 +350,7 @@ class PrincipalCtrl with ChangeNotifier{
       Provider.of<JanelaCtrl>(ctx, listen: false).telaPresaReverse();
       // Desativa o uso do mouse;
       Provider.of<Paad>(ctx, listen: false).ativaMouse( usarEstado: true,  estado: false);
+      
       // Garantir que o foco volte para o escopo correto após abrir o arquivo
       focusNodeIcones[selectedIndexIcone].requestFocus();
       focusScopeIcones.requestFocus();
@@ -316,30 +381,13 @@ class PrincipalCtrl with ChangeNotifier{
         debugPrint("Entrei navPasta");
         final nome = await Pops().navPasta(ctx, "", retorno, listIconsInicial, selectedIndexIcone);
         if(retorno=="Add" && nome != null && nome != ""){
-          await Pops.popTela(ctx, SeletorImagens(nome: nome));
+          selectedIndexIcone = 0;
+          salvaImgDownload();
         }
         debugPrint("Sai navPasta");
         Timer(const Duration(milliseconds: 500), () => iniciaTela());  
       }else if(retorno == "Imagem da Download"){
-        stateTela = false;
-        String nomeJogo = listIconsInicial[selectedIndexIcone].nome;
-        var result = await Pops.popTela(ctx, SeletorImagens(nome: nomeJogo));
-        if(result == null){ 
-          stateTela = true;
-          return debugPrint("Retorno NULO img Download"); // ERRO NULO PARA AQUI
-        }
-        String novoCaminho = result as String;
-        stateTela = true;        
-        novoCaminho = await WebScrap.downloadImage(novoCaminho,listIconsInicial[selectedIndexIcone].nome);
-        if(novoCaminho.contains("Erro::")) return debugPrint(novoCaminho); // ERRO SALVAMENTO PARA AQUI
-
-        listIconsInicial[selectedIndexIcone].imgStr = novoCaminho;
-        await db.attDados(listIconsInicial);
-        load = true;
-        attTela();
-        Timer(const Duration(milliseconds: 100), (){load=false;attTela();});
-        return;
-        // return iniciaTela();
+        salvaImgDownload();
       }
       else if (retorno == "Excluir Card") {        
         Timer(const Duration(milliseconds: 500  ),() async {
@@ -351,6 +399,9 @@ class PrincipalCtrl with ChangeNotifier{
             Timer(const Duration(milliseconds: 500), () => iniciaTela());
           }
         });
+      }else if(retorno == "Atalhos"){
+        await Pops.popTela(ctx,ImagemFullScren(urlImg: "${assetsPath}tutorial.png"));
+        Timer(const Duration(milliseconds: 500), () => iniciaTela());  
       }
       else{        
         Timer(const Duration(milliseconds: 500), () => iniciaTela());
@@ -361,10 +412,44 @@ class PrincipalCtrl with ChangeNotifier{
     debugPrint("Finalizei btnMais");
     }catch(e){
       debugPrint("ERO BTNMAIS === $e");
-      Pops().msgSimples(ctx,"ERRO = 1$e");
+      // Pops().msgSimples(ctx,"ERRO = 1$e");
     }
   }
 
+  imagem(){
+    return Scaffold(
+          body: Container(
+            height: MediaQuery.of(ctx).size.height,
+            width: MediaQuery.of(ctx).size.width,
+          decoration: BoxDecoration(
+            image: DecorationImage(
+              fit: BoxFit.cover,
+              image:FileImage(File("${assetsPath}tutorial.png")), //AssetImage('assets/BGICOdefault.png'),
+            ),
+          ),
+        ),
+        );
+  }
+  
+  salvaImgDownload() async {
+    stateTela = false;
+    String nomeJogo = listIconsInicial[selectedIndexIcone].nome;
+    var result = await Pops.popTela(ctx, SeletorImagens(nome: nomeJogo));
+    if(result == null){ 
+      stateTela = true;
+      return debugPrint("Retorno NULO img Download"); // ERRO NULO PARA AQUI
+    }
+    String novoCaminho = result as String;
+    stateTela = true;        
+    novoCaminho = await WebScrap.downloadImage(novoCaminho,listIconsInicial[selectedIndexIcone].nome);
+    if(novoCaminho.contains("Erro::")) return debugPrint(novoCaminho); // ERRO SALVAMENTO PARA AQU
+    listIconsInicial[selectedIndexIcone].imgStr = novoCaminho;
+    await db.attDados(listIconsInicial);
+    load = true;
+    attTela();
+    // Timer(const Duration(milliseconds: 100), (){load=false;attTela();});
+    return iniciaTela();
+  }
   
 
   
@@ -373,7 +458,7 @@ class PrincipalCtrl with ChangeNotifier{
     try{
       if(!stateTela || event == "") return;
       debugPrint(" ===== Click Paad: => $event" );
-      if((event == "RB"||event=="LB") && !videoAtivo){
+      if((event == "RB"||event=="LB") && focusScope != focusScopeVideos){
         movAbaGuias(event);}
       else if(focusScope == focusScopeIcones && selectedIndexAbaGuias == 0){
         movIcones(event);}
@@ -401,8 +486,9 @@ class PrincipalCtrl with ChangeNotifier{
   movVideos(String event){
     try{      
       MovimentoSistema.direcaoListView(focusScope, event);
-      
+      imersaoVideoRestart();
       if(event=="CIMA" && !videoAtivo){
+        imersaoRestart();
         focusScopeIcones.requestFocus();
         focusScope = focusScopeIcones;        
       }
@@ -422,6 +508,7 @@ class PrincipalCtrl with ChangeNotifier{
         Timer( const Duration(milliseconds: 100), (){          
           videoAtivo = true;
           attTela();
+          imersaoVideoRestart();
         });
       }
       if (event == "3" || event == "BAIXO"){
@@ -452,13 +539,17 @@ class PrincipalCtrl with ChangeNotifier{
       gameIniciado = false;
   }
 
-  movAbaGuias(String event){
+  movAbaGuias(String event) async {
     
     if(event=="LB"){
       // focusScope = focusScopeIcones;
       if(focusScope == focusScopeCinema){
+
+        // MovimentoSistema.direcaoListView(focusScope, "DIREITA");e
         focusScope = focusScopeIcones;
         focusNodeIcones[selectedIndexIcone].requestFocus();
+        if(selectedIndexIcone != 0)selectedIndexIcone --;
+        
       }
       else if(focusScope == focusScopeMusica){
         focusScope = focusScopeCinema;
@@ -546,7 +637,7 @@ class PrincipalCtrl with ChangeNotifier{
       
     }catch(e){
       debugPrint(e.toString());
-      Pops().msgSimples(ctx,"ERRO = 1$e");
+      // Pops().msgSimples(ctx,"ERRO = 1$e");
     }
   }
   

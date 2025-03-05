@@ -207,7 +207,7 @@ class TecladoCtrl{
 
   static abrirTecladoVirtual() async {
     DB db = DB();
-    final local = ('$localPath\TecladoVirtual\\teclado_virtual.exe');
+    final local = ('$localPai\\teclado_virtual.lnk');
     // const local = ('C:\\Users\\kiony\\OneDrive\\Área de Trabalho\\teclado_virtual.exe - Atalho.lnk');
     await db.openFile(local);
   }

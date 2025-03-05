@@ -7,8 +7,9 @@ import 'package:v1_game/Modelos/IconeInicial.dart';
 class CardGame extends StatelessWidget {
   late IconInicial iconInitial;
   late bool focus;
+  late bool imersao;
 
-  CardGame({super.key, required this.iconInitial, required this.focus});
+  CardGame({super.key,required this.imersao, required this.iconInitial, required this.focus});
 
   @override
   Widget build(BuildContext context) {
@@ -26,9 +27,9 @@ class CardGame extends StatelessWidget {
             if(focus)BoxShadow( color: Colors.blue, offset: const Offset(2, 0), blurRadius: focus ? 20 : 10),
           ],
         ),
-        duration: const Duration(milliseconds: 100),
+        duration: Duration(milliseconds: imersao ? 100 : 10),
         child: AnimatedOpacity(
-          opacity: focus ? 1.0 : 0.95,
+          opacity: focus ? 1.0 : imersao ? 0.0 : 0.97,
           duration: focus ?  const Duration(milliseconds: 350) :  const Duration(seconds: 1),
           child: Container(
             decoration: imgFundo ? deco1() : deco2,
@@ -58,16 +59,17 @@ class CardGame extends StatelessWidget {
   
   Widget texto() {
     return Column(
-                mainAxisAlignment: MainAxisAlignment.end,
+      mainAxisAlignment: MainAxisAlignment.end,
       children: [
         Flexible(
+          flex: 1,
           child: Padding(
             padding: const EdgeInsets.symmetric(vertical: 7, horizontal: 10),
             child: Text(
               iconInitial.nome,
               textAlign: TextAlign.center,
               style: const TextStyle(
-                fontSize: 25,
+                fontSize: 35,
                 color: Colors.white,
                 shadows: [
                   Shadow(

@@ -156,12 +156,18 @@ class Paad with ChangeNotifier{
     }
   }
 
+  abrirTecladoVitual(){
+    // Ativar Mouse
+    ativaMouse(usarEstado: true,  estado: true);
+    TecladoCtrl.abrirTecladoVirtual(); 
+  }
+
   
   bool mouseClickHold = false;
   bool eixoScrolYMouse = true;
   mouseAdapt(String event){
     try{
-      if(event == "R3") return TecladoCtrl.abrirTecladoVirtual();      
+      if(event == "R3") return abrirTecladoVitual();
       if(event == "LB") return TecladoCtrl.previusPage();
       if(event == "RB") return TecladoCtrl.nextPage();
       if(event == "[LB-RB]") return debugPrint("SSSSSSSSSSSSSSSSSSS");

@@ -9,7 +9,7 @@ String msgNotificacao = "Notificado!";
 
 // ACesssar na pasta debug
 // C:\_Flutter\Game Interfacie\v1_game\build\windows\x64\runner\Debug\data\flutter_assets\assets
-
+String localPai = "";
 String localPath = "";
 String assetsPath = "data\\flutter_assets\\assets";
 //\\data\\flutter_assets\\assets\\";

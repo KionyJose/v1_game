@@ -75,7 +75,7 @@ class _VisualizadorImgWebState extends State<VisualizadorImgWeb> {
       selector: (context, paad) => paad.click, // Escuta apenas click
       builder: (context, valorAtual, child) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
-        escutaPad(context, valorAtual);// Isso pode chamar o showDialog
+          escutaPad(context, valorAtual);// Isso pode chamar o showDialog
         });
         return Stack(
           children: [

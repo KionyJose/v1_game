@@ -99,15 +99,16 @@ flutter:
   # To add assets to your application, add an assets section, like this:
   assets:
     # Adicionando Teclado VIrtual ===========
-    - assets/TecladoVirtual/
-    - assets/TecladoVirtual/data/
-    - assets/TecladoVirtual/data/flutter_assets/
-    - assets/TecladoVirtual/data/flutter_assets/fonts/
-    - assets/TecladoVirtual/data/flutter_assets/packages/cupertino_icons/assets/
-    - assets/TecladoVirtual/data/flutter_assets/shaders/
+    # - assets/TecladoVirtual/
+    # - assets/TecladoVirtual/data/
+    # - assets/TecladoVirtual/data/flutter_assets/
+    # - assets/TecladoVirtual/data/flutter_assets/fonts/
+    # - assets/TecladoVirtual/data/flutter_assets/packages/cupertino_icons/assets/
+    # - assets/TecladoVirtual/data/flutter_assets/shaders/
     # Imagens de FUNDO ======================
     - assets/BGdefault.jpeg
     - assets/BGICOdefault.png
+    - assets/tutorial.png
     # AUDIOS ================================
     - assets/somSetinha1.mp3
     - assets/movimenta2.mp3

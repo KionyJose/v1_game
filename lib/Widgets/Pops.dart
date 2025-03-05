@@ -91,14 +91,15 @@ class Pops {
     try{
     bool statePop = true;
     String retorno = "";
-    int total = 6;
+    int total = 7;
     FocusScopeNode focusScope = FocusScopeNode();
     String str0 = "Abrir";
     String str1 = "Caminho do game";
     String str2 = "Caminho de Imagem";
     String str3 = "Imagem da Download";
-    String str4 = "Excluir Card";
-    String str5 = "Add";
+    String str4 = "Atalhos";
+    String str5 = "Excluir Card";
+    String str6 = "Add";
 
     List<FocusNode> focusNodes = List.generate(total, (value)=> FocusNode());
 
@@ -139,6 +140,7 @@ class Pops {
         if (focusNodes[3].hasFocus) Navigator.pop(context, str3);
         if (focusNodes[4].hasFocus) Navigator.pop(context, str4);
         if (focusNodes[5].hasFocus) Navigator.pop(context, str5);
+        if (focusNodes[6].hasFocus) Navigator.pop(context, str6);
         statePop = true;
       }
     }
@@ -200,7 +202,8 @@ class Pops {
                       if (focusNodes[2].hasFocus) Navigator.pop(context, str2);
                       if (focusNodes[3].hasFocus) Navigator.pop(context, str3);
                       if (focusNodes[4].hasFocus) Navigator.pop(context, str4);                      
-                      if (focusNodes[5].hasFocus) Navigator.pop(context, str5);
+                      if (focusNodes[5].hasFocus) Navigator.pop(context, str5);                    
+                      if (focusNodes[6].hasFocus) Navigator.pop(context, str6);
                     }
                     debugPrint(event.logicalKey.toString());
                   }
@@ -238,14 +241,15 @@ class Pops {
                               btn(str2, focusNodes[2], false, null),
                               btn(str3, focusNodes[3], false, null),
                               btn(str4, focusNodes[4], false, null),
+                              btn(str5, focusNodes[5], false, null),
                               // const Spacer(),
               
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.end,
                                 children: [
                                   btn(
-                                    str5,
-                                    focusNodes[5],
+                                    str6,
+                                    focusNodes[6],
                                     true,
                                     const Icon(
                                       Icons.add,
