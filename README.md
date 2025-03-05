@@ -1,16 +1,33 @@
-# v1_game
+# V1 Launcher (Beta)
 
-A new Flutter project.
+**V1 Launcher** é um *launcher* para PC inspirado na interface do PlayStation 5, projetado para substituir 99% do uso do mouse e teclado no Windows. Com ele, você pode navegar pelo seu sistema operacional de forma intuitiva e eficiente, sem depender dos métodos tradicionais de entrada.
 
-## Getting Started
+## 🖥️ Sobre o Projeto
 
-This project is a starting point for a Flutter application.
+O V1 Launcher nasceu de uma necessidade pessoal e do desejo de criar uma nova forma de interação com o Windows. A proposta é permitir a locomoção total pelo sistema sem a necessidade do mouse ou teclado, proporcionando uma experiência fluida e moderna, semelhante à navegação em consoles como o PS5.
 
-A few resources to get you started if this is your first Flutter project:
+## 🔍 Funcionalidades Principais
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+- Navegação fluida e intuitiva, estilo PS5
+- Controle quase total do Windows sem uso do mouse ou teclado
+- Interface amigável e personalizável
+- Otimizado para desempenho e praticidade
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+## 📌 Status do Projeto
+
+Atualmente, o V1 Launcher está em **versão beta**, em constante evolução para melhorar a experiência do usuário e expandir suas funcionalidades.
+
+## 🤝 Apoie o Projeto
+
+Se você gostou do V1 Launcher e deseja apoiar seu desenvolvimento, considere fazer uma doação para ajudar a manter e aprimorar o projeto.
+
+**Chave PIX para doações:** kionydb1@outlook.com
+
+Toda contribuição é bem-vinda e ajudará a levar o V1 Launcher para o próximo nível!
+
+## 📬 Contato
+
+Para dúvidas, sugestões ou feedback, entre em contato através do e-mail: **kionydb1@outlook.com**
+
+Obrigado por apoiar o V1 Launcher! 🚀
+
