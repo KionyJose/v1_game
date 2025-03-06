@@ -137,6 +137,7 @@ class PrincipalCtrl with ChangeNotifier{
     keyboradEscutaNode.requestFocus();
     focusNodeIcones[0].requestFocus();
     home = false;
+    load = false;
     attTela();   
 
     // JanelaCtrl.restoreWindow("v1_game");
@@ -382,7 +383,7 @@ class PrincipalCtrl with ChangeNotifier{
         final nome = await Pops().navPasta(ctx, "", retorno, listIconsInicial, selectedIndexIcone);
         if(retorno=="Add" && nome != null && nome != ""){
           selectedIndexIcone = 0;
-          salvaImgDownload();
+          await salvaImgDownload();
         }
         debugPrint("Sai navPasta");
         Timer(const Duration(milliseconds: 500), () => iniciaTela());  
@@ -392,10 +393,13 @@ class PrincipalCtrl with ChangeNotifier{
       else if (retorno == "Excluir Card") {        
         Timer(const Duration(milliseconds: 500  ),() async {
           var result = await Pops().msgSN(ctx, "Confirmar ação?");
-          if(result ==  null) return;
+          if(result ==  null || result == "Nao"){ 
+            stateTela = true;
+            return;
+          }
           if(result == "Sim"){
             listIconsInicial.removeAt(selectedIndexIcone);
-            await db.attDados(listIconsInicial);            
+            await db.attDados(listIconsInicial);
             Timer(const Duration(milliseconds: 500), () => iniciaTela());
           }
         });
@@ -440,7 +444,7 @@ class PrincipalCtrl with ChangeNotifier{
       return debugPrint("Retorno NULO img Download"); // ERRO NULO PARA AQUI
     }
     String novoCaminho = result as String;
-    stateTela = true;        
+    // stateTela = true;        
     novoCaminho = await WebScrap.downloadImage(novoCaminho,listIconsInicial[selectedIndexIcone].nome);
     if(novoCaminho.contains("Erro::")) return debugPrint(novoCaminho); // ERRO SALVAMENTO PARA AQU
     listIconsInicial[selectedIndexIcone].imgStr = novoCaminho;

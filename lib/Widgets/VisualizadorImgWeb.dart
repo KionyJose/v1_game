@@ -25,7 +25,10 @@ class _VisualizadorImgWebState extends State<VisualizadorImgWeb> {
   int indexFoto = 0;
 
   escutaPad(BuildContext ctx, String event){
-    if(nomeImg.isEmpty) nomeImg =  widget.list.first.imageUrl;
+    // if(nomeImg.isEmpty){
+    //   if
+    //   nomeImg =  widget.list.first.imageUrl;
+    // }
     
     if(event == "DIREITA" || event == "ESQUERDA"){
       MovimentoSistema.direcaoListView(VisualizadorImgWeb.focusScope, event);
