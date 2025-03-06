@@ -13,7 +13,6 @@ import 'package:v1_game/Widgets/LoadWid.dart';
 import 'package:v1_game/Widgets/TituloGames.dart';
 import 'package:v1_game/Widgets/YouTubeTela.dart';
 import 'package:v1_game/Widgets/cardGame.dart';
-import 'package:v1_game/Widgets/isosceles.dart';
 import 'package:v1_game/Widgets/videoSliders.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:y_player/y_player.dart';
@@ -116,7 +115,7 @@ class _PrincipalPageState extends State<PrincipalPage> with WindowListener {
     return Stack(
       children: [
       backGroundAnimado(ctrl), // Fundo animado
-      cabeca(),
+      cabeca(ctrl),
       desfoqueTela(filmes),
       if (ctrl.telaIniciada)bodys(ctrl),// Ícones horizontais
       abaGuias(ctrl),
@@ -128,7 +127,8 @@ class _PrincipalPageState extends State<PrincipalPage> with WindowListener {
     ],
     );
   } 
-  cabeca(){
+  cabeca(PrincipalCtrl ctrl){
+    if(ctrl.listIconsInicial.isEmpty) return Container(); 
     return TituloGames(nome: ctrlOff.listIconsInicial[ctrlOff.selectedIndexIcone].nome,imerso: ctrlOff.imersao);
   }
   
@@ -745,12 +745,12 @@ btnMedia(PrincipalCtrl ctrl, int i, bool foco, String tipo){
   
   imagemFundo(PrincipalCtrl ctrl) {
     final item = BoxDecoration( image: DecorationImage( fit: BoxFit.cover, image: FileImage(File("${assetsPath}BGdefault.jpeg"),scale: 5)));
-    if(ctrl.listIconsInicial.isEmpty){
+    // if(ctrl.listIconsInicial.isEmpty){
       
-      return Image.asset("${assetsPath}BGdefault.jpeg",
-      fit: BoxFit.cover,
-      );      
-    }
+    //   return Image.asset("${assetsPath}BGdefault.jpeg",
+    //   fit: BoxFit.cover,
+    //   );      
+    // }
     return Container(
       decoration: ctrl.imgFundoStr.isNotEmpty ? File(ctrl.imgFundoStr).existsSync() ? BoxDecoration( image: DecorationImage(fit: BoxFit.cover, image 
       : FileImage( File(ctrl.imgFundoStr),)))

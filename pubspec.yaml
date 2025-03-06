@@ -63,6 +63,7 @@ dependencies:
   url_launcher: ^6.2.6
   audioplayers: ^6.1.1
   y_player: ^2.0.0
+  flutter_launcher_icons: ^0.14.3
 
 
   logging: ^1.0.2
@@ -84,6 +85,12 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^2.0.0
+
+flutter_launcher_icons:
+  windows:
+    generate: true
+    image_path: "assets/IconeAppV1.png"
+    icon_size: 48 # min:48, max:256, default: 48
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
@@ -109,6 +116,7 @@ flutter:
     - assets/BGdefault.jpeg
     - assets/BGICOdefault.png
     - assets/tutorial.png
+    - assets/IconeAppV1.png
     # AUDIOS ================================
     - assets/somSetinha1.mp3
     - assets/movimenta2.mp3
