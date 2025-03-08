@@ -11,6 +11,8 @@ import 'package:v1_game/Tela/MyApp.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:y_player/y_player.dart';
 
+import 'Metodos/leituraArquivo.dart';
+
 WindowOptions windowOptions = const WindowOptions(    
     center: true,
     skipTaskbar: false,
@@ -58,9 +60,41 @@ localizaCaminhos(){
   localPai = diretorioPai.path;
   localPath = diretorioAtual.path;
   assetsPath = "${diretorioAtual.path}\\data\\flutter_assets\\assets\\";
+
+  criaAtalhoTecladoApp();
 }
   
+criaAtalhoTecladoApp() async {
 
+  String caminhoDesktop = await LerArquivos().getDesktopPath();
+  // Atalho App
+  criarAtalho(
+    origem:"$localPath\\v1_game.exe", 
+    destino:"$caminhoDesktop\\V1 Launcher.lnk",
+  );
+  // Atalho Teclado
+  criarAtalho(
+    origem:'$localPai\\TecladoVirtual\\teclado_virtual.exe', 
+    destino: '$localPai\\teclado_virtual.lnk',
+  );
+  
+}
+void criarAtalho({required String origem, required String destino}) {
+ final script = '''
+  \$WshShell = New-Object -ComObject WScript.Shell
+  \$Shortcut = \$WshShell.CreateShortcut('$destino')
+  \$Shortcut.TargetPath = '$origem'
+  \$Shortcut.Save()
+  ''';
+
+  final processo = Process.runSync('powershell', ['-Command', script]);
+
+  if (processo.exitCode == 0) {
+    print('Atalho criado em: $destino');
+  } else {
+    print('Erro ao criar atalho: ${processo.stderr}');
+  }
+}
 semBarras(){
    doWhenWindowReady(() {
     final win = appWindow;
