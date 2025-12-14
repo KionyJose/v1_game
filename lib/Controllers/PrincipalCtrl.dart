@@ -321,22 +321,39 @@ class PrincipalCtrl with ChangeNotifier{
 
   carregaNovoVideo(int index){
     if(!videoAtivo) return;
+    
+    // Verifica se há vídeos disponíveis
+    if (videosYT.isEmpty) {
+      videoAtivo = false;
+      attTela();
+      return;
+    }
+    
     if(index == selectedIndexVideo){
       int total = videosYT.length-1;
-      bool primeiro = total ==index;
+      bool primeiro = total == index;
       primeiro ? selectedIndexVideo = 0 : selectedIndexVideo = index + 1;
     }
+    
+    // Garante que o índice está dentro dos limites
+    if (selectedIndexVideo < 0 || selectedIndexVideo >= videosYT.length) {
+      selectedIndexVideo = 0;
+    }
+    
     contadorVideo = true;
+    duracaoTotal = Duration.zero;
+    duracaoAtual = Duration.zero;
    
     videoAtivo = false;
     attTela();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {  
-      Timer( const Duration(milliseconds: 100), (){    
-        videoAtivo = true;
-        attTela();
-          // carouselVideosCtrl.animateToPage(selectedIndexVideo); 
-        // MovimentoSistema.direcaoListView(focusScope, "DIREITA");
+      Timer(const Duration(milliseconds: 200), () {
+        // Verifica novamente antes de ativar
+        if (videosYT.isNotEmpty && selectedIndexVideo >= 0 && selectedIndexVideo < videosYT.length) {
+          videoAtivo = true;
+          attTela();
+        }
       });
     });
   }
@@ -528,14 +545,37 @@ class PrincipalCtrl with ChangeNotifier{
       if(event.contains("LT-")) TecladoCtrl.diminuirVolume();
       if (event == "START") ctrlVideo.status == YPlayerStatus.paused ? ctrlVideo.play() : ctrlVideo.pause();
       if (event == "2") {
+        // Verifica se há vídeos disponíveis antes de ativar
+        if (videosYT.isEmpty || selectedIndexVideo < 0 || selectedIndexVideo >= videosYT.length) {
+          debugPrint("ERRO: Não há vídeos disponíveis ou índice inválido");
+          return;
+        }
+        
         duracaoTotal = Duration.zero;
-        duracaoAtual =Duration.zero;
+        duracaoAtual = Duration.zero;
         videoAtivo = false;
         attTela();
-        Timer( const Duration(milliseconds: 100), (){          
-          videoAtivo = true;
-          contadorVideo = true;
-          attTela();
+        
+        // Aguarda um pouco mais para garantir que o widget anterior foi desmontado
+        Timer(const Duration(milliseconds: 200), () {
+          if (videosYT.isNotEmpty && selectedIndexVideo >= 0 && selectedIndexVideo < videosYT.length) {
+            videoAtivo = true;
+            contadorVideo = true;
+            attTela();
+            
+            // Tenta iniciar a reprodução após um pequeno delay
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              Timer(const Duration(milliseconds: 300), () {
+                try {
+                  if (videoAtivo && ctrlVideo.status == YPlayerStatus.paused) {
+                    ctrlVideo.play();
+                  }
+                } catch (e) {
+                  debugPrint("ERRO ao tentar reproduzir vídeo: $e");
+                }
+              });
+            });
+          }
         });
       }
       if (event == "3" || event == "BAIXO"){

@@ -244,6 +244,13 @@ class _PrincipalPageState extends State<PrincipalPage> with WindowListener {
 
 
   videoAtivo(PrincipalCtrl ctrl){
+    // Verifica se há vídeos disponíveis e se o índice é válido
+    if (ctrl.videosYT.isEmpty || 
+        ctrl.selectedIndexVideo < 0 || 
+        ctrl.selectedIndexVideo >= ctrl.videosYT.length) {
+      return const SizedBox.shrink();
+    }
+
     double height = MediaQuery.of(context).size.height;
     return Align(
       alignment: Alignment.center,
@@ -258,6 +265,7 @@ class _PrincipalPageState extends State<PrincipalPage> with WindowListener {
             ClipRRect(
               borderRadius: BorderRadius.circular(50),
               child: YoutubeTela(
+                key: ValueKey('${ctrl.selectedIndexVideo}_${ctrl.videosYT[ctrl.selectedIndexVideo].urlVideo}'), // Key única para forçar reconstrução
                 progress:(ini, fim) {
                   ctrl.duracaoAtual = ini;
                   ctrl.duracaoTotal = fim;                  
@@ -266,9 +274,15 @@ class _PrincipalPageState extends State<PrincipalPage> with WindowListener {
                     ctrl.contadorVideo = false;
                   }
                 },
-                status: (status)  => status == YPlayerStatus.stopped ?  ctrl.carregaNovoVideo(ctrl.selectedIndexVideo) :null,
+                status: (status) {
+                  if (status == YPlayerStatus.stopped) {
+                    ctrl.carregaNovoVideo(ctrl.selectedIndexVideo);
+                  }
+                },
                 url: ctrl.videosYT[ctrl.selectedIndexVideo].urlVideo,
-                func: (controlador) => ctrl.ctrlVideo = controlador,
+                func: (controlador) {
+                  ctrl.ctrlVideo = controlador;
+                },
               ),
             ),
             if(ctrl.duracaoTotal != Duration.zero)
