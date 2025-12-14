@@ -15,7 +15,7 @@ import '../Modelos/ImgWebScrap.dart';
 
 class SeletorImgCtrl with ChangeNotifier{
   late BuildContext ctx;
-  attTela() => notifyListeners();
+  attTela() => ctx.mounted ? notifyListeners() : null;
   FocusScopeNode focusScope = FocusScopeNode();
   FocusNode txtFoco = FocusNode();
   FocusNode buscaFocos = FocusNode();
@@ -134,7 +134,7 @@ class SeletorImgCtrl with ChangeNotifier{
     }
   }
 
-  escutaPad(String event) async {    
+  escutaPad(String event) async {   
     try{      
       if(!stateTela || event == "") return;
       if(teclando){
@@ -146,7 +146,6 @@ class SeletorImgCtrl with ChangeNotifier{
           if(listComandos[1] == '3') total++;
           if(total!=2) return;
           teclando = false;
-          MovimentoSistema.audioCheat();
         }
         return;
       }

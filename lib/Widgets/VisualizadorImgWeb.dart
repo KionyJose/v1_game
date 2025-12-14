@@ -23,12 +23,13 @@ class VisualizadorImgWeb extends StatefulWidget {
 class _VisualizadorImgWebState extends State<VisualizadorImgWeb> {
   String nomeImg = "";
   int indexFoto = 0;
+  
 
   escutaPad(BuildContext ctx, String event){
-    // if(nomeImg.isEmpty){
-    //   if
-    //   nomeImg =  widget.list.first.imageUrl;
-    // }
+    try{
+    if(nomeImg.isEmpty) nomeImg =  widget.list.first.imageUrl;
+    }catch(_){}
+    
     
     if(event == "DIREITA" || event == "ESQUERDA"){
       MovimentoSistema.direcaoListView(VisualizadorImgWeb.focusScope, event);
@@ -60,10 +61,6 @@ class _VisualizadorImgWebState extends State<VisualizadorImgWeb> {
 
   @override
   Widget build(BuildContext context) {
-    return escutaTeclado(context);
-  }
-
-  escutaTeclado(BuildContext context){
     return  KeyboardListener( // Escuta teclado Press;
       includeSemantics: false,
       focusNode: FocusNode(),//ctrl.focoPrincipal,

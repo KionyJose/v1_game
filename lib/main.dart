@@ -6,11 +6,12 @@ import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:v1_game/Bando%20de%20Dados/TESTES.dart';
 import 'package:v1_game/Class/MouseCtrl.dart';
+import 'package:v1_game/Controllers/SonsSistema.dart';
 import 'package:v1_game/Global.dart';
 import 'package:v1_game/Tela/MyApp.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:y_player/y_player.dart';
-
+import 'Bando de Dados/db.dart';
 import 'Metodos/leituraArquivo.dart';
 
 WindowOptions windowOptions = const WindowOptions(    
@@ -22,6 +23,7 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   YPlayerInitializer.ensureInitialized();
   // Must add this line.
+  MouseCtrl.primeiroMovimento();
   await windowManager.ensureInitialized(); 
   await windowManager.waitUntilReadyToShow(windowOptions, () async {
       await windowManager.show();
@@ -29,9 +31,13 @@ void main() async {
       await windowManager.maximize();
     },
   );
+  await configucacoesSistema();
+  if(!configSistema.intro) SonsSistema.intro();
   localizaCaminhos();
+
+
   
-  MouseCtrl.primeiroMovimento();
+  
   // semBarras();
   await TESTES().testes();
   
@@ -44,7 +50,10 @@ void main() async {
   
 
 }
-
+configucacoesSistema() async{
+  await DB().leituraConfigSis();
+  
+}
 localizaCaminhos(){
   // Obtém o caminho completo do executável em execução
   String caminhoExecutavel = Platform.resolvedExecutable;
@@ -90,9 +99,9 @@ void criarAtalho({required String origem, required String destino}) {
   final processo = Process.runSync('powershell', ['-Command', script]);
 
   if (processo.exitCode == 0) {
-    print('Atalho criado em: $destino');
+    debugPrint('Atalho criado em: $destino');
   } else {
-    print('Erro ao criar atalho: ${processo.stderr}');
+    debugPrint('Erro ao criar atalho: ${processo.stderr}');
   }
 }
 semBarras(){

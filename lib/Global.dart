@@ -2,6 +2,7 @@
 // ignore_for_file: file_names
 
 import 'package:flutter/material.dart';
+import 'package:v1_game/Modelos/ConfigSistema.dart';
 
 
 bool notificacaoPop = false;
@@ -14,4 +15,6 @@ String localPath = "";
 String assetsPath = "data\\flutter_assets\\assets";
 //\\data\\flutter_assets\\assets\\";
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
+ConfigSistema configSistema = ConfigSistema();
 // int globalTamanhoWidth = MediaQuery().si

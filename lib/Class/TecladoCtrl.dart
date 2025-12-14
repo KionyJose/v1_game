@@ -186,6 +186,29 @@ class TecladoCtrl{
     calloc.free(input);
   }
 
+  static void simularTeclaVolume(int virtualKey) {
+    final input = calloc<INPUT>(1);
+    input[0].type = INPUT_TYPE.INPUT_KEYBOARD;
+    input[0].ki.wVk = virtualKey;
+
+    // Pressiona a tecla
+    SendInput(1, input, sizeOf<INPUT>());
+
+    // Libera a tecla
+    input[0].ki.dwFlags = KEYBD_EVENT_FLAGS.KEYEVENTF_KEYUP;
+    SendInput(1, input, sizeOf<INPUT>());
+
+    calloc.free(input);
+  }
+
+  static void aumentarVolume() {
+    simularTeclaVolume(VIRTUAL_KEY.VK_VOLUME_UP);
+  }
+
+  static void diminuirVolume() {
+    simularTeclaVolume(VIRTUAL_KEY.VK_VOLUME_DOWN);
+  }
+
   // Função para simular Ctrl + Shift + Tab (aba anterior)
   static void previusPage() {
     final input = calloc<INPUT>(2);
@@ -195,6 +218,26 @@ class TecladoCtrl{
 
     input[1].type = INPUT_TYPE.INPUT_KEYBOARD;
     input[1].ki.wVk = VIRTUAL_KEY.VK_PRIOR; // Tab
+
+    SendInput(2, input, sizeOf<INPUT>());
+
+    input[1].ki.dwFlags = KEYBD_EVENT_FLAGS.KEYEVENTF_KEYUP;
+    input[0].ki.dwFlags = KEYBD_EVENT_FLAGS.KEYEVENTF_KEYUP;
+    SendInput(2, input, sizeOf<INPUT>());
+
+    calloc.free(input);
+  }
+
+  
+
+  static void voltarNavegacao(){
+    final input = calloc<INPUT>(2);
+
+    input[0].type = INPUT_TYPE.INPUT_KEYBOARD;
+    input[0].ki.wVk = VIRTUAL_KEY.VK_MENU; // Ctrl
+
+    input[1].type = INPUT_TYPE.INPUT_KEYBOARD;
+    input[1].ki.wVk = VIRTUAL_KEY.VK_LEFT; // seta esquerda
 
     SendInput(2, input, sizeOf<INPUT>());
 

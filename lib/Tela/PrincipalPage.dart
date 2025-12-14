@@ -9,6 +9,7 @@ import 'package:snappy_list_view/snappy_list_view.dart';
 import 'package:v1_game/Class/Paad.dart';
 import 'package:v1_game/Controllers/PrincipalCtrl.dart';
 import 'package:v1_game/Global.dart';
+import 'package:v1_game/Widgets/BarraProgressoYT.dart';
 import 'package:v1_game/Widgets/LoadWid.dart';
 import 'package:v1_game/Widgets/TituloGames.dart';
 import 'package:v1_game/Widgets/YouTubeTela.dart';
@@ -251,16 +252,35 @@ class _PrincipalPageState extends State<PrincipalPage> with WindowListener {
         duration: const Duration(seconds: 3),
         margin: ctrl.imersaoVideos ? const EdgeInsets.all(10) : const EdgeInsets.only(bottom: 80),
         height: ctrl.imersaoVideos ? height : height * 0.70,
-        width:  ctrl.imersaoVideos ? MediaQuery.of(context).size.width * 0.95 : height * 0.70 * 1.809, // Aspect ratio 16:9
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(50),
-          child: YoutubeTela(
-            status: (status)  => status == YPlayerStatus.stopped ?  ctrl.carregaNovoVideo(ctrl.selectedIndexVideo) :null,
-              
-            
-            url: ctrl.videosYT[ctrl.selectedIndexVideo].urlVideo,
-            func: (controlador) => ctrl.ctrlVideo = controlador,
-          ),
+        width:  ctrl.imersaoVideos ? MediaQuery.of(context).size.width * 0.935 : height * 0.70 * 1.74, // Aspect ratio 16:9
+        child: Stack(
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(50),
+              child: YoutubeTela(
+                progress:(ini, fim) {
+                  ctrl.duracaoAtual = ini;
+                  ctrl.duracaoTotal = fim;                  
+                  if(ctrl.contadorVideo && ctrl.duracaoTotal != Duration.zero){
+                    ctrl.attTela();
+                    ctrl.contadorVideo = false;
+                  }
+                },
+                status: (status)  => status == YPlayerStatus.stopped ?  ctrl.carregaNovoVideo(ctrl.selectedIndexVideo) :null,
+                url: ctrl.videosYT[ctrl.selectedIndexVideo].urlVideo,
+                func: (controlador) => ctrl.ctrlVideo = controlador,
+              ),
+            ),
+            if(ctrl.duracaoTotal != Duration.zero)
+              Align(
+                alignment: Alignment.bottomCenter ,
+                child: AnimatedContainer(
+                  margin: EdgeInsets.only(bottom: ctrl.imersaoVideos ? 5  : 40),
+                  duration: const Duration(seconds: 3),
+                  height: MediaQuery.of(context).size.height * 0.015,
+                  child: BarraProgressoYT(duracaoTotal: ctrl.duracaoTotal, duracaoInicial: ctrl.duracaoAtual)),
+              ),
+          ],
         ),
       ),
     );
@@ -529,7 +549,7 @@ btnMedia(PrincipalCtrl ctrl, int i, bool foco, String tipo){
     return  Align(
       alignment: Alignment.bottomLeft,
       child: AnimatedOpacity(
-        opacity: ctrl.imersaoVideos ? 0.02 : 1.0,
+        opacity: ctrl.imersaoVideos ? 0 : 1.0,
         duration: const Duration(seconds: 2),
         child: Padding(
           padding: const EdgeInsets.only(bottom: 20),

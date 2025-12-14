@@ -5,11 +5,14 @@ import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:v1_game/Modelos/IconeInicial.dart';
 
+import '../Global.dart';
+
 class DB{
 
   
   // String dbPath = "C:\\Users\\kiony\\OneDrive\\Área de Trabalho\\testeDBLocal.txt"; 
   String dbPath = "C:\\Users\\Public\\Documents\\testeDBLocal.txt"; 
+  String dbPathConfigSis = "C:\\Users\\Public\\Documents\\v1_config.txt"; 
 
   leiaBanco() async =>  await leituraDeDados();
   
@@ -62,6 +65,43 @@ class DB{
       debugPrint("Arquivo criado em: $dbPath");
     } else {
       debugPrint("Arquivo já existe em: $dbPath");
+    }
+  }
+
+  leituraConfigSis() async {
+     // Verifica se o arquivo existe
+    File dbFile = File(dbPathConfigSis);
+    if (!dbFile.existsSync()) {
+      // Cria o arquivo se ele não existir
+      String isLine = "";
+      
+      isLine += "volume=50\n";
+      isLine += "tela_inicial_tipo=1\n";
+      isLine += "videos_tela_principal=true\n";
+      isLine += "videos_card_game=false\n";
+      isLine += "intro=true\n";    
+      dbFile.createSync(recursive: true); // recursive: true para criar diretórios se necessário
+      dbFile.writeAsStringSync(isLine); // Escreve conteúdo inicial, se necessário
+      // dbFile.writeAsStringSync("tela_inicial_tipo=1"); // Escreve conteúdo inicial, se necessário
+      // dbFile.writeAsStringSync("videos_tela_principal=true"); // Escreve conteúdo inicial, se necessário
+      // dbFile.writeAsStringSync("videos_card_game=false"); // Escreve conteúdo inicial, se necessário
+      debugPrint("Arquivo criado em: $dbPathConfigSis");
+    } else {
+      debugPrint("Arquivo já existe em: $dbPathConfigSis");
+    }
+    var file = File(dbPathConfigSis);
+    Stream<String> lines = file.openRead()
+      .transform(utf8.decoder) // Decode bytes to UTF-8.
+      .transform(const LineSplitter()); // Convert stream to individual lines.
+
+    await for (String line in lines) {
+      String value = line.split('=')[1];
+      if(line.contains("volume")) configSistema.volume = double.parse(value);      
+      if(line.contains("tela_inicial_tipo")) configSistema.telaInicialTipo = int.parse(value);      
+      if(line.contains("videos_tela_principal")) configSistema.videosTelaPrincipal = value == "true";
+      if(line.contains("videos_card_game")) configSistema.videosCardGame = value == "true";
+      
+      
     }
   }
 

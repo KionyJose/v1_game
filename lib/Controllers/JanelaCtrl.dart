@@ -98,9 +98,9 @@ class JanelaCtrl with ChangeNotifier, WindowListener{
     await windowManager.minimize();
     Future.delayed(const Duration(milliseconds: 200));
     await windowManager.maximize();
+    await windowManager.focus();
     await windowManager.maximize();
     // windowManager.show();    
-    // windowManager.focus();
     debugPrint("Restart Tela Tras pra frente =======================================");
   }
 

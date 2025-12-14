@@ -4,9 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:y_player/y_player.dart';
 
 class YoutubeTela extends StatelessWidget {
-  const YoutubeTela({required this.func, required this.status, required this.url, super.key});
-  final  Function(YPlayerController) func;
-  final  Function(YPlayerStatus ) status;
+  const YoutubeTela({ this.func, this.progress,  this.status, required this.url, super.key});
+  final  Function(YPlayerController)? func;
+  final  Function(YPlayerStatus )? status;
+  final  Function(Duration, Duration)? progress;
   final String url;
 
   @override
@@ -15,12 +16,13 @@ class YoutubeTela extends StatelessWidget {
         // onProgressChanged: (position, duration) {
         //   // print('Progress: ${position.inSeconds}/${duration.inSeconds}');
         // },
-        
+      onProgressChanged: progress,
+      seekBarMargin: const EdgeInsets.symmetric(horizontal: 10),
       onStateChanged: status,
       onControllerReady: func,
       placeholder: const Icon(Icons.play_arrow),
       color: Colors.red,
-      aspectRatio: 200,
+      // aspectRatio: 200,
       errorWidget: const Center(child: Text("Errinho bobo"),),
       loadingWidget: const Align(
         alignment: Alignment.bottomCenter,

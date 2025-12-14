@@ -1,14 +1,12 @@
 // ignore_for_file: file_names
 
 import 'dart:async';
-
-import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:v1_game/Class/TecladoCtrl.dart';
+import 'package:v1_game/Controllers/SonsSistema.dart';
 import 'package:xinput_gamepad/xinput_gamepad.dart';
 
 import '../Controllers/JanelaCtrl.dart';
-import '../Controllers/MovimentoSistema.dart';
 import 'MouseCtrl.dart';
 
 class Paad with ChangeNotifier{
@@ -20,8 +18,6 @@ class Paad with ChangeNotifier{
   bool blockClick = false;
   bool delay = false;
   bool isMouse = false;
-  final AudioPlayer audioPlayer = AudioPlayer();
-
 
   Paad({required bool escutar, required this.ctx}){
     if(escutar) escutaPaadsAsync();
@@ -39,7 +35,6 @@ class Paad with ChangeNotifier{
   escutaClickPaad(String event) async {
     // debugPrint(event);
     if(event == "SELECT"){
-      // await audioPlayer.play(AssetSource("som_movimento.mp3")); // Caminho do asset
     }
     addSequencia(event);
     if(delay) return;
@@ -82,8 +77,8 @@ class Paad with ChangeNotifier{
   voltaTela(){
     int total = 0;
     // RestauraTela
-    if(comandoSequencia[0] == "SELECT")total++;
-    if(comandoSequencia[1] == "SELECT")total++;
+    if(comandoSequencia[0] == "SELECT" || comandoSequencia[0] == "START")total++;
+    if(comandoSequencia[1] == "SELECT" || comandoSequencia[0] == "START")total++;
     if(comandoSequencia[2] == "LB")total++;
     if(comandoSequencia[3] == "RB")total++;
     if(comandoSequencia[4] == "2")total++;
@@ -92,12 +87,13 @@ class Paad with ChangeNotifier{
   voltarAoSistema(){
 
     JanelaCtrl.restoreWindow();
-    MovimentoSistema.audioCheat();
+    SonsSistema.cheat();
     delay = true;
     // Provider.of<PrincipalCtrl>(ctx, listen: false).focusScope.requestFocus();
     Timer(const Duration(microseconds: 1245), () {
 
       delay = false;
+      ativaMouse();
       // click = "HOME";
       // notifyListeners();
       // click = "";
@@ -107,8 +103,8 @@ class Paad with ChangeNotifier{
   mouseMoov(){
     int total = 0;
     // RestauraTela
-    if(comandoSequencia[0] == "SELECT")total++;
-    if(comandoSequencia[1] == "SELECT")total++;
+    if(comandoSequencia[0] == "SELECT" || comandoSequencia[0] == "START")total++;
+    if(comandoSequencia[1] == "SELECT" || comandoSequencia[0] == "START")total++;
     if(comandoSequencia[2] == "LB")total++;
     if(comandoSequencia[3] == "RB")total++;
     if(comandoSequencia[4] == "4")total++;
@@ -125,8 +121,8 @@ class Paad with ChangeNotifier{
     // Provider.of<PrincipalCtrl>(ctx, listen: false).focusScope.requestFocus();
     Timer(const Duration(microseconds: 1245), () => delay = false );   
     JanelaCtrl().telaPresa = isMouse;
-    // MouseCtrl.primeiroMovimento();
-    MovimentoSistema.audioCheat();
+    SonsSistema.cheat();
+    MouseCtrl.primeiroMovimento();
   }
 
   teclaEnter(){
@@ -138,8 +134,8 @@ class Paad with ChangeNotifier{
     if(comandoSequencia[3] == "2")total++;
     if(comandoSequencia[4] == "2")total++;
     if(total == 5){
-      TecladoCtrl.teclaEnter();
-      MovimentoSistema.audioPim();
+      TecladoCtrl.teclaEnter();      
+      SonsSistema.pim();
     }
   }
   teclaEspaco(){
@@ -152,7 +148,7 @@ class Paad with ChangeNotifier{
     if(comandoSequencia[4] == "4")total++;
     if(total == 5){
       TecladoCtrl.teclaEnter();
-      MovimentoSistema.audioPim();
+      SonsSistema.pim();
     }
   }
 
@@ -167,6 +163,9 @@ class Paad with ChangeNotifier{
   bool eixoScrolYMouse = true;
   mouseAdapt(String event){
     try{
+      
+      if(event.contains("RT-")) TecladoCtrl.aumentarVolume();
+      if(event.contains("LT-")) TecladoCtrl.diminuirVolume();
       if(event == "R3") return abrirTecladoVitual();
       if(event == "LB") return TecladoCtrl.previusPage();
       if(event == "RB") return TecladoCtrl.nextPage();
@@ -176,7 +175,8 @@ class Paad with ChangeNotifier{
       if(event == "SELECT") return TecladoCtrl.pressWinTab();
       if(event == "1") return mouseClickHold = MouseCtrl.clickHold(mouseClickHold);
       if(event == "2") return MouseCtrl.simularClique();
-      if(event == "3") return TecladoCtrl.teclaEsc();
+      if(event == "3") return TecladoCtrl.voltarNavegacao();
+      // if(event == "3") return TecladoCtrl.teclaEsc();
       if(event == "4") return TecladoCtrl.teclaWindows();
       // if(event =="R3") return eixoScrolYMouse = !eixoScrolYMouse;
       if(event == "ST-SL") return TecladoCtrl.fecharAltF4();
@@ -278,8 +278,8 @@ class Paad with ChangeNotifier{
         { ControllerButton.LEFT_SHOULDER,ControllerButton.RIGHT_SHOULDER,ControllerButton.A_BUTTON,ControllerButton.DPAD_DOWN }: () => escutaClickPaad("HOME"),
       };
       controller.variableKeysMapping = {
-        VariableControllerKey.LEFT_TRIGGER: (value) => escutaClickPaad("LT - $value"),
-        VariableControllerKey.RIGHT_TRIGGER: (value) => escutaClickPaad("RT - $value"),
+        VariableControllerKey.LEFT_TRIGGER: (value) => escutaClickPaad("LT-$value"),
+        VariableControllerKey.RIGHT_TRIGGER: (value) => escutaClickPaad("RT-$value"),
 
 
         VariableControllerKey.THUMB_LX: (value) => escutaClickPaad("ANALOGICO ESQUERDO,X,$value"),
