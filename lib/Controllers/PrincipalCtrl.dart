@@ -83,7 +83,8 @@ class PrincipalCtrl with ChangeNotifier{
   bool imersao = false;
   bool imersaoVideos = false;
   bool gameIniciado = false;
-  bool videoAtivo = false;  
+  bool videoAtivo = false;
+  bool videoCarregando = false;  
   bool stateTela = true;
   bool telaIniciada = false;
   bool videosCarregados = false;
@@ -442,14 +443,15 @@ class PrincipalCtrl with ChangeNotifier{
       await mediaPlayer.stop();
     } catch (_) {}
     
-    videoAtivo = false;
+    // Mantém vídeo ativo e ativa loading IMEDIATAMENTE
+    videoAtivo = true;
+    videoCarregando = true;
     attTela();
 
     // Carrega o novo vídeo sem delay
     Timer(const Duration(milliseconds: 50), () async {
-      // Verifica novamente antes de ativar
+      // Verifica novamente antes de carregar
       if (videosYT.isNotEmpty && selectedIndexVideo >= 0 && selectedIndexVideo < videosYT.length) {
-        videoAtivo = true;
         
         // Extrai URL direta do YouTube
         try {
@@ -463,9 +465,14 @@ class PrincipalCtrl with ChangeNotifier{
           await mediaPlayer.open(Media(streamInfo.url.toString()));
           debugPrint("Novo vídeo carregado: ${streamInfo.url}");
           
+          // Aguarda um pouco para o vídeo começar a renderizar
+          await Future.delayed(const Duration(milliseconds: 500));
+          videoCarregando = false; // Desativa o loading após vídeo carregar
+          
           yt.close();
         } catch (e) {
           debugPrint("ERRO ao carregar novo vídeo: $e");
+          videoCarregando = false; // Desativa loading em caso de erro
         }
         
         attTela();
@@ -684,13 +691,13 @@ class PrincipalCtrl with ChangeNotifier{
           await mediaPlayer.stop();
         } catch (_) {}
         
-        videoAtivo = false;
+        // Ativa vídeo e loading IMEDIATAMENTE ao clicar
+        videoAtivo = true;
+        videoCarregando = true;
         attTela();
         
-        // Carrega o novo vídeo sem delay
         Timer(const Duration(milliseconds: 50), () async {
           if (videosYT.isNotEmpty && selectedIndexVideo >= 0 && selectedIndexVideo < videosYT.length) {
-            videoAtivo = true;
             contadorVideo = true;
             
             // Extrai URL direta do YouTube e abre no media_kit
@@ -705,9 +712,14 @@ class PrincipalCtrl with ChangeNotifier{
               await mediaPlayer.open(Media(streamInfo.url.toString()));
               debugPrint("Vídeo aberto: ${streamInfo.url}");
               
+              // Aguarda um pouco para o vídeo começar a renderizar
+              await Future.delayed(const Duration(milliseconds: 500));
+              videoCarregando = false; // Desativa loading
+              
               yt.close();
             } catch (e) {
               debugPrint("ERRO ao abrir vídeo do YouTube: $e");
+              videoCarregando = false; // Desativa loading em caso de erro
             }
             
             attTela();

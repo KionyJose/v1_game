@@ -255,6 +255,38 @@ class _PrincipalPageState extends State<PrincipalPage> with WindowListener {
                 controls: NoVideoControls,
               ),
             ),
+            // Loading bonito do vídeo
+            if(ctrl.videoCarregando)
+              ClipRRect(
+                borderRadius: BorderRadius.circular(50),
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        Colors.black.withOpacity(0.85),
+                        Colors.black.withOpacity(0.95),
+                      ],
+                    ),
+                  ),
+                  child: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        // Animação de loading circular com efeito de pulse
+                        _LoadingCircular(),
+                        const SizedBox(height: 30),
+                        // Texto animado
+                        _LoadingTexto(),
+                        const SizedBox(height: 15),
+                        // Pontos animados
+                        _LoadingPontos(),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
             if(ctrl.duracaoTotal != Duration.zero)
               Align(
                 alignment: Alignment.bottomCenter ,
@@ -821,6 +853,168 @@ btnMedia(PrincipalCtrl ctrl, int i, bool foco, String tipo){
   }
 
   
+}
+
+// Widgets de Loading Animado
+class _LoadingCircular extends StatefulWidget {
+  @override
+  State<_LoadingCircular> createState() => _LoadingCircularState();
+}
+
+class _LoadingCircularState extends State<_LoadingCircular> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        return Transform.scale(
+          scale: 0.8 + (_controller.value * 0.3),
+          child: Container(
+            width: 120,
+            height: 120,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: SweepGradient(
+                colors: [
+                  Colors.red,
+                  Colors.red.withOpacity(0.1),
+                ],
+                stops: [_controller.value, _controller.value],
+                transform: GradientRotation(_controller.value * 6.28),
+              ),
+            ),
+            child: Center(
+              child: Container(
+                width: 90,
+                height: 90,
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.black,
+                ),
+                child: const Icon(
+                  Icons.play_arrow_rounded,
+                  color: Colors.red,
+                  size: 50,
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _LoadingTexto extends StatefulWidget {
+  @override
+  State<_LoadingTexto> createState() => _LoadingTextoState();
+}
+
+class _LoadingTextoState extends State<_LoadingTexto> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    )..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        return Opacity(
+          opacity: 0.5 + (_controller.value * 0.5),
+          child: const Text(
+            'Carregando vídeo...',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 24,
+              fontWeight: FontWeight.w500,
+              letterSpacing: 1.2,
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _LoadingPontos extends StatefulWidget {
+  @override
+  State<_LoadingPontos> createState() => _LoadingPontosState();
+}
+
+class _LoadingPontosState extends State<_LoadingPontos> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        int activeDot = (_controller.value * 3).floor();
+        return Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: List.generate(3, (index) {
+            return Container(
+              margin: const EdgeInsets.symmetric(horizontal: 5),
+              width: 12,
+              height: 12,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: index <= activeDot 
+                    ? Colors.red 
+                    : Colors.white.withOpacity(0.3),
+              ),
+            );
+          }),
+        );
+      },
+    );
+  }
 }
 
 

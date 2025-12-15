@@ -34,8 +34,17 @@ class _BodyIconesJogosState extends State<BodyIconesJogos> {
   
   @override
   void dispose() {
+    // Cancela qualquer animação pendente antes de descartar
+    try {
+      if (_localScrollController.hasClients) {
+        _localScrollController.jumpTo(_localScrollController.offset);
+      }
+    } catch (_) {}
+    
     // Garante que o controller local seja descartado corretamente
-    _localScrollController.dispose();
+    try {
+      _localScrollController.dispose();
+    } catch (_) {}
     super.dispose();
   }
   
@@ -78,6 +87,7 @@ class _BodyIconesJogosState extends State<BodyIconesJogos> {
                             child: Focus(
                               focusNode: widget.ctrl.focusNodeIcones[i],
                               onFocusChange: (hasFocus) {
+                                if (!mounted) return;
                                 if (hasFocus) {
                                   // Move o scroll local ANTES de chamar o método do controller
                                   try {
