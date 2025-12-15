@@ -17,6 +17,7 @@ import 'package:v1_game/Controllers/MovimentoSistema.dart';
 import 'package:v1_game/Controllers/NavWebCtrl.dart';
 import 'package:v1_game/Global.dart';
 import 'package:v1_game/Modelos/MediaCanal.dart';
+import 'package:v1_game/Modelos/modeloVariaveisSistema.dart';
 import 'package:v1_game/Modelos/videoYT.dart';
 import 'package:v1_game/Widgets/ImagemFullScren.dart';
 import 'package:y_player/y_player.dart';
@@ -34,6 +35,7 @@ class PrincipalCtrl with ChangeNotifier{
   List<IconInicial> listIconsInicial = [];
   FocusNode keyboradEscutaNode = FocusNode();
 
+  late List<FocusNode> focusNodeCardInf = [FocusNode(),FocusNode()];
   late List<FocusNode> focusNodeIcones; 
   late List<FocusNode> focusNodeMusica; 
   late List<FocusNode> focusNodeCinema; 
@@ -42,7 +44,7 @@ class PrincipalCtrl with ChangeNotifier{
   List<FocusNode> focusNodeVideos = [];
   
   CarouselSliderController carouselVideosCtrl = CarouselSliderController();
-   CarouselSliderController carouselIconesCtrl =  CarouselSliderController();
+  CarouselSliderController carouselIconesCtrl =  CarouselSliderController();
 
   FocusScopeNode focusScope = FocusScopeNode();
   
@@ -51,6 +53,8 @@ class PrincipalCtrl with ChangeNotifier{
   FocusScopeNode focusScopeAbaGuias = FocusScopeNode();
   FocusScopeNode focusScopeIcones = FocusScopeNode();
   FocusScopeNode focusScopeVideos = FocusScopeNode();
+  FocusScopeNode focusScopeCardInf = FocusScopeNode();
+  
 
   ScrollController scrolListIcones = ScrollController();  
   ScrollController scrolListStream = ScrollController();
@@ -59,8 +63,9 @@ class PrincipalCtrl with ChangeNotifier{
   ScrollController scrolListAbaGuias = ScrollController();
 
   PageController slideIconesCtrl = PageController();
+  int selectedIndexCardInfo = 0;
   int selectedIndexIcone = 0;
-  int selectedIndexVideo = 0;  
+  int selectedIndexVideo = 0;
   int selectedIndexCinema = 0;
   int selectedIndexAbaGuias = 0;
   int selectedIndexMusica = 0;
@@ -70,6 +75,8 @@ class PrincipalCtrl with ChangeNotifier{
   Timer? timerImersaoVideos;
   Timer? timerImersao;
 
+  bool cardInf = false;
+  bool cardGamesGrid = true;
   bool contadorVideo = false;
   bool imersao = false;
   bool imersaoVideos = false;
@@ -83,7 +90,9 @@ class PrincipalCtrl with ChangeNotifier{
   String imgFundoStr = "";
   bool home = true;
   bool load = false;
+  bool trocandoView = false;
   List<VideoYT> videosYT= [];
+  late VariaveisSistema cfg;
   
 
   PageController bodyCtrl = PageController();
@@ -110,12 +119,19 @@ class PrincipalCtrl with ChangeNotifier{
   PrincipalCtrl(this.ctx,){
     iniciaTela();
   }
+
+  bool get exibirVideos {
+    return videosYT.isNotEmpty && telaIniciada && videosCarregados && selectedIndexAbaGuias == 0 && (cardGamesGrid && cardInf || !cardGamesGrid);
+  }
+
   urlImgFilme(int i ){
     String str = listCinema[i].imgLocal;
     return str;
   }
   //initState
   iniciaTela() async {
+    cfg = await VariaveisSistema.load();
+    cardGamesGrid = cfg.viewType == "grid";
     selectedIndexIcone = 0;
     selectedIndexVideo = 0;
     selectedIndexCinema = 0;
@@ -164,6 +180,24 @@ class PrincipalCtrl with ChangeNotifier{
     timerImersao?.cancel();
     timerImersaoVideos?.cancel();
     timerLoadVideos?.cancel();
+    try { ctrlAnimeBgFundo.dispose(); } catch (_) {}
+    try { scrolListIcones.dispose(); } catch (_) {}
+    try { scrolListStream.dispose(); } catch (_) {}
+    try { scrolListMusica.dispose(); } catch (_) {}
+    try { scrolListAbaGuias.dispose(); } catch (_) {}
+    try { focusScopeIcones.dispose(); } catch (_) {}
+    try { focusScopeAbaGuias.dispose(); } catch (_) {}
+    try { focusScopeCinema.dispose(); } catch (_) {}
+    try { focusScopeMusica.dispose(); } catch (_) {}
+    try { focusScopeVideos.dispose(); } catch (_) {}
+    try { focusScope.dispose(); } catch (_) {}
+    try { focusScopeCardInf.dispose(); } catch (_) {}
+    for (var f in focusNodeIcones) { try { f.dispose(); } catch (_) {} }
+    for (var f in focusNodeCinema) { try { f.dispose(); } catch (_) {} }
+    for (var f in focusNodeMusica) { try { f.dispose(); } catch (_) {} }
+    for (var f in focusNodeAbaGuias) { try { f.dispose(); } catch (_) {} }
+    for (var f in focusNodeTagVid) { try { f.dispose(); } catch (_) {} }
+    for (var f in focusNodeVideos) { try { f.dispose(); } catch (_) {} }
     debugPrint("SAIU PAGE CTRL");
     super.dispose();
   }
@@ -195,16 +229,20 @@ class PrincipalCtrl with ChangeNotifier{
   }
 
   mouseDentro(int index,double tamanho){
+    if (trocandoView) return;
     selectedIndexIcone = index;
       // selectedIndexNotifier.value = index; // Atualiza o índice quando um item ganha o foco
       
       // Future.delayed(Duration.zero,() {
-        // scrolListIcones.animateTo(
-        //   index * tamanho, // Multiplica pelo tamanho do item
-        //   duration: const Duration(milliseconds: 700),
-        //   curve: Curves.decelerate,
-        // );
-        // attTela();
+        try {
+          if (scrolListIcones.hasClients) {
+            scrolListIcones.animateTo(
+              index * tamanho, // Multiplica pelo tamanho do item
+              duration: const Duration(milliseconds: 700),
+              curve: Curves.decelerate,
+            );
+          }
+        } catch (_) {}
   }
   mouseFora(int index,double tamanho){
 
@@ -234,12 +272,15 @@ class PrincipalCtrl with ChangeNotifier{
     if (!hasFocus ) return;
     selectedIndexAbaGuias = index;    
     // Movimenta Scrol para onde esta selecionado Icone
-    scrolListAbaGuias.animateTo(
-      index * tamanho, // Multiplica pelo tamanho do item
-      duration: const Duration(milliseconds: 700),
-      curve: Curves.decelerate,
-    );
-    attTela();
+      try {
+        if (scrolListAbaGuias.hasClients) {
+          scrolListAbaGuias.animateTo(
+            index * tamanho, // Multiplica pelo tamanho do item
+            duration: const Duration(milliseconds: 700),
+            curve: Curves.decelerate,
+          );
+        }
+      } catch (_) {}
   }
 
   imersaoRestart() async {
@@ -254,6 +295,23 @@ class PrincipalCtrl with ChangeNotifier{
       attTela();
     });    
   }
+
+  carregaVideosDoGame(){
+    selectedIndexVideo = 0;
+    videosYT.clear();
+    videosCarregados = false;
+    timerLoadVideos?.cancel();
+    timerLoadVideos = Timer(const Duration(milliseconds: 350), () {
+      if(selectedIndexAbaGuias != 0)return;
+      showNewImage = true;        
+      if(listIconsInicial.isNotEmpty){
+        imgFundoStr = listIconsInicial[selectedIndexIcone].imgStr;
+        pesquisaVideosYT(listIconsInicial[selectedIndexIcone].nome,selectedIndexIcone);
+      }
+    });
+  }
+
+
   imersaoVideoRestart() async {
     if(!videoAtivo) return imersaoVideos = false;
     if(imersaoVideos){
@@ -269,7 +327,7 @@ class PrincipalCtrl with ChangeNotifier{
   }
 
   onFocusChangeIcones(bool hasFocus, int index,{ double tamanho = 0}) async{
-    if (!hasFocus || selectedIndexIcone == index) return;
+    if (!hasFocus || selectedIndexIcone == index || trocandoView) return;
     try{    
       debugPrint("FOCO ATT ICONE $index");      
       await imersaoRestart();
@@ -283,23 +341,17 @@ class PrincipalCtrl with ChangeNotifier{
       // selectedIndexNotifier.value = index; // Atualiza o índice quando um item ganha o foco
       
       // Future.delayed(Duration.zero,() {
-      scrolListIcones.animateTo(
-        index * tamanho, // Multiplica pelo tamanho do item
-        duration: const Duration(milliseconds: 700),
-        curve: Curves.decelerate,
-      );
-      // print(listIconsInicial[selectedIndexIcone].nome);
-      // print(videosYT[index].nomeGame);
-      // String nm = "";
-      // if(videosYT.isNotEmpty) nm = videosYT.first.nomeGame;      
-      // if(listIconsInicial[index].nome != nm && nm != "Fake" && nm.isNotEmpty) videosCarregados = false;
+      try {
+        if (scrolListIcones.hasClients) {
+          scrolListIcones.animateTo(
+            index * tamanho, // Multiplica pelo tamanho do item
+            duration: const Duration(milliseconds: 700),
+            curve: Curves.decelerate,
+          );
+        }
+      } catch (_) {}
+      
       attTela();
-      // });
-      // slideIconesCtrl.animateToPage(selectedIndexIcone, duration: const Duration(milliseconds: 700), curve: Curves.decelerate);
-      
-      // if(selectedIndexIcone < index)carouselIconesCtrl.animateToPage(index);
-      // if(selectedIndexIcone > index) carouselIconesCtrl.previousPage();
-      
       
       selectedIndexVideo = 0;
       videosYT.clear();
@@ -317,6 +369,18 @@ class PrincipalCtrl with ChangeNotifier{
       debugPrint(e.toString());
       debugPrint(e.toString());
       }
+  }
+  
+  onFocusChangeCardInf(bool hasFocus, int index) async{
+    if (!hasFocus || selectedIndexCardInfo == index) return;
+    try{    
+      debugPrint("FOCO ATT ICONE =======================================((((((((((((((((((())))))))))))))))))) $index");
+      selectedIndexCardInfo = index;
+      attTela();
+    }catch(e){
+      debugPrint(e.toString());
+      debugPrint(e.toString());
+    }
   }
 
   carregaNovoVideo(int index){
@@ -396,11 +460,15 @@ class PrincipalCtrl with ChangeNotifier{
   }
 
   moverIcoPosicaoInicial(IconInicial ico )async {
-    scrolListIcones.animateTo(0,duration: const Duration(milliseconds: 700),curve: Curves.fastEaseInToSlowEaseOut,);
     selectedIndexIcone = 0;
     listIconsInicial.remove(ico);
     listIconsInicial.insert(0, ico);
     await db.attDados(listIconsInicial);
+      try {
+        if (scrolListIcones.hasClients) {
+          scrolListIcones.animateTo(0,duration: const Duration(milliseconds: 700),curve: Curves.fastEaseInToSlowEaseOut,);
+        }
+      } catch (_) {}
   }
 
   btnMais() {
@@ -411,6 +479,10 @@ class PrincipalCtrl with ChangeNotifier{
 
       String retorno = await Pops().popMenuTelHome2(ctx);
       debugPrint(retorno);
+      if(retorno.isEmpty){ 
+        stateTela = true;
+        return;
+      }
     
       if (retorno == "Caminho do game" || retorno == "Caminho de Imagem" || retorno == "Add") {
         debugPrint("Entrei navPasta");
@@ -507,6 +579,8 @@ class PrincipalCtrl with ChangeNotifier{
         movAbaGuias(event);}
       else if(focusScope == focusScopeIcones && selectedIndexAbaGuias == 0){
         movIcones(event);}
+      else if(focusScope == focusScopeCardInf && selectedIndexAbaGuias == 0){
+        movCardInf(event);}
       else if(focusScope == focusScopeVideos && selectedIndexAbaGuias == 0){
         movVideos(event);}
       else if(focusScope == focusScopeCinema && selectedIndexAbaGuias == 1){
@@ -534,8 +608,8 @@ class PrincipalCtrl with ChangeNotifier{
       // imersaoVideoRestart();
       if(event=="CIMA" && !videoAtivo){
         imersaoRestart();
-        focusScopeIcones.requestFocus();
-        focusScope = focusScopeIcones;        
+        cardGamesGrid ? focusScopeCardInf.requestFocus() : focusScopeIcones.requestFocus();
+        focusScope = cardGamesGrid ? focusScopeCardInf : focusScopeIcones;        
       }
       if (event == "RB"){
         // ctrlVideo.position = Duration.zero;
@@ -607,15 +681,16 @@ class PrincipalCtrl with ChangeNotifier{
   }
 
   movAbaGuias(String event) async {
+    if(gameIniciado) return;
     
     if(event=="LB"){
       // focusScope = focusScopeIcones;
       if(focusScope == focusScopeCinema){
 
         // MovimentoSistema.direcaoListView(focusScope, "DIREITA");e
-        focusScope = focusScopeIcones;
-        focusNodeIcones[selectedIndexIcone].requestFocus();
-        if(selectedIndexIcone != 0)selectedIndexIcone --;
+        focusScope = cardGamesGrid && cardInf ? focusScopeCardInf : focusScopeIcones;
+        cardGamesGrid && cardInf ? focusNodeCardInf[selectedIndexCardInfo].requestFocus() : focusNodeIcones[selectedIndexIcone].requestFocus();
+        if(selectedIndexIcone != 0) selectedIndexIcone --;
         
       }
       else if(focusScope == focusScopeMusica){
@@ -640,6 +715,28 @@ class PrincipalCtrl with ChangeNotifier{
       focusScopeAbaGuias.focusInDirection(TraversalDirection.right);
       bodyCtrl.nextPage(duration: const Duration(milliseconds: 500), curve: Curves.decelerate);
     }
+  }
+
+  movCardGrid(String event) async {    
+    MovimentoSistema.direcaoListView(focusScope, event);
+    if(gameIniciado) {
+      if(event == "3") Navigator.pop(ctx);
+      return;
+    }    
+    if (event == "START") {
+      btnMais();
+    }else if (event == "2"){
+      if(!cardInf){
+        cardInf = true;
+        focusScopeCardInf.requestFocus();
+        focusScope = focusScopeCardInf;
+        focusNodeCardInf[0].requestFocus();
+        carregaVideosDoGame();
+      }
+    }else if (event == 'SELECT'){
+      trocaViewIcones();
+    }
+  
   }
   
   movMusica(String event) async {    
@@ -672,21 +769,51 @@ class PrincipalCtrl with ChangeNotifier{
     }
   }
 
+  movCardInf(String event) async {
+    try{
+      String result = MovimentoSistema.direcaoListView(focusScope, event);
+      if(gameIniciado) {
+        if(event == "3") Navigator.pop(ctx);
+        return;
+      }
+      if(result == MovimentoSistema.horizontal || result == MovimentoSistema.vertical  ){
+        // desativado temporariamente
+        if(event=="BAIXO"){
+          debugPrint("Lista VIDEOS :${videosYT.length}");
+          if(videosYT.isNotEmpty){
+            focusNodeVideos[selectedIndexVideo].requestFocus();
+            focusScopeVideos.requestFocus();
+            focusScope = focusScopeVideos;
+          }
+        }
+      }else if(event == "3" || event == "2" && selectedIndexCardInfo == 1){
+        cardInf = false;
+        focusScopeIcones.requestFocus();
+        focusScope = focusScopeIcones;
+        focusNodeIcones[selectedIndexIcone].requestFocus();
+      }else if (event == "2" && selectedIndexCardInfo == 0){
+        btnEntrar();
+      }else if (event == "START"){
+        btnMais();
+      }
+    }catch(e){
+      debugPrint("ERRO CLICK PAD CARD INF $e");
+    }
+  
+  }
+
   movIcones(String event){
      try{
       if(gameIniciado) {
         if(event == "3") Navigator.pop(ctx);
         return;
       }
+      if(cardGamesGrid) return movCardGrid(event);
       String result = MovimentoSistema.direcaoListView(focusScope, event);
       debugPrint(result);
 
       if(result == MovimentoSistema.horizontal || result == MovimentoSistema.vertical  ){
-        // int totalIndex = event == "ESQUERDA" ? selectedIndexIcone-1 : selectedIndexIcone+1;
-        // if(totalIndex < focusNodeIcones.length && totalIndex >= 0) selectedIndexIcone = totalIndex;
-        // carouselIconesCtrl.animateToPage(selectedIndexIcone, duration: const Duration(milliseconds: 700), curve: Curves.decelerate);
-          
-        
+        // desativado temporariamente
         if(event=="BAIXO"){
           debugPrint("Lista VIDEOS :${videosYT.length}");
           if(videosYT.isNotEmpty){
@@ -697,7 +824,7 @@ class PrincipalCtrl with ChangeNotifier{
         }
       }
       
-      
+      if (event == 'SELECT')trocaViewIcones();
       if (event == "START")btnMais();      
       if (event == "2")btnEntrar();
       // if(event == "4")mostrarBottomSheet();
@@ -706,6 +833,54 @@ class PrincipalCtrl with ChangeNotifier{
       debugPrint(e.toString());
       // Pops().msgSimples(ctx,"ERRO = 1$e");
     }
+  }
+
+  trocaViewIcones() async {
+    // Salva o índice atual antes de trocar
+    final indexAtual = selectedIndexIcone;
+    
+    // Bloqueia operações
+    trocandoView = true;
+    
+    // Troca o modo de visualização
+    cardGamesGrid = !cardGamesGrid;
+    cfg.viewType = cardGamesGrid ? "grid" : "list";
+    cfg.save();
+    
+    // Atualiza a tela para reconstruir com novo layout
+    attTela();
+    
+    // Aguarda a reconstrução completa do widget
+    await Future.delayed(const Duration(milliseconds: 150));
+    
+    // Após reconstrução, recalcula e reposiciona
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      // Aguarda mais um frame para garantir que o layout está pronto
+      await Future.delayed(const Duration(milliseconds: 50));
+      
+      // Reaplica o foco no índice correto
+      if (indexAtual >= 0 && indexAtual < focusNodeIcones.length) {
+        selectedIndexIcone = indexAtual;
+        focusNodeIcones[indexAtual].requestFocus();
+        
+        // Se o controller tem clientes (widget montado), posiciona sem animação
+        if (scrolListIcones.hasClients) {
+          try {
+            // Calcula posição aproximada baseada no índice (ajuste conforme tamanho do item)
+            const tamanhoItem = 380.0; // Ajuste conforme seu tamanho de item
+            final posicao = indexAtual * tamanhoItem;
+            scrolListIcones.jumpTo(posicao.clamp(0.0, scrolListIcones.position.maxScrollExtent));
+          } catch (e) {
+            debugPrint("Erro ao posicionar scroll: $e");
+          }
+        }
+      }
+      
+      // Desbloqueia operações
+      trocandoView = false;
+      // Força atualização final
+      attTela();
+    });
   }
   
 

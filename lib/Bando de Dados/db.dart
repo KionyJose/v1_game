@@ -121,6 +121,11 @@ class DB{
         if(line.contains("item-") && start){
           IconInicial iconIni =  IconInicial(itemCard);
           listIconsInicial.add(iconIni);
+
+          // listIconsInicial.add(iconIni);listIconsInicial.add(iconIni);listIconsInicial.add(iconIni);
+          // listIconsInicial.add(iconIni);listIconsInicial.add(iconIni);listIconsInicial.add(iconIni);
+          // listIconsInicial.add(iconIni);listIconsInicial.add(iconIni);listIconsInicial.add(iconIni);
+          // listIconsInicial.add(iconIni);listIconsInicial.add(iconIni);listIconsInicial.add(iconIni);
           itemCard.clear();
         }
         start =true;
@@ -131,6 +136,11 @@ class DB{
       if(itemCard.isNotEmpty){        
         IconInicial iconIni =  IconInicial(itemCard);
         listIconsInicial.add(iconIni);
+
+        // listIconsInicial.add(iconIni);listIconsInicial.add(iconIni);listIconsInicial.add(iconIni);
+        // listIconsInicial.add(iconIni);listIconsInicial.add(iconIni);listIconsInicial.add(iconIni);
+        // listIconsInicial.add(iconIni);listIconsInicial.add(iconIni);listIconsInicial.add(iconIni);
+        // listIconsInicial.add(iconIni);listIconsInicial.add(iconIni);listIconsInicial.add(iconIni);
       }
     debugPrint(listIconsInicial.length.toString());
     return listIconsInicial;

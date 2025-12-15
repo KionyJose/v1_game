@@ -5,7 +5,6 @@ import 'package:carousel_slider/carousel_slider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:scroll_snap_list/scroll_snap_list.dart';
-import 'package:snappy_list_view/snappy_list_view.dart';
 import 'package:v1_game/Class/Paad.dart';
 import 'package:v1_game/Controllers/PrincipalCtrl.dart';
 import 'package:v1_game/Global.dart';
@@ -17,6 +16,13 @@ import 'package:v1_game/Widgets/cardGame.dart';
 import 'package:v1_game/Widgets/videoSliders.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:y_player/y_player.dart';
+
+class SafeCurve extends Curve {
+  final Curve _inner;
+  const SafeCurve(this._inner);
+  @override
+  double transform(double t) => _inner.transform(t.clamp(0.0, 1.0));
+}
 
 class PrincipalPage extends StatefulWidget {
   const PrincipalPage({super.key, required this.title});
@@ -123,7 +129,8 @@ class _PrincipalPageState extends State<PrincipalPage> with WindowListener {
       escurecerTela(ctrl),// Escurecer tela      
       if (ctrl.videoAtivo)
       videoAtivo(ctrl),// Player de vídeo
-      if (ctrl.videosYT.isNotEmpty && ctrl.telaIniciada && ctrl.videosCarregados && ctrl.selectedIndexAbaGuias == 0 )
+      // if (ctrl.videosYT.isNotEmpty && ctrl.telaIniciada && ctrl.videosCarregados && ctrl.selectedIndexAbaGuias == 0 && !ctrl.cardGamesGrid)
+      if(ctrl.exibirVideos)
       VideoSliders(child: listVideos(ctrl)),// Lista de vídeos
     ],
     );
@@ -389,54 +396,204 @@ btnMedia(PrincipalCtrl ctrl, int i, bool foco, String tipo){
       scrollDirection: Axis.horizontal,
       controller: ctrl.bodyCtrl,
       children: [
-        bodyIconesJogos(ctrl, tamanhoBloco),
+        // bodyIconesJogos(ctrl, tamanhoBloco),
+        if(ctrl.cardGamesGrid) gridAnimado(ctrl, tamanhoBloco),
+        if(!ctrl.cardGamesGrid) bodyIconesJogos(ctrl, tamanhoBloco),
         if(ctrl.selectedIndexAbaGuias != 0) bodyIconesCinema(ctrl, tamanhoBloco), 
         if(ctrl.selectedIndexAbaGuias != 0) bodyIconesMusica(ctrl, tamanhoBloco),
       ],      
     ); 
   }
 
-  bodyIconJg(PrincipalCtrl ctrl, double tamanhoBloco){
+  gridAnimado(PrincipalCtrl ctrl, double tamanhoBloco){
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 300),
+      switchInCurve: const SafeCurve(Curves.easeOutBack),
+      switchOutCurve: const SafeCurve(Curves.easeIn),
+      transitionBuilder: (child, animation) {
+        // Detect child by key to decide zoom direction: cardInf should zoom in.
+        final isCardInf = child.key == const ValueKey('cardInf');
+        final begin = isCardInf ? 0.75 : 1.0; // cardInf: small -> 1.0 (zoom in); grid: normal -> shrink
+        final end = isCardInf ? 1.0 : 0.9;
+        final scaleAnim = Tween<double>(begin: begin, end: end)
+            .animate(CurvedAnimation(parent: animation, curve: const SafeCurve(Curves.easeOut)));
+        return FadeTransition(
+          opacity: animation.drive(Tween(begin: 0.0, end: 1.0).chain(CurveTween(curve: const SafeCurve(Curves.linear)))),
+          child: ScaleTransition(
+            scale: scaleAnim,
+            child: child,
+          ),
+        );
+      },
+      child: !ctrl.cardInf ? KeyedSubtree(key: const ValueKey('grid'), child: bodyIconesJogosGrid(ctrl, tamanhoBloco))
+                          : KeyedSubtree(key: const ValueKey('cardInf'), child: cardInf(ctrl, tamanhoBloco)),
+    );
+  }
+  cardInf(PrincipalCtrl ctrl, double tamanhoBloco){
+    // Quando exibido, garante que o foco seja atribuído ao foco do card
+    // WidgetsBinding.instance.addPostFrameCallback((_) {
+    //   try { ctrl.focusCardInf.requestFocus(); } catch (_) {}
+    // });
     return FocusScope(
-      node: ctrl.focusScopeIcones,
-      child: ScrollSnapList(
-        // margin: EdgeInsets.only(right: 600),
-        listController: ctrl.scrolListIcones, 
-        // allowAnotherDirection: true,
-        // dynamicItemSize
-        // updateOnScroll: true,
-        listViewPadding: const EdgeInsets.only(left: 100 ),
-        itemCount: ctrl.focusNodeIcones.length,
-        onItemFocus: (i) { }, // Atualiza o índice do item em foco,
-        itemSize: tamanhoBloco, // Tamanho horizontal
-        itemBuilder: (context, i) {
-          bool isFoco = ctrl.selectedIndexIcone == i;
-          return Container(
-            // margin: const EdgeInsets.only(top: 25),
-            padding: const EdgeInsets.symmetric(horizontal: 13),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.start,
-              children: [
-                AnimatedContainer(
-                  padding: const EdgeInsets.symmetric(vertical: 20) ,
-                  width:  isFoco ? (tamanhoBloco -26) * 3 : (tamanhoBloco -26),  // Largura do item base
-                  duration: const Duration(milliseconds: 150),
-                  child: FittedBox(
-                    child: Focus(
-                      focusNode: ctrl.focusNodeIcones[i],
-                      onFocusChange: (hasFocus) => ctrl.onFocusChangeIcones(hasFocus, i, tamanho: tamanhoBloco),
-                      child: ctrl.listIconsInicial.isEmpty ? cardAnimadoAdd(ctrl, i) : cardAnimado(ctrl, i, tamanho: tamanhoBloco),
-                    ),
-                  ),
+      node: ctrl.focusScopeCardInf,
+      child: SizedBox(
+        // color: Colors.black54,
+        child: Center(
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Focus(
+                focusNode: ctrl.focusNodeCardInf[0],
+                onFocusChange: (hasFocus) => ctrl.onFocusChangeCardInf(hasFocus, 0),
+                child: 
+                btnCardInf(
+                  foco: ctrl.selectedIndexCardInfo == 0, 
+                  icone: Icons.play_arrow, 
+                  texto: 'JOGAR'
+                )
+              ),
+              const SizedBox(width: 20),
+              Focus(
+                focusNode: ctrl.focusNodeCardInf[1],
+                onFocusChange: (hasFocus) => ctrl.onFocusChangeCardInf(hasFocus, 1),
+                child: GestureDetector(
+                  child: btnCardInf(
+                    foco: ctrl.selectedIndexCardInfo == 1, 
+                    icone: Icons.arrow_back, 
+                    texto: 'VOLTAR'
+                  )
                 ),
-              ],
-            ),
-          );
-        },
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
+
+  btnCardInf({required bool foco, required IconData icone, required String texto}){
+    return Container(
+      decoration: BoxDecoration(
+        boxShadow: !foco ? null : [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.2),
+            blurRadius: 10,
+            offset: const Offset(0, 50),
+          ),
+        ],
+        border: !foco ? null :  Border.all(color: Colors.white, width: 2),
+        borderRadius: BorderRadius.circular(20),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Colors.black12, Colors.blueGrey],
+        ),
+      ),
+      height: 100,
+      width: 160,
+      alignment: Alignment.center,
+      child:  Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icone, color: Colors.white, size: 40),
+          const SizedBox(width: 8),
+          Text(texto, style: const TextStyle(color: Colors.white)),
+        ],
+      ),
+    );
+  }
+
+    bodyIconesJogosGrid(PrincipalCtrl ctrl, double tamanhoBloco){
+    // Exibe um Grid responsivo com imagens que respeitam a proporção 14:9
+    const crossCount = 6; // número de colunas (ajustável conforme necessidade)
+    return FocusScope(
+      node: ctrl.focusScopeIcones,
+      child: Container(
+        margin: const EdgeInsets.only(top: 60,left: 40,bottom: 20,right: 40),
+        width: MediaQuery.of(context).size.width + tamanhoBloco * 3,
+        alignment: Alignment.center,
+        child: GridView.builder(
+          padding: const EdgeInsets.all(9),
+          // controller: ctrl.scrolListIcones,
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: crossCount,
+            crossAxisSpacing: 9,
+            mainAxisSpacing: 9,
+            childAspectRatio: 14 / 9,
+          ),
+          itemCount: ctrl.listIconsInicial.length,
+          itemBuilder: (context, index) {
+            final foco = index == ctrl.selectedIndexIcone;
+            final item = ctrl.listIconsInicial[index];
+            return Focus(
+              focusNode: ctrl.focusNodeIcones[index],
+              onFocusChange: (hasFocus) => ctrl.onFocusChangeIcones(hasFocus, index, tamanho: tamanhoBloco),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 150),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                        child: AspectRatio(
+                        aspectRatio: 14 / 9,
+                        child: item.imgStr.isNotEmpty && File(item.imgStr).existsSync()
+                            ? Image.file(File(item.imgStr), fit: BoxFit.cover)
+                            : Container(color: Colors.black12),
+                      ),
+                    ),
+                    // Sombra / destaque inferior com título centralizado
+                    Align(
+                      alignment: Alignment.bottomCenter,
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
+                        decoration: BoxDecoration(
+                          borderRadius: const BorderRadius.only(bottomLeft: Radius.circular(12), bottomRight: Radius.circular(12)),
+                          gradient: LinearGradient(
+                            begin: Alignment.bottomCenter,
+                            end: Alignment.topCenter,
+                            colors: [Colors.black87.withOpacity(0.9), Colors.black45.withOpacity(0.0)],
+                          ),
+                        ),
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            item.nome,
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: foco ? 16 : 12,
+                              fontWeight: foco ? FontWeight.w600 : FontWeight.w400,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    // Borda de foco
+                    if (foco)
+                      Positioned.fill(
+                        child: Container(
+                          decoration: BoxDecoration(
+                            border: Border.all(color: Colors.white, width: 3),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  //crie um expositor de items em forma de
 
   bodyIconesJogos(PrincipalCtrl ctrl, double tamanhoBloco){
     double telaWidth = MediaQuery.of(context).size.width;
@@ -495,41 +652,6 @@ btnMedia(PrincipalCtrl ctrl, int i, bool foco, String tipo){
 
 
 
-  listIconesOld(PrincipalCtrl ctrl){
-    return Align(
-      alignment: Alignment.topLeft,
-      child: FocusScope(
-        node: ctrl.focusScopeIcones,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 100),
-          width: double.infinity,
-          child: SnappyListView(
-            // snapAlignment: SnapAlignment. custom((i) =>  0.03 ),
-            // snapOnItemAlignment: SnapAlignment. custom((i) =>  0.03 ),
-            controller: ctrl.slideIconesCtrl,
-            scrollDirection: Axis.horizontal,
-            itemCount: ctrl.focusNodeIcones.length,
-            
-            itemBuilder: (context, i) {
-              return Container(
-                padding: const EdgeInsets.symmetric(vertical: 32),
-                child: Align(
-                  alignment: Alignment.topLeft,
-                  child: Focus(
-                      focusNode: ctrl.focusNodeIcones[i],
-                      onFocusChange: (hasFocus) => ctrl.onFocusChangeIcones(hasFocus, i),              
-                      child: ctrl.listIconsInicial.isEmpty ? cardAnimadoAdd(ctrl, i) :  cardAnimado(ctrl, i),
-                    ),
-                ),
-              );
-            }
-          ),
-            
-        ),
-      ),
-    );
-    
-  }
 
   botaoTag(String str){
     return Container(

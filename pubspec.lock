@@ -448,14 +448,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.11.1"
-  matrix4_transform:
-    dependency: transitive
-    description:
-      name: matrix4_transform
-      sha256: "6ddeaa2c0e1f5c3f3a197f552377570b3e54fa0b8bf48507728a216fc0fd78a6"
-      url: "https://pub.dev"
-    source: hosted
-    version: "2.0.1"
   media_kit:
     dependency: transitive
     description:
@@ -816,14 +808,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.9.1"
-  scrollable_positioned_list:
-    dependency: transitive
-    description:
-      name: scrollable_positioned_list
-      sha256: "1b54d5f1329a1e263269abc9e2543d90806131aa14fe7c6062a8054d57249287"
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.3.8"
   simple_sparse_list:
     dependency: transitive
     description:
@@ -837,14 +821,6 @@ packages:
     description: flutter
     source: sdk
     version: "0.0.0"
-  snappy_list_view:
-    dependency: "direct main"
-    description:
-      name: snappy_list_view
-      sha256: b91d18109b20bde8e25c048dd8d702b3f8bae4107b87caabdc76ded19dbee9ce
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.1.0"
   source_span:
     dependency: transitive
     description:

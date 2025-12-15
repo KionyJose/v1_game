@@ -51,7 +51,8 @@ class JanelaCtrl with ChangeNotifier, WindowListener{
   static final hWnd = user32.lookupFunction<FindWindowC, FindWindowDart>('FindWindowW')(nullptr, "v1_game".toNativeUtf16());
 
   bool ativa = false;
-  bool telaPresa = true;
+  // deixar ativo depois
+  bool telaPresa = false;
   
   
   
