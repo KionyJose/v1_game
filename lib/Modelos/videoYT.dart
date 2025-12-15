@@ -12,6 +12,9 @@ class VideoYT{
   late String videoID;
   late String nomeGame;
 
+  // Getter para compatibilidade com media_kit
+  String get url => urlVideo;
+
   VideoYT();
 
    // Factory para criar um objeto VideoYT a partir de um map

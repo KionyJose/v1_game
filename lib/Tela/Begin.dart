@@ -10,7 +10,7 @@ import 'package:xinput_gamepad/xinput_gamepad.dart';
 import '../Class/Paad.dart';
 import '../Controllers/Notificacao.dart';
 import '../Widgets/NotificacaoPop.dart';
-import 'PrincipalPage.dart';
+import 'Tela Principal/PrincipalPage.dart';
 
 class Begin extends StatelessWidget {
   const Begin({super.key});

@@ -10,7 +10,7 @@ import 'package:v1_game/Controllers/SonsSistema.dart';
 import 'package:v1_game/Global.dart';
 import 'package:v1_game/Tela/MyApp.dart';
 import 'package:window_manager/window_manager.dart';
-import 'package:y_player/y_player.dart';
+import 'package:media_kit/media_kit.dart';
 import 'Bando de Dados/db.dart';
 import 'Metodos/leituraArquivo.dart';
 
@@ -21,7 +21,7 @@ WindowOptions windowOptions = const WindowOptions(
   );
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  YPlayerInitializer.ensureInitialized();
+  MediaKit.ensureInitialized();
   // Must add this line.
   MouseCtrl.primeiroMovimento();
   await windowManager.ensureInitialized(); 

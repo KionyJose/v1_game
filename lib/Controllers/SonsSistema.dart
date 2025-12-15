@@ -4,72 +4,28 @@ import 'package:flutter/material.dart';
 import 'package:v1_game/Global.dart';
 
 class SonsSistema {
-
-  static direction() async{
-    try{
-      final AudioPlayer audioPlayer = AudioPlayer();
-      audioPlayer.onPlayerComplete.listen((event) => audioPlayer.dispose());
+  static void _playSound(String assetPath) {
+    try {
+      final audioPlayer = AudioPlayer();
+      audioPlayer.setPlayerMode(PlayerMode.lowLatency);
+      audioPlayer.setReleaseMode(ReleaseMode.stop);
       audioPlayer.setVolume(configSistema.volume);
-      await audioPlayer.play(AssetSource('Sons/SomMovimento.mp3'));
-    }catch(erro){
+      
+      // Configura dispose automático após conclusão
+      audioPlayer.onPlayerComplete.listen((_) {
+        audioPlayer.dispose();
+      });
+      
+      audioPlayer.play(AssetSource(assetPath));
+    } catch (erro) {
       debugPrint(erro.toString());
     }
-
   }
 
-  static directionRL() async{
-    try{
-      final AudioPlayer audioPlayer = AudioPlayer();
-      audioPlayer.setVolume(configSistema.volume);
-      audioPlayer.onPlayerComplete.listen((event) => audioPlayer.dispose());
-      await audioPlayer.play(AssetSource('Sons/SomMovimentoBaixo.mp3'));
-    }catch(erro){
-      debugPrint(erro.toString());
-    }
-
-  }
-  static cheat() async{
-    try{
-      final AudioPlayer audioPlayer = AudioPlayer();
-      audioPlayer.setVolume(configSistema.volume);
-      audioPlayer.onPlayerComplete.listen((event) => audioPlayer.dispose());
-      await audioPlayer.play(AssetSource('Sons/SomCheat.mp3'));
-    }catch(erro){
-      debugPrint(erro.toString());
-    }
-
-  }
-  static pim() async{
-    try{
-      final AudioPlayer audioPlayer = AudioPlayer();
-      audioPlayer.setVolume(configSistema.volume);
-      audioPlayer.onPlayerComplete.listen((event) => audioPlayer.dispose());
-      await audioPlayer.play(AssetSource('Sons/SomCheat2.mp3'));
-    }catch(erro){
-      debugPrint(erro.toString());
-    }
-
-  }
-  static click() async{
-    try{
-      final AudioPlayer audioPlayer = AudioPlayer();
-      audioPlayer.setVolume(configSistema.volume);
-      audioPlayer.onPlayerComplete.listen((event) => audioPlayer.dispose());
-      await audioPlayer.play(AssetSource('Sons/SomClick.mp3'));
-    }catch(erro){
-      debugPrint(erro.toString());
-    }
-
-  }
-  static intro() async{
-    try{
-      final AudioPlayer audioPlayer = AudioPlayer();
-      audioPlayer.setVolume(configSistema.volume);
-      audioPlayer.onPlayerComplete.listen((event) => audioPlayer.dispose());
-      await audioPlayer.play(AssetSource('Sons/Intro.mp3'));      
-    }catch(erro){
-      debugPrint(erro.toString());
-    }
-
-  }
+  static void direction() => _playSound('Sons/SomMovimento.mp3');
+  static void directionRL() => _playSound('Sons/SomMovimentoBaixo.mp3');
+  static void cheat() => _playSound('Sons/SomCheat.mp3');
+  static void pim() => _playSound('Sons/SomCheat2.mp3');
+  static void click() => _playSound('Sons/SomClick.mp3');
+  static void intro() => _playSound('Sons/Intro.mp3');
 }

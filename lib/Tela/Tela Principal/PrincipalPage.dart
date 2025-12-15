@@ -11,11 +11,11 @@ import 'package:v1_game/Global.dart';
 import 'package:v1_game/Widgets/BarraProgressoYT.dart';
 import 'package:v1_game/Widgets/LoadWid.dart';
 import 'package:v1_game/Widgets/TituloGames.dart';
-import 'package:v1_game/Widgets/YouTubeTela.dart';
 import 'package:v1_game/Widgets/cardGame.dart';
 import 'package:v1_game/Widgets/videoSliders.dart';
 import 'package:window_manager/window_manager.dart';
-import 'package:y_player/y_player.dart';
+import 'package:media_kit_video/media_kit_video.dart';
+import 'Widgets/BodyIconesJogos.dart';
 
 class SafeCurve extends Curve {
   final Curve _inner;
@@ -37,29 +37,7 @@ class _PrincipalPageState extends State<PrincipalPage> with WindowListener {
 
   late PrincipalCtrl ctrlOff;
   bool naTela = false;
-  // PaadGet jogadorRepository = GetIt.instance.get<PaadGet>();
-  EdgeInsetsGeometry cardMargin = const EdgeInsets.symmetric(horizontal: 3);
   
-  // void atualizarTela() => setState((){});
-
-  @override
-  void initState() {
-    super.initState();
-    // windowManager.addListener(this);
-    // simulateGamepadInput();
-  }
-  
-
-
-  @override
-  void dispose() {
-    debugPrint("SAIU PAGE PAGE");
-    // ctrl.dispose();
-    // windowManager.removeListener(this);
-    super.dispose();
-  } 
-
-
 
   @override
   void onWindowFocus() => naTela= true;
@@ -124,7 +102,7 @@ class _PrincipalPageState extends State<PrincipalPage> with WindowListener {
       backGroundAnimado(ctrl), // Fundo animado
       cabeca(ctrl),
       desfoqueTela(filmes),
-      if (ctrl.telaIniciada)bodys(ctrl),// Ícones horizontais
+      if (ctrl.telaIniciada) bodyPageView(ctrl),// Ícones horizontais
       abaGuias(ctrl),
       escurecerTela(ctrl),// Escurecer tela      
       if (ctrl.videoAtivo)
@@ -271,25 +249,10 @@ class _PrincipalPageState extends State<PrincipalPage> with WindowListener {
           children: [
             ClipRRect(
               borderRadius: BorderRadius.circular(50),
-              child: YoutubeTela(
-                key: ValueKey('${ctrl.selectedIndexVideo}_${ctrl.videosYT[ctrl.selectedIndexVideo].urlVideo}'), // Key única para forçar reconstrução
-                progress:(ini, fim) {
-                  ctrl.duracaoAtual = ini;
-                  ctrl.duracaoTotal = fim;                  
-                  if(ctrl.contadorVideo && ctrl.duracaoTotal != Duration.zero){
-                    ctrl.attTela();
-                    ctrl.contadorVideo = false;
-                  }
-                },
-                status: (status) {
-                  if (status == YPlayerStatus.stopped) {
-                    ctrl.carregaNovoVideo(ctrl.selectedIndexVideo);
-                  }
-                },
-                url: ctrl.videosYT[ctrl.selectedIndexVideo].urlVideo,
-                func: (controlador) {
-                  ctrl.ctrlVideo = controlador;
-                },
+              child: Video(
+                key: ValueKey('${ctrl.selectedIndexVideo}_${ctrl.videosYT[ctrl.selectedIndexVideo].url}'),
+                controller: ctrl.mediaController,
+                controls: NoVideoControls,
               ),
             ),
             if(ctrl.duracaoTotal != Duration.zero)
@@ -386,19 +349,20 @@ btnMedia(PrincipalCtrl ctrl, int i, bool foco, String tipo){
       ),
     );
   }
-  bodys(PrincipalCtrl ctrl) {
-    double tamanhoBloco = 120;
-    return bodyPageView(ctrl,tamanhoBloco);
-  }
 
-  bodyPageView(PrincipalCtrl ctrl,double tamanhoBloco){
+  bodyPageView(PrincipalCtrl ctrl){    
+    double tamanhoBloco = 120;
     return PageView(
       scrollDirection: Axis.horizontal,
       controller: ctrl.bodyCtrl,
       children: [
-        // bodyIconesJogos(ctrl, tamanhoBloco),
         if(ctrl.cardGamesGrid) gridAnimado(ctrl, tamanhoBloco),
-        if(!ctrl.cardGamesGrid) bodyIconesJogos(ctrl, tamanhoBloco),
+        if(!ctrl.cardGamesGrid) BodyIconesJogos(
+          ctrl: ctrl,
+          tamanhoBloco: tamanhoBloco,
+          cardAnimado: (ctrl, index, tamanho) => cardAnimado(ctrl, index, tamanho: tamanho),
+          cardAnimadoAdd: (ctrl, index) => cardAnimadoAdd(ctrl, index),
+        ),
         if(ctrl.selectedIndexAbaGuias != 0) bodyIconesCinema(ctrl, tamanhoBloco), 
         if(ctrl.selectedIndexAbaGuias != 0) bodyIconesMusica(ctrl, tamanhoBloco),
       ],      
@@ -527,7 +491,7 @@ btnMedia(PrincipalCtrl ctrl, int i, bool foco, String tipo){
             final item = ctrl.listIconsInicial[index];
             return Focus(
               focusNode: ctrl.focusNodeIcones[index],
-              onFocusChange: (hasFocus) => ctrl.onFocusChangeIcones(hasFocus, index, tamanho: tamanhoBloco),
+              onFocusChange: (hasFocus) => ctrl.onFocusChangeIcones(hasFocus, index),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 150),
                 decoration: BoxDecoration(
@@ -593,62 +557,7 @@ btnMedia(PrincipalCtrl ctrl, int i, bool foco, String tipo){
     );
   }
 
-  //crie um expositor de items em forma de
-
-  bodyIconesJogos(PrincipalCtrl ctrl, double tamanhoBloco){
-    double telaWidth = MediaQuery.of(context).size.width;
-    return Stack(
-      children: [
-        Positioned(
-          left: -telaWidth,
-          top: 50,
-          child: SizedBox(
-            height: telaWidth/4,
-            width: (telaWidth * 2) + tamanhoBloco * 1.5,            
-            child:  FocusScope(
-              node: ctrl.focusScopeIcones,
-              child: ScrollSnapList(
-                initialIndex: 0,            
-                padding: EdgeInsets.zero,
-                listController: ctrl.scrolListIcones, 
-                itemCount: ctrl.focusNodeIcones.length,
-                onItemFocus: (i) { }, // Atualiza o índice do item em foco,
-                itemSize: tamanhoBloco, // Tamanho horizontal
-                itemBuilder: (context, i) {
-                  bool isFoco = ctrl.selectedIndexIcone == i;
-                  return Container(
-                    // margin: const EdgeInsets.only(top: 25),
-                    padding: const EdgeInsets.symmetric(horizontal: 13),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      children: [
-                        AnimatedContainer(
-                          padding: const EdgeInsets.symmetric(vertical: 20) ,
-                          width:  isFoco ? (tamanhoBloco -26) * 3 : (tamanhoBloco -26),  // Largura do item base
-                          duration: const Duration(milliseconds: 150),
-                          child: FittedBox(
-                            child: Focus(
-                              focusNode: ctrl.focusNodeIcones[i],
-                              onFocusChange: (hasFocus) => ctrl.onFocusChangeIcones(hasFocus, i, tamanho: tamanhoBloco),
-                              child: ctrl.listIconsInicial.isEmpty ? cardAnimadoAdd(ctrl, i) : cardAnimado(ctrl, i, tamanho: tamanhoBloco),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                },
-              ),
-              
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-
+  
 
 
 
@@ -811,7 +720,6 @@ btnMedia(PrincipalCtrl ctrl, int i, bool foco, String tipo){
         minWidth: 175,
       ),
       duration: const Duration(milliseconds: 200),
-      // margin: cardMargin,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(30),
         gradient: LinearGradient(
@@ -901,12 +809,6 @@ btnMedia(PrincipalCtrl ctrl, int i, bool foco, String tipo){
   
   imagemFundo(PrincipalCtrl ctrl) {
     final item = BoxDecoration( image: DecorationImage( fit: BoxFit.cover, image: FileImage(File("${assetsPath}BGdefault.jpeg"),scale: 5)));
-    // if(ctrl.listIconsInicial.isEmpty){
-      
-    //   return Image.asset("${assetsPath}BGdefault.jpeg",
-    //   fit: BoxFit.cover,
-    //   );      
-    // }
     return Container(
       decoration: ctrl.imgFundoStr.isNotEmpty ? File(ctrl.imgFundoStr).existsSync() ? BoxDecoration( image: DecorationImage(fit: BoxFit.cover, image 
       : FileImage( File(ctrl.imgFundoStr),)))

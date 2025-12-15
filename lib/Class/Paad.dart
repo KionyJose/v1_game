@@ -55,7 +55,7 @@ class Paad with ChangeNotifier{
     
     bool it =  await JanelaCtrl.janelaAtiva();
     if (!it) debugPrint(" ===== Aplicativo está INATIVO. =====");
-    if (it) debugPrint(" ===== NA TELA =====");
+    // if (it) debugPrint(" ===== NA TELA =====");
     return it;
   }
 

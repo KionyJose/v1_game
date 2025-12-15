@@ -20,7 +20,9 @@ import 'package:v1_game/Modelos/MediaCanal.dart';
 import 'package:v1_game/Modelos/modeloVariaveisSistema.dart';
 import 'package:v1_game/Modelos/videoYT.dart';
 import 'package:v1_game/Widgets/ImagemFullScren.dart';
-import 'package:y_player/y_player.dart';
+import 'package:media_kit/media_kit.dart';
+import 'package:media_kit_video/media_kit_video.dart';
+import 'package:youtube_explode_dart/youtube_explode_dart.dart';
 import '../Bando de Dados/db.dart';
 import '../Class/Paad.dart';
 import '../Modelos/IconeInicial.dart';
@@ -90,19 +92,21 @@ class PrincipalCtrl with ChangeNotifier{
   String imgFundoStr = "";
   bool home = true;
   bool load = false;
-  bool trocandoView = false;
+  // bool trocandoView = false;
   List<VideoYT> videosYT= [];
   late VariaveisSistema cfg;
   
 
   PageController bodyCtrl = PageController();
 
-  YPlayerController ctrlVideo = YPlayerController();
+  late Player mediaPlayer;
+  late VideoController mediaController;
   List<String> tagVideo = ["gameplay","montage","funny","clip","dica","tutorial de","Shorts","Engraçado","lool","noticias","Novidades","Update"];
   
   List<String> listAbaGuias= ["Games","Cinema","Musica"];
   static String cine = "Cine";
   static String musc = "Musc";
+  static String gridItem = "GridItem";
   
   List<MediaCanal> listCinema = [];
   List<MediaCanal> listMusica = [];
@@ -137,7 +141,22 @@ class PrincipalCtrl with ChangeNotifier{
     selectedIndexCinema = 0;
     selectedIndexAbaGuias = 0;
     selectedIndexMusica = 0;
-    // ctrlVideo.onStateChanged!((value){});
+    
+    // Inicializa media_kit player
+    mediaPlayer = Player();
+    mediaController = VideoController(mediaPlayer);
+    
+    // Escuta duração e posição
+    mediaPlayer.stream.duration.listen((duration) {
+      duracaoTotal = duration;
+      attTela();
+    });
+    
+    mediaPlayer.stream.position.listen((position) {
+      duracaoAtual = position;
+      attTela();
+    });
+    
     focusNodeAbaGuias = List.generate(listAbaGuias.length, (index) => FocusNode());
     focusNodeAbaGuias[0].requestFocus();
     focusScopeIcones.requestFocus();
@@ -180,6 +199,7 @@ class PrincipalCtrl with ChangeNotifier{
     timerImersao?.cancel();
     timerImersaoVideos?.cancel();
     timerLoadVideos?.cancel();
+    try { mediaPlayer.dispose(); } catch (_) {}
     try { ctrlAnimeBgFundo.dispose(); } catch (_) {}
     try { scrolListIcones.dispose(); } catch (_) {}
     try { scrolListStream.dispose(); } catch (_) {}
@@ -229,7 +249,7 @@ class PrincipalCtrl with ChangeNotifier{
   }
 
   mouseDentro(int index,double tamanho){
-    if (trocandoView) return;
+    // if (trocandoView) return;
     selectedIndexIcone = index;
       // selectedIndexNotifier.value = index; // Atualiza o índice quando um item ganha o foco
       
@@ -327,15 +347,20 @@ class PrincipalCtrl with ChangeNotifier{
   }
 
   onFocusChangeIcones(bool hasFocus, int index,{ double tamanho = 0}) async{
-    if (!hasFocus || selectedIndexIcone == index || trocandoView) return;
+    if (!hasFocus || selectedIndexIcone == index) return;
+    if(cardGamesGrid){
+      
+      selectedIndexIcone = index; 
+      return attTela();
+    }
     try{    
-      debugPrint("FOCO ATT ICONE $index");      
+      // debugPrint("FOCO ATT ICONE $index");      
       await imersaoRestart();
       showNewImage = false;
       if(selectedIndexIcone != index){
         //PAusar somente quando click estiver acionado;
-        debugPrint(e.toString());
-        debugPrint(e.toString());
+        // debugPrint(e.toString());
+        // debugPrint(e.toString());
       }
       selectedIndexIcone = index;      
       // selectedIndexNotifier.value = index; // Atualiza o índice quando um item ganha o foco
@@ -368,7 +393,7 @@ class PrincipalCtrl with ChangeNotifier{
     }catch(e){
       debugPrint(e.toString());
       debugPrint(e.toString());
-      }
+    }
   }
   
   onFocusChangeCardInf(bool hasFocus, int index) async{
@@ -383,11 +408,15 @@ class PrincipalCtrl with ChangeNotifier{
     }
   }
 
-  carregaNovoVideo(int index){
+  carregaNovoVideo(int index) async {
     if(!videoAtivo) return;
     
     // Verifica se há vídeos disponíveis
     if (videosYT.isEmpty) {
+      // Para o vídeo antes de sair
+      try {
+        await mediaPlayer.stop();
+      } catch (_) {}
       videoAtivo = false;
       attTela();
       return;
@@ -408,17 +437,39 @@ class PrincipalCtrl with ChangeNotifier{
     duracaoTotal = Duration.zero;
     duracaoAtual = Duration.zero;
    
+    // Para o vídeo atual imediatamente
+    try {
+      await mediaPlayer.stop();
+    } catch (_) {}
+    
     videoAtivo = false;
     attTela();
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {  
-      Timer(const Duration(milliseconds: 200), () {
-        // Verifica novamente antes de ativar
-        if (videosYT.isNotEmpty && selectedIndexVideo >= 0 && selectedIndexVideo < videosYT.length) {
-          videoAtivo = true;
-          attTela();
+    // Carrega o novo vídeo sem delay
+    Timer(const Duration(milliseconds: 50), () async {
+      // Verifica novamente antes de ativar
+      if (videosYT.isNotEmpty && selectedIndexVideo >= 0 && selectedIndexVideo < videosYT.length) {
+        videoAtivo = true;
+        
+        // Extrai URL direta do YouTube
+        try {
+          final yt = YoutubeExplode();
+          final videoId = VideoId(videosYT[selectedIndexVideo].url);
+          final manifest = await yt.videos.streamsClient.getManifest(videoId);
+          
+          // Pega a melhor qualidade muxed (vídeo + áudio)
+          final streamInfo = manifest.muxed.bestQuality;
+          
+          await mediaPlayer.open(Media(streamInfo.url.toString()));
+          debugPrint("Novo vídeo carregado: ${streamInfo.url}");
+          
+          yt.close();
+        } catch (e) {
+          debugPrint("ERRO ao carregar novo vídeo: $e");
         }
-      });
+        
+        attTela();
+      }
     });
   }
   animaFundo(){
@@ -574,7 +625,7 @@ class PrincipalCtrl with ChangeNotifier{
   escutaPad(String event) async {    
     try{
       if(!stateTela || event == "") return;
-      debugPrint(" ===== Click Paad: => $event" );
+      // debugPrint(" ===== Click Paad: => $event" );
       if((event == "RB"||event=="LB") && focusScope != focusScopeVideos){
         movAbaGuias(event);}
       else if(focusScope == focusScopeIcones && selectedIndexAbaGuias == 0){
@@ -602,7 +653,7 @@ class PrincipalCtrl with ChangeNotifier{
   }
 
 
-  movVideos(String event){
+  movVideos(String event) async {
     try{      
       MovimentoSistema.direcaoListView(focusScope, event);
       // imersaoVideoRestart();
@@ -612,12 +663,12 @@ class PrincipalCtrl with ChangeNotifier{
         focusScope = cardGamesGrid ? focusScopeCardInf : focusScopeIcones;        
       }
       if (event == "RB"){
-        // ctrlVideo.position = Duration.zero;
-      }
+        // mediaPlayer.seek(Duration.zero);
+      }  
       if(event=="R3") { imersaoVideos = !imersaoVideos;}
       if(event.contains("RT-")) TecladoCtrl.aumentarVolume();
       if(event.contains("LT-")) TecladoCtrl.diminuirVolume();
-      if (event == "START") ctrlVideo.status == YPlayerStatus.paused ? ctrlVideo.play() : ctrlVideo.pause();
+      if (event == "START") mediaPlayer.playOrPause();
       if (event == "2") {
         // Verifica se há vídeos disponíveis antes de ativar
         if (videosYT.isEmpty || selectedIndexVideo < 0 || selectedIndexVideo >= videosYT.length) {
@@ -627,33 +678,51 @@ class PrincipalCtrl with ChangeNotifier{
         
         duracaoTotal = Duration.zero;
         duracaoAtual = Duration.zero;
+        
+        // Para o vídeo atual imediatamente
+        try {
+          await mediaPlayer.stop();
+        } catch (_) {}
+        
         videoAtivo = false;
         attTela();
         
-        // Aguarda um pouco mais para garantir que o widget anterior foi desmontado
-        Timer(const Duration(milliseconds: 200), () {
+        // Carrega o novo vídeo sem delay
+        Timer(const Duration(milliseconds: 50), () async {
           if (videosYT.isNotEmpty && selectedIndexVideo >= 0 && selectedIndexVideo < videosYT.length) {
             videoAtivo = true;
             contadorVideo = true;
-            attTela();
             
-            // Tenta iniciar a reprodução após um pequeno delay
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              Timer(const Duration(milliseconds: 300), () {
-                try {
-                  if (videoAtivo && ctrlVideo.status == YPlayerStatus.paused) {
-                    ctrlVideo.play();
-                  }
-                } catch (e) {
-                  debugPrint("ERRO ao tentar reproduzir vídeo: $e");
-                }
-              });
-            });
+            // Extrai URL direta do YouTube e abre no media_kit
+            try {
+              final yt = YoutubeExplode();
+              final videoId = VideoId(videosYT[selectedIndexVideo].url);
+              final manifest = await yt.videos.streamsClient.getManifest(videoId);
+              
+              // Pega a melhor qualidade muxed (vídeo + áudio)
+              final streamInfo = manifest.muxed.bestQuality;
+              
+              await mediaPlayer.open(Media(streamInfo.url.toString()));
+              debugPrint("Vídeo aberto: ${streamInfo.url}");
+              
+              yt.close();
+            } catch (e) {
+              debugPrint("ERRO ao abrir vídeo do YouTube: $e");
+            }
+            
+            attTela();
           }
         });
       }
       if (event == "3" || event == "BAIXO"){
         imersaoVideos = false;
+        
+        // Para o vídeo imediatamente ao sair
+        try {
+          await mediaPlayer.stop();
+          debugPrint("Vídeo parado ao sair");
+        } catch (_) {}
+        
         videoAtivo = false;
         attTela();
       }
@@ -837,10 +906,9 @@ class PrincipalCtrl with ChangeNotifier{
 
   trocaViewIcones() async {
     // Salva o índice atual antes de trocar
-    final indexAtual = selectedIndexIcone;
+    // final indexAtual = selectedIndexIcone;
     
     // Bloqueia operações
-    trocandoView = true;
     
     // Troca o modo de visualização
     cardGamesGrid = !cardGamesGrid;
@@ -848,39 +916,38 @@ class PrincipalCtrl with ChangeNotifier{
     cfg.save();
     
     // Atualiza a tela para reconstruir com novo layout
-    attTela();
+    // attTela();
     
     // Aguarda a reconstrução completa do widget
-    await Future.delayed(const Duration(milliseconds: 150));
+    // await Future.delayed(const Duration(milliseconds: 150));
     
     // Após reconstrução, recalcula e reposiciona
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      // Aguarda mais um frame para garantir que o layout está pronto
-      await Future.delayed(const Duration(milliseconds: 50));
+    // WidgetsBinding.instance.addPostFrameCallback((_) async {
+    //   // Aguarda mais um frame para garantir que o layout está pronto
+    //   await Future.delayed(const Duration(milliseconds: 50));
       
-      // Reaplica o foco no índice correto
-      if (indexAtual >= 0 && indexAtual < focusNodeIcones.length) {
-        selectedIndexIcone = indexAtual;
-        focusNodeIcones[indexAtual].requestFocus();
+    //   // Reaplica o foco no índice correto
+    //   if (indexAtual >= 0 && indexAtual < focusNodeIcones.length) {
+    //     selectedIndexIcone = indexAtual;
+    //     focusNodeIcones[indexAtual].requestFocus();
         
-        // Se o controller tem clientes (widget montado), posiciona sem animação
-        if (scrolListIcones.hasClients) {
-          try {
-            // Calcula posição aproximada baseada no índice (ajuste conforme tamanho do item)
-            const tamanhoItem = 380.0; // Ajuste conforme seu tamanho de item
-            final posicao = indexAtual * tamanhoItem;
-            scrolListIcones.jumpTo(posicao.clamp(0.0, scrolListIcones.position.maxScrollExtent));
-          } catch (e) {
-            debugPrint("Erro ao posicionar scroll: $e");
-          }
-        }
-      }
+    //     // Se o controller tem clientes (widget montado), posiciona sem animação
+    //     if (scrolListIcones.hasClients) {
+    //       try {
+    //         // Calcula posição aproximada baseada no índice (ajuste conforme tamanho do item)
+    //         const tamanhoItem = 380.0; // Ajuste conforme seu tamanho de item
+    //         final posicao = indexAtual * tamanhoItem;
+    //         scrolListIcones.jumpTo(posicao.clamp(0.0, scrolListIcones.position.maxScrollExtent));
+    //       } catch (e) {
+    //         debugPrint("Erro ao posicionar scroll: $e");
+    //       }
+    //     }
+    //   }
       
-      // Desbloqueia operações
-      trocandoView = false;
-      // Força atualização final
-      attTela();
-    });
+    //   // Desbloqueia operações
+    //   // Força atualização final
+    //   attTela();
+    // });
   }
   
 
