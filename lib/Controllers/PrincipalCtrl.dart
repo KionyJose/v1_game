@@ -102,7 +102,7 @@ class PrincipalCtrl with ChangeNotifier{
 
   late Player mediaPlayer;
   late VideoController mediaController;
-  List<String> tagVideo = ["gameplay","montage","funny","clip","dica","tutorial de","Shorts","Engraçado","lool","noticias","Novidades","Update"];
+  List<String> tagVideo = ["gameplay","montage","funny","clip","dica","tutorial de","Shorts","Engraçado","lool","noticias","Novidades","Update","review","análise","walkthrough","speedrun","highlights","best moments","top plays","epic moments"];
   
   List<String> listAbaGuias= ["Games","Cinema","Musica"];
   static String cine = "Cine";
@@ -156,6 +156,23 @@ class PrincipalCtrl with ChangeNotifier{
     mediaPlayer.stream.position.listen((position) {
       duracaoAtual = position;
       attTela();
+    });
+    
+    // Escuta quando o vídeo termina para tocar o próximo
+    mediaPlayer.stream.completed.listen((completed) {
+      if (completed && videoAtivo) {
+        debugPrint("🎬 Vídeo finalizado, carregando próximo...");
+        // Avança para o próximo vídeo
+        int proximoIndex = selectedIndexVideo + 1;
+        if (proximoIndex < videosYT.length) {
+          selectedIndexVideo = proximoIndex;
+          carregaNovoVideo(selectedIndexVideo - 1);
+        } else {
+          debugPrint("🎬 Fim da playlist, voltando ao início");
+          selectedIndexVideo = 0;
+          carregaNovoVideo(videosYT.length - 1);
+        }
+      }
     });
     
     focusNodeAbaGuias = List.generate(listAbaGuias.length, (index) => FocusNode());
@@ -671,7 +688,42 @@ class PrincipalCtrl with ChangeNotifier{
       }
       if (event == "RB"){
         // mediaPlayer.seek(Duration.zero);
-      }  
+      }
+      
+      // L1: Retroceder 10 segundos
+      if (event == "LB") {
+        debugPrint("L1 pressionado - videoAtivo: $videoAtivo, duracaoTotal: ${duracaoTotal.inSeconds}s, duracaoAtual: ${duracaoAtual.inSeconds}s");
+        if (videoAtivo && duracaoTotal != Duration.zero) {
+          final novaPosicao = duracaoAtual - const Duration(seconds: 10);
+          final posicaoFinal = novaPosicao.isNegative ? Duration.zero : novaPosicao;
+          try {
+            await mediaPlayer.seek(posicaoFinal);
+            duracaoAtual = posicaoFinal; // Atualiza imediatamente a posição
+            attTela(); // Força atualização da barra de progresso
+            debugPrint("✓ Retrocedeu para: ${posicaoFinal.inSeconds}s");
+          } catch (e) {
+            debugPrint("✗ Erro ao retroceder: $e");
+          }
+        }
+      }
+      
+      // R1: Avançar 10 segundos
+      if (event == "RB") {
+        debugPrint("R1 pressionado - videoAtivo: $videoAtivo, duracaoTotal: ${duracaoTotal.inSeconds}s, duracaoAtual: ${duracaoAtual.inSeconds}s");
+        if (videoAtivo && duracaoTotal != Duration.zero) {
+          final novaPosicao = duracaoAtual + const Duration(seconds: 10);
+          final posicaoFinal = novaPosicao > duracaoTotal ? duracaoTotal : novaPosicao;
+          try {
+            await mediaPlayer.seek(posicaoFinal);
+            duracaoAtual = posicaoFinal; // Atualiza imediatamente a posição
+            attTela(); // Força atualização da barra de progresso
+            debugPrint("✓ Avançou para: ${posicaoFinal.inSeconds}s");
+          } catch (e) {
+            debugPrint("✗ Erro ao avançar: $e");
+          }
+        }
+      }
+      
       if(event=="R3") { imersaoVideos = !imersaoVideos;}
       if(event.contains("RT-")) TecladoCtrl.aumentarVolume();
       if(event.contains("LT-")) TecladoCtrl.diminuirVolume();

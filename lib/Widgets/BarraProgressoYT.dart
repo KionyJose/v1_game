@@ -1,6 +1,4 @@
 // ignore_for_file: library_private_types_in_public_api, file_names
-
-import 'dart:async';
 import 'package:flutter/material.dart';
 
 class BarraProgressoYT extends StatefulWidget {
@@ -18,41 +16,19 @@ class BarraProgressoYT extends StatefulWidget {
 }
 
 class _BarraProgressoYTState extends State<BarraProgressoYT> {
-  late Duration _tempoDecorrido;
-  late Timer _timer;
-
-  @override
-  void initState() {
-    super.initState();
-    _tempoDecorrido = widget.duracaoInicial;
-    _iniciarContador();
-  }
-
-  void _iniciarContador() {
-    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      setState(() {
-        if (_tempoDecorrido < widget.duracaoTotal) {
-          _tempoDecorrido += const Duration(seconds: 1);
-        } else {
-          _timer.cancel(); // Para o contador quando atinge a duração total
-        }
-      });
-    });
-  }
-
-  @override
-  void dispose() {
-    _timer.cancel();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
-    double progressoPercentual = _tempoDecorrido.inMilliseconds / widget.duracaoTotal.inMilliseconds;
+    // Usa DIRETAMENTE o valor do controller ao invés de timer interno
+    Duration tempoDecorrido = widget.duracaoInicial;
+    
+    double progressoPercentual = widget.duracaoTotal.inMilliseconds > 0
+        ? tempoDecorrido.inMilliseconds / widget.duracaoTotal.inMilliseconds
+        : 0.0;
 
     // Calculando minutos e segundos decorridos
-    int minutosDecorridos = _tempoDecorrido.inMinutes;
-    int segundosDecorridos = _tempoDecorrido.inSeconds % 60;
+    int minutosDecorridos = tempoDecorrido.inMinutes;
+    int segundosDecorridos = tempoDecorrido.inSeconds % 60;
 
     // Calculando minutos e segundos restantes
     Duration restante = widget.duracaoTotal;
