@@ -1,8 +1,6 @@
 // ignore_for_file: file_names, use_build_context_synchronously
-// // ignore_for_file: file_names
 
 import 'dart:async';
-import 'dart:io';
 import 'dart:math';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:flutter/material.dart';
@@ -45,11 +43,9 @@ class PrincipalCtrl with ChangeNotifier{
   late List<FocusNode> focusNodeMusica; 
   late List<FocusNode> focusNodeCinema; 
   late List<FocusNode> focusNodeAbaGuias;  
-  List<FocusNode> focusNodeTagVid = List.generate(8, (index) => FocusNode());
   List<FocusNode> focusNodeVideos = [];
   
   CarouselSliderController carouselVideosCtrl = CarouselSliderController();
-  CarouselSliderController carouselIconesCtrl =  CarouselSliderController();
 
   FocusScopeNode focusScope = FocusScopeNode();
   
@@ -62,12 +58,7 @@ class PrincipalCtrl with ChangeNotifier{
   
 
   ScrollController scrolListIcones = ScrollController();  
-  ScrollController scrolListStream = ScrollController();
-  ScrollController scrolListMusica = ScrollController();
-  
   ScrollController scrolListAbaGuias = ScrollController();
-
-  PageController slideIconesCtrl = PageController();
   int selectedIndexCardInfo = 0;
   int selectedIndexIcone = 0;
   int selectedIndexVideo = 0;
@@ -91,14 +82,11 @@ class PrincipalCtrl with ChangeNotifier{
   bool stateTela = true;
   bool telaIniciada = false;
   bool videosCarregados = false;
-  bool mood = false;
   bool showNewImage = false;
   String imgFundoStr = "";
   bool home = true;
   bool load = false;
-  // bool trocandoView = false;
   List<VideoYT> videosYT= [];
-  // late VariaveisSistema cfg;
   
 
   PageController bodyCtrl = PageController();
@@ -117,8 +105,6 @@ class PrincipalCtrl with ChangeNotifier{
   List<List<VideoYT>> videosIndexYT = [];
   Duration duracaoTotal = Duration.zero;
   Duration duracaoAtual = Duration.zero;
-
-  List<String> comandoSequencia = [];
   
   late AnimationController ctrlAnimeBgFundo;
   late Animation<double> scaleAnimation;
@@ -142,9 +128,8 @@ class PrincipalCtrl with ChangeNotifier{
     String str = listCinema[i].imgLocal;
     return str;
   }
-  //initState
+
   iniciaTela() async {
-    // cfg = await VariaveisSistema.load();
     cardGamesGrid = configSistema.viewType == "grid";
     selectedIndexIcone = 0;
     selectedIndexVideo = 0;
@@ -229,8 +214,6 @@ class PrincipalCtrl with ChangeNotifier{
     try { mediaPlayer.dispose(); } catch (_) {}
     try { ctrlAnimeBgFundo.dispose(); } catch (_) {}
     try { scrolListIcones.dispose(); } catch (_) {}
-    try { scrolListStream.dispose(); } catch (_) {}
-    try { scrolListMusica.dispose(); } catch (_) {}
     try { scrolListAbaGuias.dispose(); } catch (_) {}
     try { focusScopeIcones.dispose(); } catch (_) {}
     try { focusScopeAbaGuias.dispose(); } catch (_) {}
@@ -243,7 +226,6 @@ class PrincipalCtrl with ChangeNotifier{
     for (var f in focusNodeCinema) { try { f.dispose(); } catch (_) {} }
     for (var f in focusNodeMusica) { try { f.dispose(); } catch (_) {} }
     for (var f in focusNodeAbaGuias) { try { f.dispose(); } catch (_) {} }
-    for (var f in focusNodeTagVid) { try { f.dispose(); } catch (_) {} }
     for (var f in focusNodeVideos) { try { f.dispose(); } catch (_) {} }
     debugPrint("SAIU PAGE CTRL");
     super.dispose();
@@ -254,34 +236,20 @@ class PrincipalCtrl with ChangeNotifier{
     try{
       if(videosIndexYT[index].isEmpty) {
         String aux = tagVideo[Random().nextInt(tagVideo.length)];
-        // Busca Pela Api Youtube
-        // videosIndexYT[index] = await DbYoutube().buscarVideosNoYouTube("$nomeGame $aux",nomeGame);
         videosIndexYT[index] = await WebScrap.buscaVideosYT("$nomeGame $aux",nomeGame);        
       }
-      videosYT = List.generate(videosIndexYT[index].length, (i) => videosIndexYT[index][i]);// videosIndexYT[index];
+      videosYT = List.generate(videosIndexYT[index].length, (i) => videosIndexYT[index][i]);
       focusNodeVideos = List.generate(videosYT.length, (index) => FocusNode());
       videosCarregados = true;
       attTela();
     }catch(e){
       debugPrint(e.toString());
-      debugPrint(e.toString());
     }  
-  }
-  onFocusChangeTagVid(bool hasFocus, int index){ 
-    if (hasFocus) {
-      // debugPrint("FOCO ATT VIDEO");
-      // selectedIndexVideo = index;
-      // carouselVideosCtrl.animateToPage(index);
-    }
   }
 
   mouseDentro(int index,double tamanho){
-    // if (trocandoView) return;
     selectedIndexIcone = index;
-      // selectedIndexNotifier.value = index; // Atualiza o índice quando um item ganha o foco
-      
-      // Future.delayed(Duration.zero,() {
-        try {
+    try {
           if (scrolListIcones.hasClients) {
             scrolListIcones.animateTo(
               index * tamanho, // Multiplica pelo tamanho do item
@@ -291,15 +259,12 @@ class PrincipalCtrl with ChangeNotifier{
           }
         } catch (_) {}
   }
-  mouseFora(int index,double tamanho){
 
+  mouseFora(int index, double tamanho) {
+    // Método vazio - usado por MouseRegion em cardAnimado
   }
 
-
-  
   onFocusChangeGrid(int index, String tipo ){
-  
-    // debugPrint("FOCO ATT VIDEO");
     if(tipo == cine) selectedIndexCinema = index;    
     if(tipo == musc) selectedIndexMusica = index;
     attTela();
@@ -308,8 +273,6 @@ class PrincipalCtrl with ChangeNotifier{
 
   onFocusChangeVideos(bool hasFocus, int index){ 
     if (hasFocus) {
-      // debugPrint("FOCO ATT VIDEO");
-      // print(index);
       selectedIndexVideo = index;
       carouselVideosCtrl.animateToPage(index);
       attTela();
@@ -381,18 +344,10 @@ class PrincipalCtrl with ChangeNotifier{
       return attTela();
     }
     try{    
-      // debugPrint("FOCO ATT ICONE $index");      
       await imersaoRestart();
       showNewImage = false;
-      if(selectedIndexIcone != index){
-        //PAusar somente quando click estiver acionado;
-        // debugPrint(e.toString());
-        // debugPrint(e.toString());
-      }
-      selectedIndexIcone = index;      
-      // selectedIndexNotifier.value = index; // Atualiza o índice quando um item ganha o foco
+      selectedIndexIcone = index;
       
-      // Future.delayed(Duration.zero,() {
       try {
         if (scrolListIcones.hasClients) {
           scrolListIcones.animateTo(
@@ -419,18 +374,15 @@ class PrincipalCtrl with ChangeNotifier{
       });
     }catch(e){
       debugPrint(e.toString());
-      debugPrint(e.toString());
     }
   }
   
   onFocusChangeCardInf(bool hasFocus, int index) async{
     if (!hasFocus || selectedIndexCardInfo == index) return;
     try{    
-      debugPrint("FOCO ATT ICONE =======================================((((((((((((((((((())))))))))))))))))) $index");
       selectedIndexCardInfo = index;
       attTela();
     }catch(e){
-      debugPrint(e.toString());
       debugPrint(e.toString());
     }
   }
@@ -525,7 +477,9 @@ class PrincipalCtrl with ChangeNotifier{
       Provider.of<JanelaCtrl>(ctx, listen: false).telaPresaReverse(usarEstado: true, estado: false);
       await moverIcoPosicaoInicial(listIconsInicial[selectedIndexIcone]);
       selectedIndexIcone = 0;
-      focusNodeIcones[selectedIndexIcone].requestFocus();
+      // focusNodeIcones[selectedIndexIcone].requestFocus();
+      cardGamesGrid && cardInf ? focusNodeCardInf[selectedIndexCardInfo].requestFocus() : focusNodeIcones[selectedIndexIcone].requestFocus();
+
       attTela();
       await Future.delayed(const Duration(milliseconds: 650));
       await Pops().carregandoGames(ctx,"Entrando no game..." );
@@ -535,9 +489,14 @@ class PrincipalCtrl with ChangeNotifier{
       Provider.of<Paad>(ctx, listen: false).ativaMouse( usarEstado: true,  estado: false);
       
       // Garantir que o foco volte para o escopo correto após abrir o arquivo
-      focusNodeIcones[selectedIndexIcone].requestFocus();
-      focusScopeIcones.requestFocus();
-      focusScope = focusScopeIcones;
+
+      focusScope = cardGamesGrid && cardInf ? focusScopeCardInf : focusScopeIcones;
+      cardGamesGrid && cardInf ? focusNodeCardInf[selectedIndexCardInfo].requestFocus() : focusNodeIcones[selectedIndexIcone].requestFocus();
+      if(selectedIndexIcone != 0) selectedIndexIcone --;
+
+      // focusNodeIcones[selectedIndexIcone].requestFocus();
+      // focusScopeIcones.requestFocus();
+      // focusScope = focusScopeIcones;
     }catch(e){
       debugPrint(e.toString());
     }
@@ -558,7 +517,6 @@ class PrincipalCtrl with ChangeNotifier{
   btnMais() {
     try{
     stateTela = false;
-    // PAD paad = pad;
     WidgetsBinding.instance.addPostFrameCallback((_) async  {
 
       String retorno = await PopMais.mais(ctx);
@@ -633,21 +591,6 @@ class PrincipalCtrl with ChangeNotifier{
       // Pops().msgSimples(ctx,"ERRO = 1$e");
     }
   }
-
-  imagem(){
-    return Scaffold(
-        body: Container(
-          height: MediaQuery.of(ctx).size.height,
-          width: MediaQuery.of(ctx).size.width,
-        decoration: BoxDecoration(
-          image: DecorationImage(
-            fit: BoxFit.cover,
-            image:FileImage(File("${assetsPath}tutorial.png")), //AssetImage('assets/BGICOdefault.png'),
-          ),
-        ),
-      ),
-    );
-  }
   
   salvaImgDownload() async {
     videosYT.clear();
@@ -705,7 +648,6 @@ class PrincipalCtrl with ChangeNotifier{
         );
       }
 
-      // debugPrint(" ===== Click Paad: => $event" );
       if((event == "RB"||event=="LB") && focusScope != focusScopeVideos){
         movAbaGuias(event);}
       else if(focusScope == focusScopeIcones && selectedIndexAbaGuias == 0){
@@ -999,7 +941,6 @@ class PrincipalCtrl with ChangeNotifier{
       }
       if(cardGamesGrid) return movCardGrid(event);
       String result = MovimentoSistema.direcaoListView(focusScope, event);
-      debugPrint(result);
 
       if(result == MovimentoSistema.horizontal || result == MovimentoSistema.vertical  ){
         // desativado temporariamente

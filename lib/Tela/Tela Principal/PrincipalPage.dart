@@ -1,7 +1,6 @@
 // ignore_for_file: use_build_context_synchronously, file_names, deprecated_member_use
 import 'dart:io';
 import 'dart:ui';
-import 'package:carousel_slider/carousel_slider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:scroll_snap_list/scroll_snap_list.dart';
@@ -16,6 +15,11 @@ import 'package:v1_game/Widgets/videoSliders.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 import 'Widgets/BodyIconesJogos.dart';
+import 'Widgets/BodyIconesCinema.dart';
+import 'Widgets/BodyIconesMusica.dart';
+import 'Widgets/BodyIconesJogosGrid.dart';
+import 'Widgets/CardInfWidget.dart';
+import 'Widgets/ListVideosWidget.dart';
 
 class SafeCurve extends Curve {
   final Curve _inner;
@@ -109,7 +113,7 @@ class _PrincipalPageState extends State<PrincipalPage> with WindowListener {
       videoAtivo(ctrl),// Player de vídeo
       // if (ctrl.videosYT.isNotEmpty && ctrl.telaIniciada && ctrl.videosCarregados && ctrl.selectedIndexAbaGuias == 0 && !ctrl.cardGamesGrid)
       if(ctrl.exibirVideos)
-      VideoSliders(child: listVideos(ctrl)),// Lista de vídeos
+      VideoSliders(child: ListVideosWidget(ctrl: ctrl, cardVideo: cardVideo)),// Lista de vídeos
     ],
     );
   } 
@@ -302,87 +306,9 @@ class _PrincipalPageState extends State<PrincipalPage> with WindowListener {
     );
   }
 
-  Widget bodyIconesMusica(PrincipalCtrl ctrl, double tamanhoBloco) {
-  return FocusScope(
-    node: ctrl.focusScopeMusica,
-    child: Container(
-      margin: const EdgeInsets.only(top: 60,left: 40,bottom: 20,right: 40),
-      width: MediaQuery.of(context).size.width + tamanhoBloco * 3,
-      alignment: Alignment.center,
-      child: GridView.builder(
-        padding: const EdgeInsets.all(9),
-        controller: ctrl.scrolListMusica,
-        itemCount: ctrl.listMusica.length,
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 3,
-          crossAxisSpacing: 9,
-          mainAxisSpacing: 9,
-          childAspectRatio: 1.5, // Largura 2x maior que a altura
-        ),
-        itemBuilder: (context, index) {
-          bool foco = index == ctrl.selectedIndexMusica;
-          return btnMedia(ctrl,index, foco, PrincipalCtrl.musc);
-        }
-      ),
-    ),
-  );
-}
- Widget bodyIconesCinema(PrincipalCtrl ctrl, double tamanhoBloco) { 
-  return FocusScope(
-    node: ctrl.focusScopeCinema,
-    child: Container(
-      margin: const EdgeInsets.only(top: 60,left: 40,bottom: 20,right: 40),
-      width: MediaQuery.of(context).size.width + tamanhoBloco * 3,
-      alignment: Alignment.center,
-      child: GridView.builder(
-        padding: const EdgeInsets.all(9),
-        controller: ctrl.scrolListStream,
-        itemCount: ctrl.listCinema.length,
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 3,
-          crossAxisSpacing: 9,
-          mainAxisSpacing: 9,
-          childAspectRatio: 1.5, // Largura 2x maior que a altura
-        ),
-        itemBuilder: (context, index) {
-          bool foco = index == ctrl.selectedIndexCinema;
-          return btnMedia(ctrl,index, foco, PrincipalCtrl.cine);
-        }
-      ),
-    ),
-  );
-}
-btnMedia(PrincipalCtrl ctrl, int i, bool foco, String tipo){
-  const sdw = Shadow(blurRadius: 20,color: Colors.black);
-    return Focus(
-      focusNode: tipo == PrincipalCtrl.cine ?  ctrl.focusNodeCinema[i] : ctrl.focusNodeMusica[i],
-      onFocusChange: (hasFocus) => hasFocus ? ctrl.onFocusChangeGrid(i,tipo) : null,
-      child: FittedBox(
-        child: Container(
-          decoration: BoxDecoration(
-            image: DecorationImage(
-              fit: BoxFit.cover,
-              image: FileImage(File(tipo == PrincipalCtrl.cine ?ctrl.listCinema[i].imgLocal : ctrl.listMusica[i].imgLocal)),
-            ),
-            border: foco ? Border.all(
-              color: Colors.white, // Cor da borda
-              width: 3,                // Espessura da borda
-            ) : null,
-          ),
-          alignment: Alignment.bottomCenter,
-          // margin: const EdgeInsets.all(40),
-          height: 200,        
-          width: 300,
-          child:  foco ? const Padding(
-            padding: EdgeInsets.all(5),
-            child: Icon(Icons.keyboard_double_arrow_up,shadows: [sdw,sdw], color: Colors.white,),
-          ) : Container(),
-        ),
-      ),
-    );
-  }
+  
 
-  bodyPageView(PrincipalCtrl ctrl){    
+  bodyPageView(PrincipalCtrl ctrl){
     double tamanhoBloco = 120;
     return PageView(
       scrollDirection: Axis.horizontal,
@@ -395,8 +321,8 @@ btnMedia(PrincipalCtrl ctrl, int i, bool foco, String tipo){
           cardAnimado: (ctrl, index, tamanho) => cardAnimado(ctrl, index, tamanho: tamanho),
           cardAnimadoAdd: (ctrl, index) => cardAnimadoAdd(ctrl, index),
         ),
-        if(ctrl.selectedIndexAbaGuias != 0) bodyIconesCinema(ctrl, tamanhoBloco), 
-        if(ctrl.selectedIndexAbaGuias != 0) bodyIconesMusica(ctrl, tamanhoBloco),
+        if(ctrl.selectedIndexAbaGuias != 0) BodyIconesCinema(ctrl: ctrl, tamanhoBloco: tamanhoBloco),
+        if(ctrl.selectedIndexAbaGuias != 0) BodyIconesMusica(ctrl: ctrl, tamanhoBloco: tamanhoBloco),
       ],      
     ); 
   }
@@ -421,178 +347,14 @@ btnMedia(PrincipalCtrl ctrl, int i, bool foco, String tipo){
           ),
         );
       },
-      child: !ctrl.cardInf ? KeyedSubtree(key: const ValueKey('grid'), child: bodyIconesJogosGrid(ctrl, tamanhoBloco))
-                          : KeyedSubtree(key: const ValueKey('cardInf'), child: cardInf(ctrl, tamanhoBloco)),
-    );
-  }
-  cardInf(PrincipalCtrl ctrl, double tamanhoBloco){
-    // Quando exibido, garante que o foco seja atribuído ao foco do card
-    // WidgetsBinding.instance.addPostFrameCallback((_) {
-    //   try { ctrl.focusCardInf.requestFocus(); } catch (_) {}
-    // });
-    return FocusScope(
-      node: ctrl.focusScopeCardInf,
-      child: SizedBox(
-        // color: Colors.black54,
-        child: Center(
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Focus(
-                focusNode: ctrl.focusNodeCardInf[0],
-                onFocusChange: (hasFocus) => ctrl.onFocusChangeCardInf(hasFocus, 0),
-                child: 
-                btnCardInf(
-                  foco: ctrl.selectedIndexCardInfo == 0, 
-                  icone: Icons.play_arrow, 
-                  texto: 'JOGAR'
-                )
-              ),
-              const SizedBox(width: 20),
-              Focus(
-                focusNode: ctrl.focusNodeCardInf[1],
-                onFocusChange: (hasFocus) => ctrl.onFocusChangeCardInf(hasFocus, 1),
-                child: GestureDetector(
-                  child: btnCardInf(
-                    foco: ctrl.selectedIndexCardInfo == 1, 
-                    icone: Icons.arrow_back, 
-                    texto: 'VOLTAR'
-                  )
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  btnCardInf({required bool foco, required IconData icone, required String texto}){
-    return Container(
-      decoration: BoxDecoration(
-        boxShadow: !foco ? null : [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.2),
-            blurRadius: 10,
-            offset: const Offset(0, 50),
-          ),
-        ],
-        border: !foco ? null :  Border.all(color: Colors.white, width: 2),
-        borderRadius: BorderRadius.circular(20),
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Colors.black12, Colors.blueGrey],
-        ),
-      ),
-      height: 100,
-      width: 160,
-      alignment: Alignment.center,
-      child:  Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icone, color: Colors.white, size: 40),
-          const SizedBox(width: 8),
-          Text(texto, style: const TextStyle(color: Colors.white)),
-        ],
-      ),
-    );
-  }
-
-    bodyIconesJogosGrid(PrincipalCtrl ctrl, double tamanhoBloco){
-    // Exibe um Grid responsivo com imagens que respeitam a proporção 14:9
-    const crossCount = 6; // número de colunas (ajustável conforme necessidade)
-    return FocusScope(
-      node: ctrl.focusScopeIcones,
-      child: Container(
-        margin: const EdgeInsets.only(top: 60,left: 40,bottom: 20,right: 40),
-        width: MediaQuery.of(context).size.width + tamanhoBloco * 3,
-        alignment: Alignment.center,
-        child: GridView.builder(
-          padding: const EdgeInsets.all(9),
-          // controller: ctrl.scrolListIcones,
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: crossCount,
-            crossAxisSpacing: 9,
-            mainAxisSpacing: 9,
-            childAspectRatio: 14 / 9,
-          ),
-          itemCount: ctrl.listIconsInicial.length,
-          itemBuilder: (context, index) {
-            final foco = index == ctrl.selectedIndexIcone;
-            final item = ctrl.listIconsInicial[index];
-            return Focus(
-              focusNode: ctrl.focusNodeIcones[index],
-              onFocusChange: (hasFocus) => ctrl.onFocusChangeIcones(hasFocus, index),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 150),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
-                        child: AspectRatio(
-                        aspectRatio: 14 / 9,
-                        child: item.imgStr.isNotEmpty && File(item.imgStr).existsSync()
-                            ? Image.file(File(item.imgStr), fit: BoxFit.cover)
-                            : Container(color: Colors.black12),
-                      ),
-                    ),
-                    // Sombra / destaque inferior com título centralizado
-                    Align(
-                      alignment: Alignment.bottomCenter,
-                      child: Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
-                        decoration: BoxDecoration(
-                          borderRadius: const BorderRadius.only(bottomLeft: Radius.circular(12), bottomRight: Radius.circular(12)),
-                          gradient: LinearGradient(
-                            begin: Alignment.bottomCenter,
-                            end: Alignment.topCenter,
-                            colors: [Colors.black87.withOpacity(0.9), Colors.black45.withOpacity(0.0)],
-                          ),
-                        ),
-                        child: FittedBox(
-                          fit: BoxFit.scaleDown,
-                          child: Text(
-                            item.nome,
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: foco ? 16 : 12,
-                              fontWeight: foco ? FontWeight.w600 : FontWeight.w400,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    // Borda de foco
-                    if (foco)
-                      Positioned.fill(
-                        child: Container(
-                          decoration: BoxDecoration(
-                            border: Border.all(color: Colors.white, width: 3),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-            );
-          },
-        ),
-      ),
+      child: !ctrl.cardInf ? KeyedSubtree(key: const ValueKey('grid'), child: BodyIconesJogosGrid(ctrl: ctrl, tamanhoBloco: tamanhoBloco))
+                          : KeyedSubtree(key: const ValueKey('cardInf'), child: CardInfWidget(ctrl: ctrl)),
     );
   }
 
   
 
-
-
+  
 
   botaoTag(String str){
     return Container(
@@ -612,92 +374,9 @@ btnMedia(PrincipalCtrl ctrl, int i, bool foco, String tipo){
 
   
 
-  listVideos(PrincipalCtrl ctrl){
-    double tamanho = 0.2;
-    const sdw = Shadow(color: Colors.black,blurRadius: 010);
-    bool focoScop = false;
-    try{
-    if(ctrl.focusScope == ctrl.focusScopeVideos && !ctrl.videoAtivo){
-      tamanho = 0.27;
-      focoScop = true;
-    }
-    }catch(_){}
-    
-    return  Align(
-      alignment: Alignment.bottomLeft,
-      child: AnimatedOpacity(
-        opacity: ctrl.imersaoVideos ? 0 : 1.0,
-        duration: const Duration(seconds: 2),
-        child: Padding(
-          padding: const EdgeInsets.only(bottom: 20),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              // if(ctrl.focusScopeVideos.hasFocus)
-              // Row(
-              //   mainAxisAlignment: MainAxisAlignment.center,
-              //   children: [
-              //     for(int i = 0; i < ctrl.tagVideo.length; i++)
-              //      Focus(
-              //      focusNode: ctrl.focusNodeTagVid[i],
-              //      onFocusChange: (hasFocus) => ctrl.onFocusChangeTagVid(hasFocus, i),
-              //      child: botaoTag(ctrl.tagVideo[i])),
-              //   ],
-              // ),
-              // if(ctrl.focusScopeVideos.hasFocus)
-              AnimatedOpacity(
-                duration: const Duration(milliseconds: 300),
-                opacity: focoScop ? 1.0 : 0.0,
-                child: SizedBox(
-                  height: MediaQuery.of(context).size.height * 0.03,
-                    child:  FittedBox(
-                      child: Text(
-                        ctrl.videosYT[ctrl.selectedIndexVideo].titulo,
-                        style: const TextStyle(color: Colors.white,
-                          shadows: [sdw,sdw] ),),
-                    )
-                  
-                ),
-              ),
-              const SizedBox(height: 5),
-              FocusScope(
-                node: ctrl.focusScopeVideos,
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 100),
-                  height: MediaQuery.of(context).size.height * tamanho,
-                  width: double.infinity,
-                  child: CarouselSlider(
-                    carouselController: ctrl.carouselVideosCtrl,
-                      options: CarouselOptions(
-                        pageSnapping: true,                    
-                        height: MediaQuery.of(context).size.height * tamanho, // Altura do carrossel
-                        autoPlay: ctrl.focusScopeVideos.hasFocus ? false : true, // Habilita autoplay quando nao focado.
-                        enlargeCenterPage: true, // Centraliza e destaca o item ativo
-                        enableInfiniteScroll: true,
-                        viewportFraction: tamanho, // Tamanho do item visível
-                        initialPage: ctrl.selectedIndexVideo,
-                        onPageChanged: (index, asd){
-                          ctrl.selectedIndexVideo = index;
-                          // print(index);
-                        },
-                        // scrollDirection: Axis.vertical
-                        enlargeStrategy: CenterPageEnlargeStrategy.zoom
-                      ),
-                      items: [
-                        for(int i = 0; i < ctrl.videosYT.length; i++)
-                        cardVideo(ctrl, i)                         
-                        
-                      ]
-                    ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-  cardVideo(PrincipalCtrl ctrl, int i){
+  
+
+  Widget cardVideo(PrincipalCtrl ctrl, int i){
     if(i < 0 || i > ctrl.videosYT.length) return Container();
     return Focus(
       focusNode: ctrl.focusNodeVideos[i],

@@ -114,7 +114,7 @@ class ConfigSistema {
       volume: volume ?? this.volume,
       telaInicialTipo: telaInicialTipo ?? this.telaInicialTipo,
       videosTelaPrincipal: videosTelaPrincipal ?? this.videosTelaPrincipal,
-      noticias: videosCardGame ?? this.noticias,
+      noticias: videosCardGame ?? noticias,
       intro: intro ?? this.intro,
     );
   }
