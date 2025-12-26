@@ -28,7 +28,7 @@ class VariaveisSistema {
   /// Valores padrão
   factory VariaveisSistema.defaults() {
     return VariaveisSistema(
-      viewType: 'grid',
+      viewType: 'list',
       primaryColorHex: '#1E88E5',
       accentColorHex: '#FFC107',
       buttonStyle: 'rounded',
@@ -40,7 +40,7 @@ class VariaveisSistema {
 
   factory VariaveisSistema.fromJson(Map<String, dynamic> json) {
     return VariaveisSistema(
-      viewType: json['viewType'] ?? 'grid',
+      viewType: json['viewType'] ?? 'list',
       primaryColorHex: json['primaryColorHex'] ?? '#1E88E5',
       accentColorHex: json['accentColorHex'] ?? '#FFC107',
       buttonStyle: json['buttonStyle'] ?? 'rounded',

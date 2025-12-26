@@ -150,31 +150,89 @@ class DB{
 
   openFile(String filePath) async {
     try {
-      // Verifica se o processo já foi iniciado e está em execução
+      debugPrint('========================================');
+      debugPrint('ABRINDO ARQUIVO/JOGO');
+      debugPrint('Caminho: $filePath');
       
-
-      // Se o processo não está em execução, inicia um novo processo
-      _process = await Process.start(filePath, ["-h"]);
-      await _process!.stderr.drain();
-      debugPrint('Arquivo aberto com sucesso');
+      // Detecta se é um deep link (Epic Games, Steam, etc.)
+      if (filePath.contains('://')) {
+        debugPrint('Detectado deep link de launcher');
+        
+        if (filePath.startsWith('com.epicgames.launcher://')) {
+          debugPrint('Link da Epic Games detectado');
+        } else if (filePath.startsWith('steam://')) {
+          debugPrint('Link do Steam detectado');
+        }
+        
+        // Usa cmd /c start para processar protocolos customizados
+        _process = await Process.start(
+          'cmd',
+          ['/c', 'start', '', filePath],
+          runInShell: true,
+        );
+        
+        debugPrint('Deep link processado com sucesso');
+        debugPrint('========================================');
+        return;
+      }
+      
+      // Verifica se é um arquivo .exe ou .lnk
+      if (filePath.endsWith('.exe') || filePath.endsWith('.lnk')) {
+        debugPrint('Executável detectado: ${filePath.split('\\').last}');
+        
+        // Para .exe, executa diretamente
+        _process = await Process.start(filePath, []);
+        await _process!.stderr.drain();
+        
+        debugPrint('Executável iniciado com sucesso');
+        debugPrint('========================================');
+        return;
+      }
+      
+      // Para outros tipos, usa explorer
+      debugPrint('Tipo desconhecido, usando explorer');
+      openUrl(filePath);
+      debugPrint('========================================');
 
     } on ProcessException catch (e) {
-      debugPrint('Erro ao abrir o arquivo: $e');
+      debugPrint('========================================');
+      debugPrint('ERRO ProcessException ao abrir arquivo');
+      debugPrint('Mensagem: ${e.message}');
+      debugPrint('Tentando método alternativo...');
+      debugPrint('========================================');
       openUrl(filePath);
     } catch (e) {
-      debugPrint('Erro d  onhecido: $e');
+      debugPrint('========================================');
+      debugPrint('ERRO desconhecido: $e');
+      debugPrint('========================================');
     }
   }
 
   openUrl(String filePath){
     String str = filePath.replaceAll(r'\\', r'\');
-    try{      
-      Process.run('explorer', [str]);
+    
+    debugPrint('========================================');
+    debugPrint('ABRINDO COM EXPLORER');
+    debugPrint('Caminho processado: $str');
+    
+    try{
+      // Se contém protocolo, usa start ao invés de explorer
+      if (str.contains('://')) {
+        debugPrint('Usando cmd start para protocolo');
+        Process.run('cmd', ['/c', 'start', '', str], runInShell: true);
+      } else {
+        debugPrint('Usando explorer para arquivo/pasta');
+        Process.run('explorer', [str]);
+      }
+      debugPrint('========================================');
     } on ProcessException catch (e) {
-        debugPrint('Erro ao abrir o URL: $e');
-        // openUrl(filePath);
+        debugPrint('========================================');
+        debugPrint('ERRO ao abrir com explorer: ${e.message}');
+        debugPrint('========================================');
       } catch (e) {
-        debugPrint('Erro desconhecido: $e');
+        debugPrint('========================================');
+        debugPrint('ERRO desconhecido no openUrl: $e');
+        debugPrint('========================================');
       }
   }
 

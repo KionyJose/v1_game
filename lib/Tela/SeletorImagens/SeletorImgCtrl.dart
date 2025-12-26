@@ -10,8 +10,8 @@ import 'package:v1_game/Controllers/JanelaCtrl.dart';
 import 'package:v1_game/Controllers/MovimentoSistema.dart';
 import 'package:v1_game/Widgets/Pops.dart';
 import 'package:v1_game/Widgets/VisualizadorImgWeb.dart';
-import '../Class/WebScrap.dart';
-import '../Modelos/ImgWebScrap.dart';
+import '../../Class/WebScrap.dart';
+import '../../Modelos/ImgWebScrap.dart';
 
 class SeletorImgCtrl with ChangeNotifier{
   late BuildContext ctx;
@@ -42,7 +42,7 @@ class SeletorImgCtrl with ChangeNotifier{
     stateTela = false;
     alteraTxtNome(nomeAux);
     attTela();
-    // var result = await  WebScrap.buscaUsersWalpaperCave(nome);
+      // var result = await  WebScrap.buscaUsersWalpaperCave(nome);
     // if(result == null) return;
     // listUser = result[1] as List<ImgWebScrap>;
     listUser.clear();
@@ -54,6 +54,7 @@ class SeletorImgCtrl with ChangeNotifier{
       if(nomes.isEmpty)break;
       String nomAlterado = nomes.join(' ');
       var result = await  WebScrap.buscaUsersWalpaperCave(nomAlterado); 
+
       if(result == null) break;
       listUser = result[1] as List<ImgWebScrap>;
       if(listUser.isNotEmpty){
@@ -98,15 +99,63 @@ class SeletorImgCtrl with ChangeNotifier{
   
   }
 
-  clickPasta(String str)async{
+    clickPasta(String str)async{
     stateTela = false;
     load = true;
     // Pops.popTela(ctx,const LoadingIco());
     attTela();
-    str = str.replaceAll(' ', '-');
-    var result = await WebScrap.buscaImgsWalpaperCave(str);
-    if(result == null) return;
+    
+    debugPrint('========================================');
+    debugPrint('SELETOR DE IMAGENS - CLIQUE NA PASTA');
+    debugPrint('Nome original da pasta: $str');
+    
+    // Tratamento correto do nome para URL
+    // Remove "Wallpapers" do final se existir
+    String strProcessado = str;
+    // if(strProcessado.toLowerCase().endsWith(' wallpapers')) {
+    //   strProcessado = strProcessado.substring(0, strProcessado.length - 11).trim();
+    // }
+    
+    // Remove caracteres especiais inválidos para URL
+    strProcessado = strProcessado
+        .replaceAll('™', '') // Substitui barras por hífens
+        .replaceAll(':', '') // Remove dois pontos
+        .replaceAll('?', '') // Remove interrogação
+        .replaceAll('!', '') // Remove exclamação
+        .replaceAll('&', 'and') // Substitui & por and
+        .replaceAll('  ', ' ') // Remove espaços duplos
+        .trim();
+    
+    // Substitui espaços por hífens
+    strProcessado = strProcessado.replaceAll(' ', '-');
+    
+    debugPrint('Nome processado para busca: $strProcessado');
+    debugPrint('URL que será acessada: https://wallpapercave.com/$strProcessado');
+    debugPrint('========================================');
+    
+    var result = await WebScrap.buscaImgsWalpaperCave(strProcessado);
+    
+    if(result == null) {
+      debugPrint('========================================');
+      debugPrint('ERRO: WebScrap retornou NULL');
+      debugPrint('========================================');
+      // loadArquivos = false;
+      stateTela = true;
+      attTela();
+      return;
+    }
+    
     listImgs = result[1] as List<ImgWebScrap>;
+    
+    debugPrint('========================================');
+    debugPrint('RESULTADO DA BUSCA:');
+    debugPrint('Total de imagens encontradas: ${listImgs.length}');
+    if(listImgs.isNotEmpty) {
+      debugPrint('Primeira imagem URL: ${listImgs.first.imageUrl}');
+      debugPrint('Primeira imagem dimensões: ${listImgs.first.largura}x${listImgs.first.altura}');
+    }
+    debugPrint('========================================');
+    
     var imgSelect = await Pops.popTela(ctx, VisualizadorImgWeb(list: listImgs));
     stateTela = true;
     load = false;

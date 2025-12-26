@@ -44,28 +44,58 @@ class WebScrap{
     String content = '';
     List<ImgWebScrap> list = [];
     final url = Uri.parse('https://wallpapercave.com/$gameId');
-    final response = await http.get(url);
-    if (response.statusCode == 200) {
-      final document = html.parse(response.body);
-      // Seleciona todas as tags <img> e filtra os links das imagens
-      final arquivo = document.querySelectorAll('img');
-      list = arquivo.map((e) {
-        ImgWebScrap imgDados =ImgWebScrap();
-        // final title = e.attributes['alt'] ?? ''; // Extrair o título (se disponível)
-        // String imageUrl = e.attributes['src'] ?? ''; // Extrair o link da imagem
-        // final tipo = e.attributes['class']??""; // Extrai o Tipo
-        // if(imageUrl.isNotEmpty) imageUrl = "https://wallpapercave.com/$imageUrl";
-        imgDados.fromMapImgFinal(e.attributes);
-        return imgDados;
-      }).where((item) => item.imageUrl.isNotEmpty && item.tipo == "wimg" && !item.imageUrl.contains(".webm")).toList( );
+    
+    debugPrint('========================================');
+    debugPrint('WEBSCRAP - BUSCA DE IMAGENS');
+    debugPrint('URL Completa: ${url.toString()}');
+    debugPrint('GameId: $gameId');
+    
+    try {
+      final response = await http.get(url);
+      debugPrint('Status Code: ${response.statusCode}');
       
-      if (list.isEmpty) content = 'Nenhuma imagem encontrada para "$gameId".';
-      if (list.isNotEmpty) content = 'Imagens encontradas: ${list.length}';
+      if (response.statusCode == 200) {
+        final document = html.parse(response.body);
+        // Seleciona todas as tags <img> e filtra os links das imagens
+        final arquivo = document.querySelectorAll('img');
+        debugPrint('Total de tags <img> encontradas: ${arquivo.length}');
+        
+        list = arquivo.map((e) {
+          ImgWebScrap imgDados = ImgWebScrap();
+          imgDados.fromMapImgFinal(e.attributes);
+          return imgDados;
+        }).where((item) {
+          bool valido = item.imageUrl.isNotEmpty && 
+                       item.tipo == "wimg" && 
+                       !item.imageUrl.contains(".webm");
+          
+          if (!valido && item.imageUrl.isNotEmpty) {
+            debugPrint('Imagem filtrada - URL: ${item.imageUrl}, Tipo: ${item.tipo}');
+          }
+          
+          return valido;
+        }).toList();
+        
+        if (list.isEmpty) {
+          content = 'Nenhuma imagem encontrada para "$gameId".';
+          debugPrint('AVISO: Nenhuma imagem válida após filtragem');
+        } else {
+          content = 'Imagens encontradas: ${list.length}';
+          debugPrint('Imagens válidas encontradas: ${list.length}');
+          debugPrint('Exemplo de URL: ${list.first.imageUrl}');
+        }
 
-    } else {
-        content = 'Erro ao buscar dados.';
+      } else {
+        content = 'Erro ao buscar dados. Status: ${response.statusCode}';
+        debugPrint('ERRO: Status code diferente de 200');
+      }
+    } catch (e) {
+      content = 'Exceção ao buscar dados: $e';
+      debugPrint('EXCEÇÃO durante busca: $e');
     }
-    return [content,list];
+    
+    debugPrint('========================================');
+    return [content, list];
   }
 
 

@@ -2,7 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:scroll_snap_list/scroll_snap_list.dart';
-import 'package:v1_game/Controllers/PrincipalCtrl.dart';
+import 'package:v1_game/Tela/Tela%20Principal/PrincipalCtrl.dart';
 
 class BodyIconesJogos extends StatefulWidget {
   final PrincipalCtrl ctrl;

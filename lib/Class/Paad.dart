@@ -250,7 +250,7 @@ class Paad with ChangeNotifier{
     XInputManager.enableXInput(); // usando pugin xinput_gamepad
     
     for (int controllerIndex in ControllersManager.getIndexConnectedControllers()) {
-      final Controller controller = Controller(index: controllerIndex, buttonMode: ButtonMode.PRESS);
+      final Controller controller = Controller(index: controllerIndex, buttonMode: ButtonMode.HOLD);
 
       
       controller.buttonsMapping = {

@@ -12,6 +12,7 @@ import 'package:v1_game/Bando%20de%20Dados/MediaCatalogo.dart';
 import 'package:v1_game/Class/TecladoCtrl.dart';
 import 'package:v1_game/Class/TickerProvider.dart';
 import 'package:v1_game/Class/WebScrap.dart';
+import 'package:v1_game/Class/jogos_existentes.dart';
 import 'package:v1_game/Controllers/JanelaCtrl.dart';
 import 'package:v1_game/Controllers/MovimentoSistema.dart';
 import 'package:v1_game/Controllers/NavWebCtrl.dart';
@@ -22,12 +23,13 @@ import 'package:v1_game/Modelos/videoYT.dart';
 import 'package:v1_game/Widgets/ImagemFullScren.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
+import 'package:v1_game/Widgets/Pops/pop_lista.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart';
-import '../Bando de Dados/db.dart';
-import '../Class/Paad.dart';
-import '../Modelos/IconeInicial.dart';
-import '../Tela/SeletorImagens.dart';
-import '../Widgets/Pops.dart';
+import '../../Bando de Dados/db.dart';
+import '../../Class/Paad.dart';
+import '../../Modelos/IconeInicial.dart';
+import '../SeletorImagens/SeletorImagens.dart';
+import '../../Widgets/Pops.dart';
 
 class PrincipalCtrl with ChangeNotifier{
   
@@ -78,7 +80,7 @@ class PrincipalCtrl with ChangeNotifier{
   Timer? timerImersao;
 
   bool cardInf = false;
-  bool cardGamesGrid = true;
+  bool cardGamesGrid = false;
   bool contadorVideo = false;
   bool imersao = false;
   bool imersaoVideos = false;
@@ -572,7 +574,8 @@ class PrincipalCtrl with ChangeNotifier{
         debugPrint("Sai navPasta");
         Timer(const Duration(milliseconds: 500), () => iniciaTela());  
       }else if(retorno == "Imagem da Download"){
-        salvaImgDownload();
+        // selectedIndexIcone = 0;
+        await salvaImgDownload();
       }
       else if (retorno == "Excluir Card") {        
         Timer(const Duration(milliseconds: 500  ),() async {
@@ -631,7 +634,8 @@ class PrincipalCtrl with ChangeNotifier{
       return debugPrint("Retorno NULO img Download"); // ERRO NULO PARA AQUI
     }
     String novoCaminho = result as String;
-    // stateTela = true;        
+    stateTela = true;       
+     
     novoCaminho = await WebScrap.downloadImage(novoCaminho,listIconsInicial[selectedIndexIcone].nome);
     if(novoCaminho.contains("Erro::")) {
       debugPrint(novoCaminho); // ERRO SALVAMENTO PARA AQUI
@@ -639,6 +643,7 @@ class PrincipalCtrl with ChangeNotifier{
     }
     listIconsInicial[selectedIndexIcone].imgStr = novoCaminho;
     await db.attDados(listIconsInicial);
+    
     load = true;
     return iniciaTela();
   }
@@ -649,6 +654,30 @@ class PrincipalCtrl with ChangeNotifier{
   escutaPad(String event) async {    
     try{
       if(!stateTela || event == "") return;
+
+
+
+      if( event == "4"){
+
+        JogosExistentes je = JogosExistentes();
+        List<JogoEncontrado> jogosE = await je.buscarJogosInstalados();
+
+        List<String> itens = [];
+
+        for( var jogo in jogosE ) {
+          itens.add(jogo.nome);
+        }
+
+        await mostrarPopLista(
+          context: ctx,
+          titulo: "Comandos Salvos",
+          itens: itens,
+          onItemSelecionado: (item) {
+            // TecladoCtrl.enviarComandoSequencia(item);
+          },
+        );
+      }
+
       // debugPrint(" ===== Click Paad: => $event" );
       if((event == "RB"||event=="LB") && focusScope != focusScopeVideos){
         movAbaGuias(event);}

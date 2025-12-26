@@ -182,11 +182,49 @@ class _VisualizadorImgWebState extends State<VisualizadorImgWeb> {
                             duration: const Duration(milliseconds: 500),
                             child: CachedNetworkImage(
                               imageUrl: widget.list[i].imageUrl, // Substitua pelo URL da sua imagem
-                              placeholder: (context, url) => const Padding(
-                                padding:  EdgeInsets.all(49),
-                                child:  SizedBox(child: LoadingIco(color: Colors.amber,)),
-                              ), // Indicador de progresso
-                              errorWidget: (context, url, error) => const Center(child: Icon(Icons.error,size: 200,color: Colors.black12,)), // Ícone de erro (opcional)
+                              placeholder: (context, url) {
+                                debugPrint('========================================');
+                                debugPrint('CARREGANDO IMAGEM [$i]:');
+                                debugPrint('URL: $url');
+                                debugPrint('========================================');
+                                return const Padding(
+                                  padding:  EdgeInsets.all(49),
+                                  child:  SizedBox(child: LoadingIco(color: Colors.amber,)),
+                                );
+                              },
+                              errorWidget: (context, url, error) {
+                                debugPrint('========================================');
+                                debugPrint('ERRO AO CARREGAR IMAGEM [$i]:');
+                                debugPrint('URL Tentada: $url');
+                                debugPrint('Tipo de Erro: ${error.runtimeType}');
+                                debugPrint('Mensagem: ${error.toString()}');
+                                debugPrint('Largura esperada: ${widget.list[i].largura}');
+                                debugPrint('Altura esperada: ${widget.list[i].altura}');
+                                debugPrint('Formato: ${widget.list[i].imageUrl.split('.').last}');
+                                debugPrint('URL Completa: ${widget.list[i].imageUrl}');
+                                debugPrint('========================================');
+                                return Center(
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      const Icon(Icons.error, size: 200, color: Colors.black12),
+                                      const SizedBox(height: 20),
+                                      Container(
+                                        padding: const EdgeInsets.all(10),
+                                        decoration: BoxDecoration(
+                                          color: Colors.black54,
+                                          borderRadius: BorderRadius.circular(10),
+                                        ),
+                                        child: Text(
+                                          'Erro ao carregar\n${url.length > 50 ? "${url.substring(0, 50)}..." : url}',
+                                          style: const TextStyle(color: Colors.red, fontSize: 12),
+                                          textAlign: TextAlign.center,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              },
                             ),
                           ),
                         ),

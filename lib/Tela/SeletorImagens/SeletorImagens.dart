@@ -3,7 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:v1_game/Class/Paad.dart';
-import 'package:v1_game/Controllers/SeletorImgCtrl.dart';
+import 'package:v1_game/Tela/SeletorImagens/SeletorImgCtrl.dart';
 import 'package:v1_game/Widgets/LoadWid.dart';
 
 class SeletorImagens extends StatefulWidget {

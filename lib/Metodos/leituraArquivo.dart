@@ -70,6 +70,79 @@ class LerArquivos{
     return url;
   }
 
+  // Método otimizado que retorna apenas NOMES dos items (pastas e arquivos)
+  Future<List<Item>> lerNomesPasta(String diretorio) async {
+    List<Item> items = [];
+    List<Item> itemsP = [];
+    List<Item> itemsA = [];
+
+    try {
+      // Obtendo apenas as entradas do diretório sem ler conteúdo
+      final dir = Directory(diretorio);
+      
+      // Verificar se o diretório existe e é acessível
+      if (!dir.existsSync()) {
+        debugPrint('Diretório não existe: $diretorio');
+        return items;
+      }
+
+      // listSync com followLinks: false evita seguir links simbólicos
+      // e é mais rápido. Captura erros de permissão individual
+      List<FileSystemEntity> entradas;
+      try {
+        entradas = dir.listSync(followLinks: false);
+      } catch (e) {
+        debugPrint('Erro de permissão ao acessar: $diretorio - $e');
+        // Tenta com recursive: false explicitamente
+        try {
+          entradas = dir.listSync(recursive: false, followLinks: false);
+        } catch (e2) {
+          debugPrint('Acesso negado a: $diretorio');
+          return items; // Retorna lista vazia se não conseguir acessar
+        }
+      }
+
+      for (FileSystemEntity entrada in entradas) {
+        try {
+          Item it = Item();
+          String nomeItem = entrada.path.split(Platform.pathSeparator).last;
+          
+          // Ignorar arquivos/pastas do sistema ocultas
+          if (nomeItem.startsWith('.') || nomeItem.startsWith('\$')) {
+            continue;
+          }
+          
+          // Verificando se é um arquivo
+          if (entrada is File) {
+            String extensao = nomeItem.contains('.') ? nomeItem.split('.').last : '';
+            String nomeSemExtensao = nomeItem.contains('.') 
+                ? nomeItem.substring(0, nomeItem.length - extensao.length - 1)
+                : nomeItem;
+            // Armazena apenas o nome, não o caminho completo
+            it.addArquivo(nomeItem, extensao, nomeSemExtensao, false);
+            itemsA.add(it);
+          }
+          // Verificando se é uma Pasta
+          else if (entrada is Directory) {
+            // Armazena apenas o nome da pasta
+            it.addPasta(nomeItem, nomeItem);
+            itemsP.add(it);
+          }
+        } catch (e) {
+          // Erro individual em um item - continua processando outros
+          debugPrint('Erro ao processar item: $e');
+        }
+      }
+
+      items.addAll(itemsP);
+      items.addAll(itemsA);
+    } catch (e) {
+      debugPrint('Erro geral ao ler pasta $diretorio: $e');
+    }
+
+    return items;
+  }
+
   Future<List<Item>> lerDadosPasta(String diretorio ) async {
     List<Item> items = [];
     List<Item> itemsP = [];

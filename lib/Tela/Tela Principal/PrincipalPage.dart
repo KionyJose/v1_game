@@ -6,7 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:scroll_snap_list/scroll_snap_list.dart';
 import 'package:v1_game/Class/Paad.dart';
-import 'package:v1_game/Controllers/PrincipalCtrl.dart';
+import 'package:v1_game/Tela/Tela%20Principal/PrincipalCtrl.dart';
 import 'package:v1_game/Global.dart';
 import 'package:v1_game/Widgets/BarraProgressoYT.dart';
 import 'package:v1_game/Widgets/LoadWid.dart';

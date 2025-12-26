@@ -79,7 +79,7 @@ class PastaCtrl {
     listCaminho.add(caminhoFinal);
     String caminhoDesktop = await lerArquivos.getDesktopPath();
     unidades.insert(0, caminhoDesktop); // "Área de Trabalho"
-    items = await lerArquivos.lerDadosPasta(caminhoDesktop);
+    items = await lerArquivos.lerNomesPasta(caminhoDesktop);
     listCaminho.add(caminhoDesktop);
   
     // Configura o foco inicial
@@ -111,36 +111,68 @@ class PastaCtrl {
   }
 
   selectItemDireito(bool hasFocus, int index){
-    debugPrint("object1");debugPrint("=================<<<<<<<<<<<  $selectedIndex2");
     if (hasFocus) {
       selectedIndex2 = index;
-      debugPrint("=================<<<<<<<<<<<  $selectedIndex2");
+      debugPrint('Item selecionado: ${items[index].nome}');
       String extencao = items[index].extencao.toUpperCase();
       if(extencao == "JPG"  || extencao == "PNG" ||  extencao == "JPEG"|| extencao == "WEBP"|| extencao == "GIF" || extencao == "BMP" ) {
-        List<String> listAux = listCaminho.last.split('\\');
-        String caminho = "";
-        for (var item in listAux) {
-          caminho += "$item\\\\";
+        // Construir caminho completo para preview usando nome
+        String caminhoBase = listCaminho.last;
+        if(!caminhoBase.endsWith('\\')) {
+          caminhoBase += '\\';
         }
-        imgLoadPreview = caminho + items[index].caminho;
-
-      }else{ imgLoadPreview = "";}
+        String nomeCompleto = items[index].nome;
+        if(items[index].extencao.isNotEmpty) {
+          nomeCompleto += '.${items[index].extencao}';
+        }
+        imgLoadPreview = caminhoBase + nomeCompleto;
+        debugPrint('Preview imagem: $imgLoadPreview');
+      }else{ 
+        imgLoadPreview = "";
+      }
+      attTela();
     }
   }
 
 
   selectItemEsquerdo(bool hasFocus, int index) async {
-    if (!hasFocus)  return;
+    if (!hasFocus) return;
+    
     String compare = caminhoFinal;
-    selectedIndex1= index;
+    selectedIndex1 = index;
     caminhoFinal = "${unidades[selectedIndex1]}${selectedIndex1==0 ? "" : ":"}";
+    
     if(compare == caminhoFinal) return;
+    
+    debugPrint('Mudando para unidade: $caminhoFinal');
+    
     // Inicia Busca Novos arquivos
     loadArquivos = true;
-    items = await lerArquivos.lerDadosPasta(caminhoFinal);
-    loadArquivos = false;
-    if(caminhoFinal != listCaminho.last ) listCaminho.add(caminhoFinal);
-    if(ctx.mounted)attTela();
+    attTela();
+    
+    try {
+      items = await lerArquivos.lerNomesPasta(caminhoFinal);
+      
+      // Limpar histórico de caminhos e adicionar novo
+      listCaminho.clear();
+      listCaminho.add(caminhoFinal);
+      
+      selectedIndex2 = 0;
+      
+      if(ctx.mounted) {
+        // Focar no primeiro item do grid direito
+        if(focusNodeSetas2.isNotEmpty) {
+          focusNodeSetas2[0].requestFocus();
+        }
+        attTela();
+      }
+    } catch(e) {
+      debugPrint('Erro ao ler unidade: $e');
+      Provider.of<Notificacao>(ctx, listen: false).notificarIn(Icons.error, 'Erro ao acessar unidade');
+    } finally {
+      loadArquivos = false;
+      if(ctx.mounted) attTela();
+    }
   }
 
   
@@ -179,72 +211,102 @@ class PastaCtrl {
         return requerirFoco();
       }
       else if(focusScope == gridViewFocus2){ // PASTAS E ARQUIVOS Navegação
-        // String brs = "\\";
-        // if(selectedIndex2 == 0) return;
-        caminhoFinal = items[selectedIndex2].caminho;
-        
         
         if(!items[selectedIndex2].pasta){ // ARQUIVO Selecionado!
           loadArquivos = true;
           stateTela = false;
 
-          // String resposta = await Pops().msgSN(ctx, "Confirmar acão?");
-          // if(resposta == "Sim"){
-            List<String> listAux = listCaminho.last.split('\\');
-            String caminho = "";
-            for (var item in listAux) {
-              caminho += "$item\\\\";
-            }
-            return Navigator.pop(
-              ctx,
-              [
-                "caminho",
-                (items[selectedIndex2].url ? caminhoFinal : caminho + caminhoFinal),
-                items[selectedIndex2].url ? items[selectedIndex2].nome : ""
-              ]);
-          // }else{
-            // stateTela = true;
-          // }
-
+          // Construir caminho completo usando o nome do item
+          String caminhoBase = listCaminho.last;
+          if(!caminhoBase.endsWith('\\')) {
+            caminhoBase += '\\';
+          }
+          String caminhoCompleto = caminhoBase + items[selectedIndex2].nome;
+          if(items[selectedIndex2].extencao.isNotEmpty) {
+            caminhoCompleto += '.${items[selectedIndex2].extencao}';
+          }
           
-           
-        }else{
+          return Navigator.pop(
+            ctx,
+            [
+              "caminho",
+              caminhoCompleto,
+              ""
+            ]);
+        }
+        else{ // PASTA Selecionada - Entrar na pasta
           loadArquivos = true;
           attTela();
-          items = await lerArquivos.lerDadosPasta(caminhoFinal);
-          if(caminhoFinal != listCaminho.last ) listCaminho.add(caminhoFinal);
+          
+          // Construir caminho completo usando apenas o nome da pasta
+          String caminhoBase = listCaminho.last;
+          if(!caminhoBase.endsWith('\\')) {
+            caminhoBase += '\\';
+          }
+          String novoCaminho = caminhoBase + items[selectedIndex2].nome;
+          
+          debugPrint('Entrando na pasta: $novoCaminho');
+          
+          // Tentar ler a pasta usando método otimizado
+          items = await lerArquivos.lerNomesPasta(novoCaminho);
+          
+          // Atualizar caminho final e histórico
+          caminhoFinal = novoCaminho;
+          if(caminhoFinal != listCaminho.last) {
+            listCaminho.add(caminhoFinal);
+          }
+          
           selectedIndex2 = 0;
-          loadArquivos= false;
+          loadArquivos = false;
+          
+          // Focar no primeiro item
+          if(focusNodeSetas2.isNotEmpty) {
+            focusNodeSetas2[0].requestFocus();
+          }
+          
           attTela();
-          // requerirFoco();
         }
-
-
-
-        // setState(() {});
-
       }
-
-        
-
-    }catch(e){ //notificacaoPop = true;
-      debugPrint(e.toString());
-      Provider.of<Notificacao>(ctx, listen: false).notificarIn(Icons.error, e.toString());
+    }catch(e){
+      debugPrint('Erro ao entrar na pasta: $e');
+      loadArquivos = false;
+      Provider.of<Notificacao>(ctx, listen: false).notificarIn(Icons.error, 'Erro ao acessar: $e');
+      attTela();
     }
   }
   clickVoltar() async {
-    // if(selectedIndex2 == 0)return;
-    if(listCaminho.last.length < 4) stateTela = false;
-    if(listCaminho.last.length < 4 ) {
+    if(listCaminho.length <= 1) {
+      // Está na raiz, sair da tela
+      stateTela = false;
       return Navigator.pop(ctx);
     }
+    
+    // Remover caminho atual e voltar para o anterior
     listCaminho.removeLast();
     caminhoFinal = listCaminho.last;
+    
+    debugPrint('Voltando para: $caminhoFinal');
+    
     loadArquivos = true;
     attTela();
-    items = await lerArquivos.lerDadosPasta(caminhoFinal);   
-    loadArquivos = false;
-    attTela();
+    
+    try {
+      items = await lerArquivos.lerNomesPasta(caminhoFinal);
+      selectedIndex2 = 0;
+      
+      // Focar no primeiro item
+      if(focusNodeSetas2.isNotEmpty) {
+        focusNodeSetas2[0].requestFocus();
+      }
+      
+      attTela();
+    } catch(e) {
+      debugPrint('Erro ao voltar: $e');
+      Provider.of<Notificacao>(ctx, listen: false).notificarIn(Icons.error, 'Erro ao voltar');
+    } finally {
+      loadArquivos = false;
+      attTela();
+    }
   }
 
   
