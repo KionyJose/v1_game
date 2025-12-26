@@ -176,7 +176,7 @@ class WebScrap{
     }).toList();
 
     // A lista filtrada agora contém apenas vídeos com URLs únicas
-    debugPrint('Total de vídeos após remoção de duplicatas: ${listaFiltrada.length}');
+    // debugPrint('Total de vídeos após remoção de duplicatas: ${listaFiltrada.length}');
     return listaFiltrada;
   }
 

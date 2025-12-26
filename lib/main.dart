@@ -8,10 +8,10 @@ import 'package:v1_game/Bando%20de%20Dados/TESTES.dart';
 import 'package:v1_game/Class/MouseCtrl.dart';
 import 'package:v1_game/Controllers/SonsSistema.dart';
 import 'package:v1_game/Global.dart';
+import 'package:v1_game/Modelos/modeloVariaveisSistema.dart';
 import 'package:v1_game/Tela/MyApp.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:media_kit/media_kit.dart';
-import 'Bando de Dados/db.dart';
 import 'Metodos/leituraArquivo.dart';
 
 WindowOptions windowOptions = const WindowOptions(    
@@ -22,6 +22,10 @@ WindowOptions windowOptions = const WindowOptions(
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   MediaKit.ensureInitialized();
+  
+  // Inicializa o sistema de áudio SoLoud
+  await SonsSistema.init();
+  
   // Must add this line.
   MouseCtrl.primeiroMovimento();
   await windowManager.ensureInitialized(); 
@@ -32,7 +36,7 @@ void main() async {
     },
   );
   await configucacoesSistema();
-  if(!configSistema.intro) SonsSistema.intro();
+  if(configSistema.intro) SonsSistema.intro();
   localizaCaminhos();
 
 
@@ -51,8 +55,9 @@ void main() async {
 
 }
 configucacoesSistema() async{
-  await DB().leituraConfigSis();
-  
+  // Carrega configurações do arquivo JSON
+  configSistema = await ConfigSistema.load();
+  debugPrint("✓ Configurações carregadas: volume=${configSistema.volume}, intro=${configSistema.intro}, viewType=${configSistema.viewType}");
 }
 localizaCaminhos(){
   // Obtém o caminho completo do executável em execução

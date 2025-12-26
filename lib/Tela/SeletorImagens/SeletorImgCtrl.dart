@@ -8,7 +8,7 @@ import 'package:v1_game/Class/Paad.dart';
 import 'package:v1_game/Class/TecladoCtrl.dart';
 import 'package:v1_game/Controllers/JanelaCtrl.dart';
 import 'package:v1_game/Controllers/MovimentoSistema.dart';
-import 'package:v1_game/Widgets/Pops.dart';
+import 'package:v1_game/Widgets/Pops/Pops.dart';
 import 'package:v1_game/Widgets/VisualizadorImgWeb.dart';
 import '../../Class/WebScrap.dart';
 import '../../Modelos/ImgWebScrap.dart';

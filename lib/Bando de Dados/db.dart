@@ -75,7 +75,7 @@ class DB{
       // Cria o arquivo se ele não existir
       String isLine = "";
       
-      isLine += "volume=50\n";
+      isLine += "volume=0.9\n";
       isLine += "tela_inicial_tipo=1\n";
       isLine += "videos_tela_principal=true\n";
       isLine += "videos_card_game=false\n";
@@ -99,7 +99,7 @@ class DB{
       if(line.contains("volume")) configSistema.volume = double.parse(value);      
       if(line.contains("tela_inicial_tipo")) configSistema.telaInicialTipo = int.parse(value);      
       if(line.contains("videos_tela_principal")) configSistema.videosTelaPrincipal = value == "true";
-      if(line.contains("videos_card_game")) configSistema.videosCardGame = value == "true";
+      if(line.contains("videos_card_game")) configSistema.noticias = value == "true";
       
       
     }

@@ -18,18 +18,19 @@ import 'package:v1_game/Controllers/MovimentoSistema.dart';
 import 'package:v1_game/Controllers/NavWebCtrl.dart';
 import 'package:v1_game/Global.dart';
 import 'package:v1_game/Modelos/MediaCanal.dart';
-import 'package:v1_game/Modelos/modeloVariaveisSistema.dart';
 import 'package:v1_game/Modelos/videoYT.dart';
 import 'package:v1_game/Widgets/ImagemFullScren.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
+import 'package:v1_game/Widgets/Pops/pop_config.dart';
 import 'package:v1_game/Widgets/Pops/pop_lista.dart';
+import 'package:v1_game/Widgets/Pops/pop_mais.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart';
 import '../../Bando de Dados/db.dart';
 import '../../Class/Paad.dart';
 import '../../Modelos/IconeInicial.dart';
 import '../SeletorImagens/SeletorImagens.dart';
-import '../../Widgets/Pops.dart';
+import '../../Widgets/Pops/Pops.dart';
 
 class PrincipalCtrl with ChangeNotifier{
   
@@ -97,7 +98,7 @@ class PrincipalCtrl with ChangeNotifier{
   bool load = false;
   // bool trocandoView = false;
   List<VideoYT> videosYT= [];
-  late VariaveisSistema cfg;
+  // late VariaveisSistema cfg;
   
 
   PageController bodyCtrl = PageController();
@@ -128,7 +129,13 @@ class PrincipalCtrl with ChangeNotifier{
   }
 
   bool get exibirVideos {
-    return videosYT.isNotEmpty && telaIniciada && videosCarregados && selectedIndexAbaGuias == 0 && (cardGamesGrid && cardInf || !cardGamesGrid);
+    return 
+    configSistema.videosTelaPrincipal &&
+    videosYT.isNotEmpty &&
+    telaIniciada &&
+    videosCarregados &&
+    selectedIndexAbaGuias == 0 &&
+    (cardGamesGrid && cardInf || !cardGamesGrid);
   }
 
   urlImgFilme(int i ){
@@ -137,8 +144,8 @@ class PrincipalCtrl with ChangeNotifier{
   }
   //initState
   iniciaTela() async {
-    cfg = await VariaveisSistema.load();
-    cardGamesGrid = cfg.viewType == "grid";
+    // cfg = await VariaveisSistema.load();
+    cardGamesGrid = configSistema.viewType == "grid";
     selectedIndexIcone = 0;
     selectedIndexVideo = 0;
     selectedIndexCinema = 0;
@@ -554,50 +561,70 @@ class PrincipalCtrl with ChangeNotifier{
     // PAD paad = pad;
     WidgetsBinding.instance.addPostFrameCallback((_) async  {
 
-      String retorno = await Pops().popMenuTelHome2(ctx);
+      String retorno = await PopMais.mais(ctx);
       debugPrint(retorno);
       if(retorno.isEmpty){ 
         stateTela = true;
         return;
       }
-    
-      if (retorno == "Caminho do game" || retorno == "Caminho de Imagem" || retorno == "Add") {
-        debugPrint("Entrei navPasta");
-        final nome = await Pops().navPasta(ctx, "", retorno, listIconsInicial, selectedIndexIcone);
-        if(retorno=="Add" && nome != null && nome != ""){
-          selectedIndexIcone = 0;
-          await salvaImgDownload();
-        }else{
-          debugPrint("Sai navPasta");
-          Timer(const Duration(milliseconds: 500), () => iniciaTela());  
-        }
-        debugPrint("Sai navPasta");
-        Timer(const Duration(milliseconds: 500), () => iniciaTela());  
-      }else if(retorno == "Imagem da Download"){
-        // selectedIndexIcone = 0;
-        await salvaImgDownload();
-      }
-      else if (retorno == "Excluir Card") {        
-        Timer(const Duration(milliseconds: 500  ),() async {
-          var result = await Pops().msgSN(ctx, "Confirmar ação?");
-          if(result ==  null || result == "Nao"){ 
-            stateTela = true;
-            return;
+
+      switch (retorno) {
+        
+        case "Caminho do game" || "Caminho de Imagem" || "Add": {
+          debugPrint("Entrei navPasta");
+          final nome = await Pops().navPasta(ctx, "", retorno, listIconsInicial, selectedIndexIcone);
+          if(retorno=="Add" && nome != null && nome != ""){
+            selectedIndexIcone = 0;
+            await salvaImgDownload();
+          }else{
+            debugPrint("Sai navPasta");
+            Timer(const Duration(milliseconds: 500), () => iniciaTela());  
           }
-          if(result == "Sim"){
-            listIconsInicial.removeAt(selectedIndexIcone);
-            await db.attDados(listIconsInicial);
+          debugPrint("Sai navPasta");
+          Timer(const Duration(milliseconds: 500), () => iniciaTela()); 
+          }
+          case "Imagem da Download": {
+            await salvaImgDownload();
+          }
+
+          case  "Excluir Card":{
+            Timer(const Duration(milliseconds: 500  ),() async {
+              var result = await Pops().msgSN(ctx, "Confirmar ação?");
+              if(result ==  null || result == "Nao"){ 
+                stateTela = true;
+                return;
+              }
+              if(result == "Sim"){
+                listIconsInicial.removeAt(selectedIndexIcone);
+                await db.attDados(listIconsInicial);
+                Timer(const Duration(milliseconds: 500), () => iniciaTela());
+              }
+            });
+          }
+          case "Atalhos":{
+            await Pops.popTela(ctx,ImagemFullScren(urlImg: "${assetsPath}tutorial.png"));
+            Timer(const Duration(milliseconds: 500), () => iniciaTela());  
+          }
+          case "Cfg":{
+            String retorno = await PopConfig.config(ctx);
+            if(retorno.isEmpty || retorno == "cancelar"){ 
+              stateTela = true;
+              // Restaura o foco após cancelar
+              focusNodeIcones[selectedIndexIcone].requestFocus();
+              focusScopeIcones.requestFocus();
+              focusScope = focusScopeIcones;
+              attTela();
+              return;
+            }
+            if(retorno == "salvar"){
+              configSistema.save();
+              Timer(const Duration(milliseconds: 500), () => iniciaTela());
+            }
+          }
+          default:{
             Timer(const Duration(milliseconds: 500), () => iniciaTela());
           }
-        });
-      }else if(retorno == "Atalhos"){
-        await Pops.popTela(ctx,ImagemFullScren(urlImg: "${assetsPath}tutorial.png"));
-        Timer(const Duration(milliseconds: 500), () => iniciaTela());  
-      }
-      else{        
-        Timer(const Duration(milliseconds: 500), () => iniciaTela());
-      }
-      
+      }      
 
     });
     debugPrint("Finalizei btnMais");
@@ -635,7 +662,7 @@ class PrincipalCtrl with ChangeNotifier{
     }
     String novoCaminho = result as String;
     stateTela = true;       
-     
+
     novoCaminho = await WebScrap.downloadImage(novoCaminho,listIconsInicial[selectedIndexIcone].nome);
     if(novoCaminho.contains("Erro::")) {
       debugPrint(novoCaminho); // ERRO SALVAMENTO PARA AQUI
@@ -998,49 +1025,9 @@ class PrincipalCtrl with ChangeNotifier{
   }
 
   trocaViewIcones() async {
-    // Salva o índice atual antes de trocar
-    // final indexAtual = selectedIndexIcone;
-    
-    // Bloqueia operações
-    
-    // Troca o modo de visualização
     cardGamesGrid = !cardGamesGrid;
-    cfg.viewType = cardGamesGrid ? "grid" : "list";
-    cfg.save();
-    
-    // Atualiza a tela para reconstruir com novo layout
-    // attTela();
-    
-    // Aguarda a reconstrução completa do widget
-    // await Future.delayed(const Duration(milliseconds: 150));
-    
-    // Após reconstrução, recalcula e reposiciona
-    // WidgetsBinding.instance.addPostFrameCallback((_) async {
-    //   // Aguarda mais um frame para garantir que o layout está pronto
-    //   await Future.delayed(const Duration(milliseconds: 50));
-      
-    //   // Reaplica o foco no índice correto
-    //   if (indexAtual >= 0 && indexAtual < focusNodeIcones.length) {
-    //     selectedIndexIcone = indexAtual;
-    //     focusNodeIcones[indexAtual].requestFocus();
-        
-    //     // Se o controller tem clientes (widget montado), posiciona sem animação
-    //     if (scrolListIcones.hasClients) {
-    //       try {
-    //         // Calcula posição aproximada baseada no índice (ajuste conforme tamanho do item)
-    //         const tamanhoItem = 380.0; // Ajuste conforme seu tamanho de item
-    //         final posicao = indexAtual * tamanhoItem;
-    //         scrolListIcones.jumpTo(posicao.clamp(0.0, scrolListIcones.position.maxScrollExtent));
-    //       } catch (e) {
-    //         debugPrint("Erro ao posicionar scroll: $e");
-    //       }
-    //     }
-    //   }
-      
-    //   // Desbloqueia operações
-    //   // Força atualização final
-    //   attTela();
-    // });
+    configSistema.viewType = cardGamesGrid ? "grid" : "list";
+    configSistema.save();
   }
   
 
