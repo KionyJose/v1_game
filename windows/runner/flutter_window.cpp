@@ -478,20 +478,20 @@ void FlutterWindow::ProcessarControleDualSense(BYTE* dados_brutos, DWORD tamanho
     };
 
     // Executando os disparos
-    DispararSeMudou("QUADRADO", c_quad, est.quadrado);
-    DispararSeMudou("TRIANGULO", c_tri, est.triangulo);
-    DispararSeMudou("BOLA", c_bola, est.bola);
-    DispararSeMudou("XIS", c_xis, est.xis);
+    DispararSeMudou("4", c_tri, est.triangulo);
+    DispararSeMudou("3", c_bola, est.bola);
+    DispararSeMudou("2", c_xis, est.xis);
+    DispararSeMudou("1", c_quad, est.quadrado);
 
-    DispararSeMudou("UP", c_up, est.up);
-    DispararSeMudou("DOWN", c_down, est.down);
-    DispararSeMudou("LEFT", c_left, est.left);
-    DispararSeMudou("RIGHT", c_right, est.right);
+    DispararSeMudou("CIMA", c_up, est.up);
+    DispararSeMudou("BAIXO", c_down, est.down);
+    DispararSeMudou("ESQUERDA", c_left, est.left);
+    DispararSeMudou("DIREITA", c_right, est.right);
 
-    DispararSeMudou("L1", c_l1, est.l1);
-    DispararSeMudou("R1", c_r1, est.r1);
-    DispararSeMudou("L2", c_l2_btn, est.l2);
-    DispararSeMudou("R2", c_r2_btn, est.r2);
+    DispararSeMudou("LB", c_l1, est.l1);
+    DispararSeMudou("RB", c_r1, est.r1);
+    DispararSeMudou("LT", c_l2_btn, est.l2);
+    DispararSeMudou("RT", c_r2_btn, est.r2);
     
     DispararSeMudou("SELECT", c_select, est.select);
     DispararSeMudou("START", c_start, est.start);
@@ -499,11 +499,11 @@ void FlutterWindow::ProcessarControleDualSense(BYTE* dados_brutos, DWORD tamanho
 
     // Envio de analógicos com deadzone
     if (abs(cur_lx - est.lx) > 5 || abs(cur_ly - est.ly) > 5) {
-        EnviarAnalogicoParaFlutter("ANALOGICO_ESQUERDO", cur_lx, cur_ly);
+        EnviarAnalogicoParaFlutter("ANALOGICO ESQUERDO", cur_lx, cur_ly);
         est.lx = cur_lx; est.ly = cur_ly;
     }
     if (abs(cur_rx - est.rx) > 5 || abs(cur_ry - est.ry) > 5) {
-        EnviarAnalogicoParaFlutter("ANALOGICO_DIREITO", cur_rx, cur_ry);
+        EnviarAnalogicoParaFlutter("ANALOGICO DIREITO", cur_rx, cur_ry);
         est.rx = cur_rx; est.ry = cur_ry;
     }
 }
