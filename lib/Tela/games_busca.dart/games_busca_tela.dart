@@ -8,6 +8,8 @@ class GamesBuscaTela {
   static Future<String> abrir(BuildContext context) async {
     // Controller de scroll para seguir o foco do Paad
     final ScrollController scrollController = ScrollController();
+    // Keys para cada item do grid, usadas com Scrollable.ensureVisible
+    final Map<int, GlobalKey> itemKeys = {};
 
     final resultado = await showDialog<String>(
       context: context,
@@ -33,13 +35,27 @@ class GamesBuscaTela {
                     // Lógica para rolar a lista automaticamente conforme o foco
                     if (scrollController.hasClients) {
                       final focusedIndex = ctrl.focusedForCurrent();
-                      // Estimativa de altura: (index / colunas) * altura da linha
-                      double position = (focusedIndex / 6).floor() * 140.0;
-                      scrollController.animateTo(
-                        position,
-                        duration: const Duration(milliseconds: 200),
-                        curve: Curves.easeOut,
-                      );
+                      final key = itemKeys[focusedIndex];
+                      if (key != null && key.currentContext != null) {
+                        // Garante que o item focado fique totalmente visível (maneja último item corretamente)
+                        Scrollable.ensureVisible(
+                          key.currentContext!,
+                          duration: const Duration(milliseconds: 200),
+                          curve: Curves.easeOut,
+                          alignment: 0.5,
+                        );
+                      } else {
+                        // Fallback: cálculo simples de posição (mantido por segurança)
+                        double position = (focusedIndex / 6).floor() * 140.0;
+                        final max = scrollController.position.maxScrollExtent;
+                        if (position > max) position = max;
+                        if (position < 0) position = 0;
+                        scrollController.animateTo(
+                          position,
+                          duration: const Duration(milliseconds: 200),
+                          curve: Curves.easeOut,
+                        );
+                      }
                     }
                   });
 
@@ -93,7 +109,7 @@ class GamesBuscaTela {
                                       duration: const Duration(milliseconds: 200),
                                       padding: const EdgeInsets.symmetric(horizontal: 14),
                                       decoration: BoxDecoration(
-                                        color: selected ? Colors.blueAccent.withOpacity(0.2) : Colors.white.withOpacity(0.05),
+                                        color: selected ? Colors.blueAccent.withAlpha((0.2 * 255).toInt()) : Colors.white.withValues(alpha: 0.05),
                                         borderRadius: BorderRadius.circular(20),
                                         border: Border.all(color: selected ? Colors.blueAccent : Colors.transparent),
                                       ),
@@ -140,47 +156,53 @@ class GamesBuscaTela {
                                   
                                   return GestureDetector(
                                     onTap: () => ctrl.pickGame(context, g),
-                                    child: AnimatedScale(
-                                      scale: focused ? 1.05 : 1.0,
-                                      duration: const Duration(milliseconds: 100),
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.center,
-                                        children: [
-                                          Expanded(
-                                            child: Container(
-                                              width: double.infinity,
-                                              decoration: BoxDecoration(
-                                                color: const Color(0xFF1A1F2B),
-                                                borderRadius: BorderRadius.circular(8),
-                                                border: Border.all(
-                                                  color: focused ? Colors.blueAccent : Colors.white10,
-                                                  width: focused ? 2 : 1,
+                                    child: Builder(builder: (itemCtx) {
+                                      final itemKey = itemKeys.putIfAbsent(index, () => GlobalKey());
+                                      return Container(
+                                        key: itemKey,
+                                        child: AnimatedScale(
+                                          scale: focused ? 1.05 : 1.0,
+                                          duration: const Duration(milliseconds: 100),
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.center,
+                                            children: [
+                                              Expanded(
+                                                child: Container(
+                                                  width: double.infinity,
+                                                  decoration: BoxDecoration(
+                                                    color: const Color(0xFF1A1F2B),
+                                                    borderRadius: BorderRadius.circular(8),
+                                                    border: Border.all(
+                                                      color: focused ? Colors.blueAccent : Colors.white10,
+                                                      width: focused ? 2 : 1,
+                                                    ),
+                                                    boxShadow: focused ? [BoxShadow(color: Colors.blueAccent.withValues(alpha: 0.3), blurRadius: 8)] : [],
+                                                  ),
+                                                  child: ClipRRect(
+                                                    borderRadius: BorderRadius.circular(6),
+                                                    child: g.thumbnailPath != null
+                                                        ? Image.file(File(g.thumbnailPath!), fit: BoxFit.cover)
+                                                        : const Icon(Icons.videogame_asset, size: 30, color: Colors.white24),
+                                                  ),
                                                 ),
-                                                boxShadow: focused ? [BoxShadow(color: Colors.blueAccent.withOpacity(0.3), blurRadius: 8)] : [],
                                               ),
-                                              child: ClipRRect(
-                                                borderRadius: BorderRadius.circular(6),
-                                                child: g.thumbnailPath != null
-                                                    ? Image.file(File(g.thumbnailPath!), fit: BoxFit.cover)
-                                                    : const Icon(Icons.videogame_asset, size: 30, color: Colors.white24),
+                                              const SizedBox(height: 5),
+                                              Text(
+                                                g.name,
+                                                maxLines: 1,
+                                                textAlign: TextAlign.center,
+                                                overflow: TextOverflow.ellipsis,
+                                                style: TextStyle(
+                                                  fontSize: 11,
+                                                  color: focused ? Colors.white : Colors.white70,
+                                                  fontWeight: focused ? FontWeight.bold : FontWeight.normal,
+                                                ),
                                               ),
-                                            ),
+                                            ],
                                           ),
-                                          const SizedBox(height: 5),
-                                          Text(
-                                            g.name,
-                                            maxLines: 1,
-                                            textAlign: TextAlign.center,
-                                            overflow: TextOverflow.ellipsis,
-                                            style: TextStyle(
-                                              fontSize: 11,
-                                              color: focused ? Colors.white : Colors.white70,
-                                              fontWeight: focused ? FontWeight.bold : FontWeight.normal,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
+                                        ),
+                                      );
+                                    }),
                                   );
                                 },
                               );

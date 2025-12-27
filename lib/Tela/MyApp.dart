@@ -47,9 +47,9 @@ class _MyAppState extends State<MyApp> {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (ctx) => Paad(ctx: ctx , escutar: true)),
-        ChangeNotifierProvider(create: (_) => Notificacao()),
         ChangeNotifierProvider(create: (_) => JanelaCtrl(escuta: true)),
+        ChangeNotifierProvider(create: (_) => Paad(escutar: true, janelaCtrl: _.read<JanelaCtrl>())),
+        ChangeNotifierProvider(create: (_) => Notificacao()),
         //   ChangeNotifierProvider(create: (_) => Servidor()),
         //   ChangeNotifierProvider(create: (_) => User()),
       ],

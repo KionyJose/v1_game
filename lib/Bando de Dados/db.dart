@@ -146,7 +146,7 @@ class DB{
     return listIconsInicial;
   }
 
-  Process? _process; // Variável para armazenar o processo
+  Process? process; // Variável para armazenar o processo
 
   openFile(String filePath) async {
     try {
@@ -165,7 +165,7 @@ class DB{
         }
         
         // Usa cmd /c start para processar protocolos customizados
-        _process = await Process.start(
+        process = await Process.start(
           'cmd',
           ['/c', 'start', '', filePath],
           runInShell: true,
@@ -181,7 +181,7 @@ class DB{
         debugPrint('Executável detectado: ${filePath.split('\\').last}');
         
         // Para .exe, executa sem bloquear a aplicação (modo detached).
-        _process = await Process.start(
+        process = await Process.start(
           filePath,
           [],
           mode: ProcessStartMode.detached,

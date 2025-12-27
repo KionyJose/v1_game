@@ -22,7 +22,7 @@ class Paad with ChangeNotifier{
   static const int VELOCIDADE_MAX_SCROLL = 150;
   static const int THROTTLE_ANALOGICO_MS = 10; // Reduz chamadas do analógico
   
-  late BuildContext ctx;
+  final JanelaCtrl janelaCtrl;
   List<Controller> controlesAtivos = List.empty(growable: true);
   List<Controller> controlesBKP = List.empty(growable: true);
   String click = "";
@@ -37,12 +37,12 @@ class Paad with ChangeNotifier{
   // DateTime? _ultimoMovimentoMouse;
   // DateTime? _ultimoScroll;
 
-  Paad({required bool escutar, required this.ctx}){
+  Paad({required bool escutar, required this.janelaCtrl}){
     if(escutar) escutaPaadsAsync();
     RawInputGamepad.escutarBotaoGuide((evento) => escutaClickPaad(evento));
     RawInputGamepad.escutarBotoesDualSense((botao, press) => press == padPs ? escutaClickPaad(botao) : null);
     RawInputGamepad.escutarAnalogicosDualSense((stick, x, y, valorX, valorY) {
-      if(padPs) return;
+      if(!padPs) return;
       escutaClickPaad("$stick,X,$valorX");
       escutaClickPaad("$stick,Y,$valorY");
     });
@@ -110,6 +110,11 @@ class Paad with ChangeNotifier{
     }
   }
   voltarAoSistema(){
+    try{
+    janelaCtrl.telaPresaReverse(estado: true, usarEstado: true);
+    }catch(e){
+      debugPrint("Erro ao voltar ao sistema: $e");
+    }
     JanelaCtrl.restoreWindow();
     SonsSistema.cheat();
     delay = true;

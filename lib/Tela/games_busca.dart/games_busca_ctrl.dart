@@ -86,12 +86,16 @@ class GamesBuscaCtrl with ChangeNotifier {
 
   void _rebuildPlatformsFound() {
     final set = <String>{};
-    for (final g in filtered) set.add(g.platform);
+    for (final g in filtered) {
+      set.add(g.platform);
+    }
     // keep order of defaultRoots keys but only those present
     platformsFound = defaultRoots.keys.where((k) => set.contains(k)).toList();
     if (platformsFound.isEmpty) platformsFound = ['Todos'];
     if (selectedPlatformIndex >= platformsFound.length) selectedPlatformIndex = 0;
-    for (final p in platformsFound) focusedIndex.putIfAbsent(p, () => 0);
+    for (final p in platformsFound) {
+      focusedIndex.putIfAbsent(p, () => 0);
+    }
   }
 
   List<GameEntry> get currentList {
@@ -224,7 +228,7 @@ class GamesBuscaCtrl with ChangeNotifier {
   void moveFocus(String dir) {
     final list = currentList;
     if (list.isEmpty) return;
-    final cross = 4; // grid columns
+    const cross = 4; // grid columns
     int idx = focusedForCurrent();
     if (dir == 'ESQUERDA') idx = (idx - 1) < 0 ? 0 : idx - 1;
     if (dir == 'DIREITA') idx = (idx + 1) >= list.length ? list.length - 1 : idx + 1;

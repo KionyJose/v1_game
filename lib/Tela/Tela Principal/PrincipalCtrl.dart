@@ -501,7 +501,7 @@ class PrincipalCtrl with ChangeNotifier{
       await Future.delayed(const Duration(milliseconds: 650));
       await Pops().carregandoGames(ctx,"Entrando no game..." );
       gameIniciado = false;
-      Provider.of<JanelaCtrl>(ctx, listen: false).telaPresaReverse();
+      Provider.of<JanelaCtrl>(ctx, listen: false).telaPresaReverse(estado: true, usarEstado: true);
       // Desativa o uso do mouse;
       Provider.of<Paad>(ctx, listen: false).ativaMouse( usarEstado: true,  estado: false);
       
