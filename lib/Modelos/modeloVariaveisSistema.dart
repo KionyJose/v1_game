@@ -21,6 +21,19 @@ class ConfigSistema {
   bool videosTelaPrincipal; // Exibir vídeos na tela principal
   bool noticias; // Exibir vídeos no card do game
   bool intro; // Tocar som de introdução
+  
+  // Sequências de comandos do controle (configuráveis)
+  List<String> sequenciaEnter; // SELECT + SELECT + A + A + A
+  List<String> sequenciaEspaco; // SELECT + SELECT + Y + Y + Y
+  
+  // Múltiplas opções para voltar à tela (SELECT ou START)
+  List<String> sequenciaVoltarTela1; // SELECT + SELECT + LB + RB + A  
+  List<String> sequenciaVoltarTela2; // START + START + LB + RB + A
+  
+  // Múltiplas opções para ativar mouse (SELECT ou START ou custom)
+  List<String> sequenciaAtivaMouse1; // START + START + LB + RB + Y  
+  List<String> sequenciaAtivaMouse2; // SELECT + SELECT + LB + RB + Y  
+  List<String> sequenciaAtivaMouseCustom; // [configurável]
 
   ConfigSistema({
     required this.viewType,
@@ -35,6 +48,13 @@ class ConfigSistema {
     required this.videosTelaPrincipal,
     required this.noticias,
     required this.intro,
+    required this.sequenciaEnter,
+    required this.sequenciaEspaco,
+    required this.sequenciaVoltarTela1,
+    required this.sequenciaVoltarTela2,
+    required this.sequenciaAtivaMouse1,
+    required this.sequenciaAtivaMouse2,
+    required this.sequenciaAtivaMouseCustom,
   });
 
   /// Valores padrão
@@ -52,6 +72,13 @@ class ConfigSistema {
       videosTelaPrincipal: true,
       noticias: false,
       intro: false,
+      sequenciaEnter: ["SELECT", "SELECT", "2", "2", "2"],
+      sequenciaEspaco: ["SELECT", "SELECT", "4", "4", "4"],
+      sequenciaVoltarTela1: ["SELECT", "SELECT", "LB", "RB", "2"],
+      sequenciaVoltarTela2: ["START", "START", "LB", "RB", "2"],
+      sequenciaAtivaMouse1: ["START", "START", "LB", "RB", "4"],
+      sequenciaAtivaMouse2: ["SELECT", "SELECT", "LB", "RB", "4"],
+      sequenciaAtivaMouseCustom: ["L3", "R3", "LB", "RB", "4"],
     );
   }
 
@@ -69,6 +96,27 @@ class ConfigSistema {
       videosTelaPrincipal: json['videosTelaPrincipal'] ?? true,
       noticias: json['videosCardGame'] ?? false,
       intro: json['intro'] ?? false,
+      sequenciaEnter: json['sequenciaEnter'] != null 
+          ? List<String>.from(json['sequenciaEnter']) 
+          : ["SELECT", "SELECT", "2", "2", "2"],
+      sequenciaEspaco: json['sequenciaEspaco'] != null 
+          ? List<String>.from(json['sequenciaEspaco']) 
+          : ["SELECT", "SELECT", "4", "4", "4"],
+      sequenciaVoltarTela1: json['sequenciaVoltarTela1'] != null 
+          ? List<String>.from(json['sequenciaVoltarTela1']) 
+          : ["SELECT", "SELECT", "LB", "RB", "2"],
+      sequenciaVoltarTela2: json['sequenciaVoltarTela2'] != null 
+          ? List<String>.from(json['sequenciaVoltarTela2']) 
+          : ["START", "START", "LB", "RB", "2"],
+      sequenciaAtivaMouse1: json['sequenciaAtivaMouse1'] != null 
+          ? List<String>.from(json['sequenciaAtivaMouse1']) 
+          : ["START", "START", "LB", "RB", "4"],
+      sequenciaAtivaMouse2: json['sequenciaAtivaMouse2'] != null 
+          ? List<String>.from(json['sequenciaAtivaMouse2']) 
+          : ["SELECT", "SELECT", "LB", "RB", "4"],
+      sequenciaAtivaMouseCustom: json['sequenciaAtivaMouseCustom'] != null 
+          ? List<String>.from(json['sequenciaAtivaMouseCustom']) 
+          : ["L3", "R3", "LB", "RB", "4"],
     );
   }
 
@@ -86,6 +134,13 @@ class ConfigSistema {
       'videosTelaPrincipal': videosTelaPrincipal,
       'videosCardGame': noticias,
       'intro': intro,
+      'sequenciaEnter': sequenciaEnter,
+      'sequenciaEspaco': sequenciaEspaco,
+      'sequenciaVoltarTela1': sequenciaVoltarTela1,
+      'sequenciaVoltarTela2': sequenciaVoltarTela2,
+      'sequenciaAtivaMouse1': sequenciaAtivaMouse1,
+      'sequenciaAtivaMouse2': sequenciaAtivaMouse2,
+      'sequenciaAtivaMouseCustom': sequenciaAtivaMouseCustom,
     };
   }
 
@@ -102,6 +157,13 @@ class ConfigSistema {
     bool? videosTelaPrincipal,
     bool? videosCardGame,
     bool? intro,
+    List<String>? sequenciaEnter,
+    List<String>? sequenciaEspaco,
+    List<String>? sequenciaVoltarTela1,
+    List<String>? sequenciaVoltarTela2,
+    List<String>? sequenciaAtivaMouse1,
+    List<String>? sequenciaAtivaMouse2,
+    List<String>? sequenciaAtivaMouseCustom,
   }) {
     return ConfigSistema(
       viewType: viewType ?? this.viewType,
@@ -116,6 +178,13 @@ class ConfigSistema {
       videosTelaPrincipal: videosTelaPrincipal ?? this.videosTelaPrincipal,
       noticias: videosCardGame ?? noticias,
       intro: intro ?? this.intro,
+      sequenciaEnter: sequenciaEnter ?? this.sequenciaEnter,
+      sequenciaEspaco: sequenciaEspaco ?? this.sequenciaEspaco,
+      sequenciaVoltarTela1: sequenciaVoltarTela1 ?? this.sequenciaVoltarTela1,
+      sequenciaVoltarTela2: sequenciaVoltarTela2 ?? this.sequenciaVoltarTela2,
+      sequenciaAtivaMouse1: sequenciaAtivaMouse1 ?? this.sequenciaAtivaMouse1,
+      sequenciaAtivaMouse2: sequenciaAtivaMouse2 ?? this.sequenciaAtivaMouse2,
+      sequenciaAtivaMouseCustom: sequenciaAtivaMouseCustom ?? this.sequenciaAtivaMouseCustom,
     );
   }
 

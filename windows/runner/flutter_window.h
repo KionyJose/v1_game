@@ -28,6 +28,23 @@ class FlutterWindow : public Win32Window {
 
   // The Flutter instance hosted by this window.
   std::unique_ptr<flutter::FlutterViewController> flutter_controller_;
+  
+  // ===== MÉTODOS DE CONFIGURAÇÃO =====
+  void ConfigurarCanalComunicacaoFlutter();
+  void RegistrarEntradaBrutaGamepad();
+  
+  // ===== MÉTODOS DE PROCESSAMENTO DE ENTRADA =====
+  void ProcessarEntradaBrutaControle(LPARAM lparam);
+  void ProcessarControleXbox(BYTE* dadosBrutos, DWORD tamanho);
+  void ProcessarControleDualSense(BYTE* dadosBrutos, DWORD tamanho);
+  
+  // ===== MÉTODOS DE ENVIO PARA FLUTTER =====
+  void EnviarBotaoGuideParaFlutter(const char* tipoControle, int indiceByte, bool pressionado);
+  void EnviarDadosBrutosParaFlutter(BYTE byte7, BYTE byte8, BYTE byte9);
+  void EnviarBotaoDualSenseParaFlutter(const char* nomeBotao, bool pressionado);
+  
+  // ===== MÉTODOS DE CALLBACK =====
+  void ConfigurarCallbackBotaoPS();
 };
 
 #endif  // RUNNER_FLUTTER_WINDOW_H_

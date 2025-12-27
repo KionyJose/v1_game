@@ -1,15 +1,28 @@
-// ignore_for_file: file_names
+// ignore_for_file: file_names, constant_identifier_names
 
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:v1_game/Class/TecladoCtrl.dart';
 import 'package:v1_game/Controllers/SonsSistema.dart';
 import 'package:xinput_gamepad/xinput_gamepad.dart';
+import 'package:v1_game/Global.dart';
 
 import '../Controllers/JanelaCtrl.dart';
 import 'MouseCtrl.dart';
+import 'bruta.dart';
 
 class Paad with ChangeNotifier{
+  // Constantes de configuração
+  static const int ZONA_MORTA_MOUSE = 3000;
+  static const int ZONA_MORTA_SCROLL = 4000;
+  static const int MAX_VALOR_ANALOGICO = 32768;
+  static const int VELOCIDADE_MIN_MOUSE = 1;
+  static const int VELOCIDADE_MAX_MOUSE = 45;
+  static const int VELOCIDADE_MIN_SCROLL = 15;
+  static const int VELOCIDADE_MAX_SCROLL = 150;
+  static const int THROTTLE_ANALOGICO_MS = 10; // Reduz chamadas do analógico
+  
   late BuildContext ctx;
   List<Controller> controlesAtivos = List.empty(growable: true);
   List<Controller> controlesBKP = List.empty(growable: true);
@@ -17,11 +30,33 @@ class Paad with ChangeNotifier{
   List<String> comandoSequencia = ["0","0","0","0","0"];
   bool blockClick = false;
   bool delay = false;
+  bool comandoAtivo = true;
   bool isMouse = false;
+  
+  // Throttle para analógicos
+  // DateTime? _ultimoMovimentoMouse;
+  // DateTime? _ultimoScroll;
 
   Paad({required bool escutar, required this.ctx}){
     if(escutar) escutaPaadsAsync();
+    
+    // Configura MethodChannel nativo para botão Guide (Xbox e DualSense)
+    // _configurarMethodChannelGuide();
+    
+    // Fallback: Configura listener para botão Xbox/PlayStation Guide (plugin)
+    RawInputGamepad.escutarBotaoGuide((evento) {
+      debugPrint('🎮 Botão Guide/Home (Plugin): $evento');
+      if(evento == 'GUIDE') voltarAoSistema();
+    });
+    RawInputGamepad.escutarBotoesDualSense((botao, pressionado) {
+      // debugPrint('🎮 DualSense (Plugin): $botao ${pressionado ? "PRESSIONADO" : "SOLTO"}');
+      if(pressionado) {
+        // Executa ações do botão pressionado
+        escutaClickPaad(botao);
+      }
+    });
   }
+
 
 
   attSequencia() {
@@ -33,12 +68,14 @@ class Paad with ChangeNotifier{
   }
   
   escutaClickPaad(String event) async {
-    // debugPrint(event);
+    debugPrint(event);
     if(event == "SELECT"){
     }
+    if(event == "GUIDE") return voltarAoSistema();
+    
     addSequencia(event);
     if(delay) return;
-    if(isMouse) return mouseAdapt(event);
+    if(isMouse) return MouseCtrl.mouseAdapt(event);
     click = event;
     if(await naTela() && !delay)notifyListeners();
 
@@ -60,7 +97,7 @@ class Paad with ChangeNotifier{
   }
 
   addSequencia(String event){    
-    if(event == "")return;
+    if(event == ""|| !comandoAtivo)return;
     if(comandoSequencia.length == 5){
       comandoSequencia.removeAt(0);
       comandoSequencia.add(event);
@@ -75,14 +112,11 @@ class Paad with ChangeNotifier{
     
   }
   voltaTela(){
-    int total = 0;
-    // RestauraTela
-    if(comandoSequencia[0] == "SELECT" || comandoSequencia[0] == "START")total++;
-    if(comandoSequencia[1] == "SELECT" || comandoSequencia[0] == "START")total++;
-    if(comandoSequencia[2] == "LB")total++;
-    if(comandoSequencia[3] == "RB")total++;
-    if(comandoSequencia[4] == "2")total++;
-    if(total == 5) voltarAoSistema();
+    // Verifica qualquer uma das sequências de voltar tela
+    if(_verificarSequencia(configSistema.sequenciaVoltarTela1) ||
+       _verificarSequencia(configSistema.sequenciaVoltarTela2)) {
+      voltarAoSistema();
+    }
   }
   voltarAoSistema(){
 
@@ -101,15 +135,12 @@ class Paad with ChangeNotifier{
     });     
   }
   mouseMoov(){
-    int total = 0;
-    // RestauraTela
-    if(comandoSequencia[0] == "SELECT" || comandoSequencia[0] == "START")total++;
-    if(comandoSequencia[1] == "SELECT" || comandoSequencia[0] == "START")total++;
-    if(comandoSequencia[2] == "LB")total++;
-    if(comandoSequencia[3] == "RB")total++;
-    if(comandoSequencia[4] == "4")total++;
-    if(total == 5) ativaMouse();
-    
+    // Verifica qualquer uma das sequências de ativar mouse
+    if(_verificarSequencia(configSistema.sequenciaAtivaMouse1) ||
+       _verificarSequencia(configSistema.sequenciaAtivaMouse2) ||
+       _verificarSequencia(configSistema.sequenciaAtivaMouseCustom)) {
+      ativaMouse();
+    }
   }
   ativaMouse({bool usarEstado = false, bool estado = false}){
     if(usarEstado){
@@ -126,131 +157,39 @@ class Paad with ChangeNotifier{
   }
 
   teclaEnter(){
-    int total = 0;
-    // RestauraTela
-    if(comandoSequencia[0] == "SELECT")total++;
-    if(comandoSequencia[1] == "SELECT")total++;
-    if(comandoSequencia[2] == "2")total++;
-    if(comandoSequencia[3] == "2")total++;
-    if(comandoSequencia[4] == "2")total++;
-    if(total == 5){
+    // SELECT + SELECT + A + A + A (configurável)
+    if(_verificarSequencia(configSistema.sequenciaEnter)){
       TecladoCtrl.teclaEnter();      
       SonsSistema.pim();
     }
   }
+  
   teclaEspaco(){
-    int total = 0;
-    // RestauraTela
-    if(comandoSequencia[0] == "SELECT")total++;
-    if(comandoSequencia[1] == "SELECT")total++;
-    if(comandoSequencia[2] == "4")total++;
-    if(comandoSequencia[3] == "4")total++;
-    if(comandoSequencia[4] == "4")total++;
-    if(total == 5){
+    // SELECT + SELECT + Y + Y + Y (configurável)
+    if(_verificarSequencia(configSistema.sequenciaEspaco)){
       TecladoCtrl.teclaEnter();
       SonsSistema.pim();
     }
   }
 
-  abrirTecladoVitual(){
-    // Ativar Mouse
-    ativaMouse(usarEstado: true,  estado: true);
-    TecladoCtrl.abrirTecladoVirtual(); 
+
+  // Função para verificar sequências de comandos de forma genérica
+  bool _verificarSequencia(List<String> sequenciaEsperada) {
+    if (comandoSequencia.length < sequenciaEsperada.length) return false;
+    for (int i = 0; i < sequenciaEsperada.length; i++) {
+      if (comandoSequencia[i] != sequenciaEsperada[i]) return false;
+    }
+    return true;
   }
 
   
-  bool mouseClickHold = false;
-  bool eixoScrolYMouse = true;
-  mouseAdapt(String event){
-    try{
-      
-      if(event.contains("RT-")) TecladoCtrl.aumentarVolume();
-      if(event.contains("LT-")) TecladoCtrl.diminuirVolume();
-      if(event == "R3") return abrirTecladoVitual();
-      if(event == "LB") return TecladoCtrl.previusPage();
-      if(event == "RB") return TecladoCtrl.nextPage();
-      if(event == "[LB-RB]") return debugPrint("SSSSSSSSSSSSSSSSSSS");
-      if(event == "CIMA") return TecladoCtrl.teclaF11();
-      if(event == "START") return MouseCtrl.clickDireito();      
-      if(event == "SELECT") return TecladoCtrl.pressWinTab();
-      if(event == "1") return mouseClickHold = MouseCtrl.clickHold(mouseClickHold);
-      if(event == "2") return MouseCtrl.simularClique();
-      if(event == "3") return TecladoCtrl.voltarNavegacao();
-      // if(event == "3") return TecladoCtrl.teclaEsc();
-      if(event == "4") return TecladoCtrl.teclaWindows();
-      // if(event =="R3") return eixoScrolYMouse = !eixoScrolYMouse;
-      if(event == "ST-SL") return TecladoCtrl.fecharAltF4();
-      
-      if(event.contains("ANALOGICO ESQUERDO")){
-        //Verifica e convert em valor pro mouse locomover na velocidade
-        List<String> list = event.split(',');
-        int valor = int.parse(list.last);
-        bool negtv = valor.isNegative;
-        valor += negtv ? (valor.abs() *2) : 0;
-        int valorReturn = 0;
-        // debugPrint("${list[1]}$valor");
-        if(valor > 2000 && valor < 10000) valorReturn = negtv ? -1 : 1; 
-        if(valor > 10000 && valor < 20000) valorReturn = negtv ? -5 : 5;        
-        if(valor > 20000 && valor < 30000) valorReturn = negtv ? - 15 : 15;
-        if(valor > 30000) valorReturn = negtv ? -35 : 35;
-        int  xy = list[1] == "Y" ? valorReturn : valorReturn;
-        String retorno ="${list[0]},${list[1]},$xy";
-        debugPrint("  ${list[1]}  ==  $xy");
-        mousecontroler(retorno);
-        return retorno;
-      }
-      if(event.contains("ANALOGICO DIREITO")){
-        // Verifica e convert em valor pro Scrol do mouse locomover na velocidade
-        // Define Variaveis usada no metodo ===========================
-        List<String> list = event.split(',');
-        int valor = int.parse(list.last);
-        bool negtv = valor.isNegative;
-        valor += negtv ? (valor.abs() *2) : 0;
-        int valorReturn = 0;
-        //=============================================================
-
-        // Calcula Quanditade a Movimentar ============================
-        if(valor > 4000 && valor < 10000) valorReturn = negtv ? -15 : 15; 
-        if(valor > 10000 && valor < 20000) valorReturn = negtv ? -25 : 25;        
-        if(valor > 20000 && valor < 30000) valorReturn = negtv ? - 145 : 145;
-        if(valor > 30000) valorReturn = negtv ? -35 : 35;        
-        //=============================================================
-        
-        // Altera Eixo de Scrol usando Tecla Alt =====================
-        if(valor > 30000 && list[1] == "X") eixoScrolYMouse = false;
-        if(valor > 30000 && list[1] == "Y") eixoScrolYMouse = true;
-        String eixo = eixoScrolYMouse ? "Y" : "X";
-        if(list[1] != eixo) return; // Caso eixo nao setado
-        int  xy = list[1] == "Y" ? valorReturn : valorReturn;
-        // if(eixo == "X")TecladoCtrl.pressionarShift();    
-        //=============================================================
-
-        // Envia Valor para Movimentar Scrol ==========================
-        MouseCtrl.scrollMouse(eixo == "X" ,eixo == "X" ? -xy : xy);
-        debugPrint("  ${list[1]}  ==  $xy");
-        return;
-        //=============================================================
-      }
-      
-    }catch(_){}
-    return "";
-  }
-  mousecontroler(String event){
-    List<String> list = event.split(',');
-    int dx = 0;
-    int dy = 0;
-    if(list[1]=="X") dx = int.parse(list.last);
-    if(list[1]=="Y") dy = int.parse(list.last);
-    MouseCtrl.moveCursor(dx, dy);
-  }
-
   escutaPaadsAsync(){
     debugPrint("Procurando controles");
     List<Controller> listCtrl = List.empty(growable: true);
     XInputManager.enableXInput(); // usando pugin xinput_gamepad
     
     for (int controllerIndex in ControllersManager.getIndexConnectedControllers()) {
-      final Controller controller = Controller(index: controllerIndex, buttonMode: ButtonMode.HOLD);
+      final Controller controller = Controller(index: controllerIndex, buttonMode: ButtonMode.PRESS);
 
       
       controller.buttonsMapping = {

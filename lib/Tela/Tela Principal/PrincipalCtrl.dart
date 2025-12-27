@@ -540,48 +540,47 @@ class PrincipalCtrl with ChangeNotifier{
           }
           debugPrint("Sai navPasta");
           Timer(const Duration(milliseconds: 500), () => iniciaTela()); 
-          }
-          case "Imagem da Download": {
-            await salvaImgDownload();
-          }
-
-          case  "Excluir Card":{
-            Timer(const Duration(milliseconds: 500  ),() async {
-              var result = await Pops().msgSN(ctx, "Confirmar ação?");
-              if(result ==  null || result == "Nao"){ 
-                stateTela = true;
-                return;
-              }
-              if(result == "Sim"){
-                listIconsInicial.removeAt(selectedIndexIcone);
-                await db.attDados(listIconsInicial);
-                Timer(const Duration(milliseconds: 500), () => iniciaTela());
-              }
-            });
-          }
-          case "Atalhos":{
-            await Pops.popTela(ctx,ImagemFullScren(urlImg: "${assetsPath}tutorial.png"));
-            Timer(const Duration(milliseconds: 500), () => iniciaTela());  
-          }
-          case "Cfg":{
-            String retorno = await PopConfig.config(ctx);
-            if(retorno.isEmpty || retorno == "cancelar"){ 
+        }
+        case "Imagem da Download": {
+          await salvaImgDownload();
+        }
+        case  "Excluir Card":{
+          Timer(const Duration(milliseconds: 500  ),() async {
+            var result = await Pops().msgSN(ctx, "Confirmar ação?");
+            if(result ==  null || result == "Nao"){ 
               stateTela = true;
-              // Restaura o foco após cancelar
-              focusNodeIcones[selectedIndexIcone].requestFocus();
-              focusScopeIcones.requestFocus();
-              focusScope = focusScopeIcones;
-              attTela();
               return;
             }
-            if(retorno == "salvar"){
-              configSistema.save();
+            if(result == "Sim"){
+              listIconsInicial.removeAt(selectedIndexIcone);
+              await db.attDados(listIconsInicial);
               Timer(const Duration(milliseconds: 500), () => iniciaTela());
             }
+          });
+        }
+        case "Atalhos":{
+          await Pops.popTela(ctx,ImagemFullScren(urlImg: "${assetsPath}tutorial.png"));
+          Timer(const Duration(milliseconds: 500), () => iniciaTela());  
+        }
+        case "Cfg":{
+          String retorno = await PopConfig.config(ctx);
+          if(retorno.isEmpty || retorno == "cancelar"){ 
+            stateTela = true;
+            // Restaura o foco após cancelar
+            focusNodeIcones[selectedIndexIcone].requestFocus();
+            focusScopeIcones.requestFocus();
+            focusScope = focusScopeIcones;
+            attTela();
+            return;
           }
-          default:{
+          if(retorno == "salvar"){
+            configSistema.save();
             Timer(const Duration(milliseconds: 500), () => iniciaTela());
           }
+        }
+        default:{
+          Timer(const Duration(milliseconds: 500), () => iniciaTela());
+        }
       }      
 
     });

@@ -8,12 +8,12 @@ import 'package:v1_game/Global.dart';
 
 class PopConfig {
   
-  static config(BuildContext context) async {    
+  static config(BuildContext context) async {
     List<String> commandos = [];
     try{
     bool statePop = true;
     String retorno = "";
-    int total = 6; // 6 controles de configuração
+    int total = 7; // 7 controles de configuração (adicionado sequencia custom)
     FocusScopeNode focusScope = FocusScopeNode();
     
     // Cria cópias das configurações para poder cancelar
@@ -21,31 +21,68 @@ class PopConfig {
     bool introTemp = configSistema.intro;
     bool videosTelaPrincipalTemp = configSistema.videosTelaPrincipal;
     bool videosCardGameTemp = configSistema.noticias;
+    List<String> sequenciaCustomTemp = List.from(configSistema.sequenciaAtivaMouseCustom);
+    
+    // Estado de edição da sequência
+    bool editandoSequencia = false;
+    List<String> sequenciaEditando = [];
+    
+    // Flag para controlar se comandoAtivo já foi desligado
+    bool comandoAtivoDesligado = false;
 
     List<FocusNode> focusNodes = List.generate(total, (value)=> FocusNode());
 
     // Atualiza a tela
     void Function(void Function())? setStateDialog;
 
-    comandos(BuildContext context, String event){
+    // Função para fechar o dialog religando comandoAtivo
+    void fecharDialog(BuildContext context, String resultado, Paad paad) {
+      paad.comandoAtivo = true;
+      Navigator.pop(context, resultado);
+    }
+
+    comandos(BuildContext context, String event, Paad paad){
       int total = 0;
       if(commandos.length == 2){
         commandos.removeAt(0);
         commandos.add(event);
         if(commandos[0] == "SELECT")total++;
         if(commandos[1] == "SELECT")total++;
-        if(total == 2) Navigator.pop(context, "cancelar");
+        if(total == 2) fecharDialog(context, "cancelar", paad);
         if(total == 2) return false;
       }
       commandos.add(event);
       return true;
     }
 
-    escutaPad(String event) {
+    escutaPad(String event, Paad paad) {
       if(!statePop || event =="") return;
       debugPrint("=======   Escuta Pop Config  =======");
 
-      statePop = comandos(context, event);
+      // Se está editando sequência, captura os botões
+      if(editandoSequencia) {
+        // Filtra apenas botões permitidos (não analógicos nem gatilhos)
+        List<String> botoesPermitidos = ["1", "2", "3", "4", "CIMA", "BAIXO", "ESQUERDA", 
+                                         "DIREITA", "LB", "RB", "L3", "R3", "START", "SELECT"];
+        
+        if(botoesPermitidos.contains(event)) {
+          sequenciaEditando.add(event);
+          SonsSistema.pim();
+          
+          // Quando completar 5 botões, finaliza a edição
+          if(sequenciaEditando.length == 5) {
+            sequenciaCustomTemp = List.from(sequenciaEditando);
+            editandoSequencia = false;
+            sequenciaEditando.clear();
+            SonsSistema.cheat();
+          }
+          
+          setStateDialog?.call((){});
+        }
+        return;
+      }
+
+      statePop = comandos(context, event, paad);
       
       // Ajustes nos valores com setas
       if(event == "ESQUERDA" || event == "DIREITA"){
@@ -92,7 +129,7 @@ class PopConfig {
 
       if(event == "3"){// Cancelar
         statePop = false;
-        Navigator.pop(context, "cancelar");
+        fecharDialog(context, "cancelar", paad);
       }
       if(event == "2"){// Confirmar ou Toggle
         debugPrint("======================================== BOTÃO 2 PRESSIONADO");
@@ -119,20 +156,30 @@ class PopConfig {
           return;
         }
         
+        // Editar Sequência Custom (focusNodes[4])
+        if(focusNodes[4].hasFocus){
+          editandoSequencia = true;
+          sequenciaEditando.clear();
+          SonsSistema.cheat();
+          setStateDialog?.call((){});
+          return;
+        }
+        
         statePop = false;
         
-        // Salvar (focusNodes[4])
-        if (focusNodes[4].hasFocus) {
+        // Salvar (focusNodes[5])
+        if (focusNodes[5].hasFocus) {
           configSistema.volume = volumeTemp;
           configSistema.intro = introTemp;
           configSistema.videosTelaPrincipal = videosTelaPrincipalTemp;
           configSistema.noticias = videosCardGameTemp;
-          Navigator.pop(context, "salvar");
+          configSistema.sequenciaAtivaMouseCustom = sequenciaCustomTemp;
+          fecharDialog(context, "salvar", paad);
         }
         
-        // Cancelar (focusNodes[5])
-        if (focusNodes[5].hasFocus) {
-          Navigator.pop(context, "cancelar");
+        // Cancelar (focusNodes[6])
+        if (focusNodes[6].hasFocus) {
+          fecharDialog(context, "cancelar", paad);
         }
         
         statePop = true;
@@ -141,14 +188,14 @@ class PopConfig {
 
     Widget buildConfigItem(String label, Widget control, FocusNode focus) {
       return Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
         child: Focus(
           focusNode: focus,
           child: Builder(
             builder: (context) {
               final hasFocus = Focus.of(context).hasFocus;
               return Container(
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
                   color: hasFocus ? Colors.white12 : Colors.black26,
                   borderRadius: BorderRadius.circular(12),
@@ -206,14 +253,16 @@ class PopConfig {
                   ],
                 ),
                 onPressed: () {
+                  final paad = Provider.of<Paad>(context, listen: false);
                   if(text == "Salvar") {
                     configSistema.volume = volumeTemp;
                     configSistema.intro = introTemp;
                     configSistema.videosTelaPrincipal = videosTelaPrincipalTemp;
                     configSistema.noticias = videosCardGameTemp;
-                    Navigator.pop(context, "salvar");
+                    configSistema.sequenciaAtivaMouseCustom = sequenciaCustomTemp;
+                    fecharDialog(context, "salvar", paad);
                   } else {
-                    Navigator.pop(context, "cancelar");
+                    fecharDialog(context, "cancelar", paad);
                   }
                 },
               ),
@@ -227,17 +276,26 @@ class PopConfig {
         context: context,
         barrierDismissible: false,
         builder: (_) {
-          return Selector<Paad, String>(
-            selector: (_, paad) => paad.click,
-            builder: (_, valorAtual, child) {
-              escutaPad(valorAtual);
+          return Consumer<Paad>(
+            builder: (_, paad, child) {
+              // Desativa comandoAtivo ao entrar no popup (apenas uma vez)
+              if(!comandoAtivoDesligado) {
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if(paad.comandoAtivo) {
+                    paad.comandoAtivo = false;
+                    comandoAtivoDesligado = true;
+                  }
+                });
+              }
+              
+              escutaPad(paad.click, paad);
               
               return KeyboardListener(
                 focusNode: FocusNode(),
                 onKeyEvent: (KeyEvent event) {
                   if (event is KeyDownEvent) {
                     String key = MovimentoSistema.convertKeyBoard(event.logicalKey.keyLabel);
-                    escutaPad(key);
+                    escutaPad(key, paad);
                   }
                 },
                 child: StatefulBuilder(
@@ -261,103 +319,162 @@ class PopConfig {
                             ),
                           ),
                           child: SizedBox(
-                            height: MediaQuery.of(context).size.height * 0.65,
-                            width: MediaQuery.of(context).size.width * 0.35,
+                            height: MediaQuery.of(context).size.height * 0.75,
+                            width: MediaQuery.of(context).size.width * 0.38,
                             child: FocusScope(
                               node: focusScope,
                               child: Column(
                                 children: [
-                                  const SizedBox(height: 20),
+                                  const SizedBox(height: 15),
                                   const Row(
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
-                                      Icon(Icons.settings, color: Colors.white, size: 28),
-                                      SizedBox(width: 10),
+                                      Icon(Icons.settings, color: Colors.white, size: 24),
+                                      SizedBox(width: 8),
                                       Text(
                                         "Configurações",
                                         style: TextStyle(
                                           color: Colors.white,
-                                          fontSize: 24,
+                                          fontSize: 22,
                                           fontWeight: FontWeight.bold,
                                         ),
                                       ),
                                     ],
                                   ),
-                                  const SizedBox(height: 30),
+                                  const SizedBox(height: 20),
                                   
-                                  Expanded(
-                                    child: ListView(
+                                  // Volume
+                                  buildConfigItem(
+                                    "Volume",
+                                    Row(
                                       children: [
-                                        // Volume
-                                        buildConfigItem(
-                                          "Volume",
-                                          Row(
-                                            children: [
-                                              Text(
-                                                "${(volumeTemp * 100).toInt()}%",
-                                                style: const TextStyle(
-                                                  color: Colors.white,
-                                                  fontSize: 16,
-                                                  fontWeight: FontWeight.bold,
-                                                ),
-                                              ),
-                                              const SizedBox(width: 8),
-                                              const Icon(Icons.volume_up, color: Colors.white, size: 20),
-                                            ],
+                                        Text(
+                                          "${(volumeTemp * 100).toInt()}%",
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.bold,
                                           ),
-                                          focusNodes[0],
                                         ),
-                                        
-                                        // Intro
-                                        buildConfigItem(
-                                          "Som Intro",
-                                          Icon(
-                                            introTemp ? Icons.check_circle : Icons.cancel,
-                                            color: introTemp ? Colors.green : Colors.red,
-                                            size: 24,
-                                          ),
-                                          focusNodes[1],
-                                        ),
-                                        
-                                        // Videos Tela Principal
-                                        buildConfigItem(
-                                          "Vídeos Tela Principal",
-                                          Icon(
-                                            videosTelaPrincipalTemp ? Icons.check_circle : Icons.cancel,
-                                            color: videosTelaPrincipalTemp ? Colors.green : Colors.red,
-                                            size: 24,
-                                          ),
-                                          focusNodes[2],
-                                        ),
-                                        
-                                        // Videos Card Game
-                                        buildConfigItem(
-                                          "Noticias do Jogo",
-                                          Icon(
-                                            videosCardGameTemp ? Icons.check_circle : Icons.cancel,
-                                            color: videosCardGameTemp ? Colors.green : Colors.red,
-                                            size: 24,
-                                          ),
-                                          focusNodes[3],
-                                        ),
+                                        const SizedBox(width: 8),
+                                        const Icon(Icons.volume_up, color: Colors.white, size: 20),
                                       ],
                                     ),
+                                    focusNodes[0],
                                   ),
                                   
-                                  const Divider(color: Colors.white30, thickness: 1),
+                                  // Intro
+                                  buildConfigItem(
+                                    "Som Intro",
+                                    Icon(
+                                      introTemp ? Icons.check_circle : Icons.cancel,
+                                      color: introTemp ? Colors.green : Colors.red,
+                                      size: 24,
+                                    ),
+                                    focusNodes[1],
+                                  ),
+                                  
+                                  // Videos Tela Principal
+                                  buildConfigItem(
+                                    "Vídeos Tela Principal",
+                                    Icon(
+                                      videosTelaPrincipalTemp ? Icons.check_circle : Icons.cancel,
+                                      color: videosTelaPrincipalTemp ? Colors.green : Colors.red,
+                                      size: 24,
+                                    ),
+                                    focusNodes[2],
+                                  ),
+                                  
+                                  // Videos Card Game
+                                  buildConfigItem(
+                                    "Noticias do Jogo",
+                                    Icon(
+                                      videosCardGameTemp ? Icons.check_circle : Icons.cancel,
+                                      color: videosCardGameTemp ? Colors.green : Colors.red,
+                                      size: 24,
+                                    ),
+                                    focusNodes[3],
+                                  ),
+                                  
+                                  // Sequência Custom de Ativar Mouse
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                                          child: Focus(
+                                            focusNode: focusNodes[4],
+                                            child: Builder(
+                                              builder: (context) {
+                                                final hasFocus = Focus.of(context).hasFocus;
+                                                return Container(
+                                                  padding: const EdgeInsets.all(10),
+                                                  decoration: BoxDecoration(
+                                                    color: hasFocus ? Colors.white12 : Colors.black26,
+                                                    borderRadius: BorderRadius.circular(12),
+                                                    border: Border.all(
+                                                      color: hasFocus ? Colors.white : Colors.transparent,
+                                                      width: 2,
+                                                    ),
+                                                  ),
+                                                  child: Column(
+                                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                                    children: [
+                                                      Row(
+                                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                                        children: [
+                                                          Text(
+                                                            "Sequência Custom Mouse",
+                                                            style: TextStyle(
+                                                              color: Colors.white,
+                                                              fontSize: 15,
+                                                              fontWeight: hasFocus ? FontWeight.bold : FontWeight.normal,
+                                                            ),
+                                                          ),
+                                                          Icon(
+                                                            editandoSequencia ? Icons.edit : Icons.edit_outlined,
+                                                            color: editandoSequencia ? Colors.orange : Colors.white70,
+                                                            size: 18,
+                                                          ),
+                                                        ],
+                                                      ),
+                                                      const SizedBox(height: 6),
+                                                      Container(
+                                                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                                        decoration: BoxDecoration(
+                                                          color: editandoSequencia ? Colors.orange.withValues(alpha:0.2) : Colors.black26,
+                                                          borderRadius: BorderRadius.circular(8),
+                                                        ),
+                                                        child: Text(
+                                                          editandoSequencia 
+                                                            ? "${sequenciaEditando.length}/5: ${sequenciaEditando.isEmpty ? '...' : sequenciaEditando.join(' → ')}"
+                                                            : sequenciaCustomTemp.join(" → "),
+                                                          style: TextStyle(
+                                                            color: editandoSequencia ? Colors.orange : Colors.white70,
+                                                            fontSize: 12,
+                                                            fontWeight: FontWeight.w500,
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                );
+                                              }
+                                            ),
+                                          ),
+                                        ),
+                                  
+                                  const Divider(color: Colors.white30, thickness: 1, height: 20),
                                   
                                   // Botões de ação
                                   Padding(
-                                    padding: const EdgeInsets.all(16),
+                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                                     child: Row(
                                       children: [
-                                        buildButton("Salvar", focusNodes[4], Icons.save),
-                                        buildButton("Cancelar", focusNodes[5], Icons.close),
+                                        buildButton("Salvar", focusNodes[5], Icons.save),
+                                        buildButton("Cancelar", focusNodes[6], Icons.close),
                                       ],
                                     ),
                                   ),
                                   
-                                  const SizedBox(height: 10),
+                                  const SizedBox(height: 5),
                                 ],
                               ),
                             ),

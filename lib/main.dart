@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:v1_game/Bando%20de%20Dados/TESTES.dart';
 import 'package:v1_game/Class/MouseCtrl.dart';
+import 'package:v1_game/Class/bruta.dart';
 import 'package:v1_game/Controllers/SonsSistema.dart';
 import 'package:v1_game/Global.dart';
 import 'package:v1_game/Modelos/modeloVariaveisSistema.dart';
@@ -25,6 +26,10 @@ void main() async {
   
   // Inicializa o sistema de áudio SoLoud
   await SonsSistema.init();
+  await SonsSistema.preloadCommonSounds(); // Pré-carrega todos os sons
+  
+  // Inicializa captura do botão Xbox/PlayStation Guide
+  await RawInputGamepad.inicializar();
   
   // Must add this line.
   MouseCtrl.primeiroMovimento();

@@ -484,7 +484,7 @@ class Pops {
         listiconIni[index].local = value[1];
         await db.attDados(listiconIni);
       }
-      if(tarefa == "Imagem de capa"){
+      if(tarefa == "Imagem de capa" || tarefa == 'Caminho de Imagem'){
         listiconIni[index].imgStr = value[1];
         await db.attDados(listiconIni);
       }

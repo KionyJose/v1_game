@@ -11,6 +11,14 @@ class SonsSistema {
   // Cache de sons carregados para melhor performance
   static final Map<String, AudioSource> _loadedSounds = {};
 
+  
+  static void direction() => _playSound('Sons/SomMovimento.mp3');
+  static void directionRL() => _playSound('Sons/SomMovimentoBaixo.mp3');
+  static void cheat() => _playSound('Sons/SomCheat.mp3');
+  static void pim() => _playSound('Sons/SomCheat2.mp3');
+  static void click() => _playSound('Sons/SomClick.mp3');
+  static void intro() => _playSound('Sons/Intro.mp3');
+
   // Inicializa o SoLoud (chamar no início do app)
   static Future<void> init() async {
     if (_initialized) return;
@@ -42,36 +50,54 @@ class SonsSistema {
     }
   }
 
-  static Future<void> _playSound(String assetPath) async {
+  // Pré-carrega um som sem tocar (útil para sons que serão usados logo)
+  static Future<void> preload(String assetPath) async {
     if (!_initialized) {
       await init();
+    }    
+    if (_loadedSounds.containsKey(assetPath)) return;    
+    try {
+      final source = await _soloud.loadAsset('assets/$assetPath');
+      _loadedSounds[assetPath] = source;
+      debugPrint('✓ Som pré-carregado: $assetPath');
+    } catch (erro) {
+      debugPrint('✗ Erro ao pré-carregar som $assetPath: $erro');
+    }
+  }
+
+  // Toca som IMEDIATAMENTE - sem await, sem delays
+  // IMPORTANTE: O som DEVE estar pré-carregado!
+  static void _playSound(String assetPath) {
+    if (!_initialized) {
+      debugPrint('⚠️ SoLoud não inicializado! Chame SonsSistema.init() primeiro');
+      return;
+    }
+
+    // Só toca se o som JÁ estiver carregado (sem delays)
+    if (!_loadedSounds.containsKey(assetPath)) {
+      debugPrint('⚠️ Som não pré-carregado: $assetPath - Chame preloadCommonSounds()');
+      return;
     }
 
     try {
-      AudioSource source;      
-      // Usa cache se o som já foi carregado
-      if (_loadedSounds.containsKey(assetPath)) {
-        source = _loadedSounds[assetPath]!;
-      } else {
-        // Carrega e cacheia o novo som
-        source = await _soloud.loadAsset('assets/$assetPath');
-        _loadedSounds[assetPath] = source;
-      }
-      // debugPrint( '▶️ Tocando som: $assetPath com volume ${configSistema.volume}');
-      await _soloud.play(
-        source,
-        volume: configSistema.volume,
-      );
-      
+      final source = _loadedSounds[assetPath]!;
+      // Toca IMEDIATAMENTE - sem await
+      _soloud.play(source, volume: configSistema.volume);
     } catch (erro) {
       debugPrint('✗ Erro ao tocar som $assetPath: $erro');
     }
   }
-
-  static void direction() => _playSound('Sons/SomMovimento.mp3');
-  static void directionRL() => _playSound('Sons/SomMovimentoBaixo.mp3');
-  static void cheat() => _playSound('Sons/SomCheat.mp3');
-  static void pim() => _playSound('Sons/SomCheat2.mp3');
-  static void click() => _playSound('Sons/SomClick.mp3');
-  static void intro() => _playSound('Sons/Intro.mp3');
+  
+  // Pré-carrega TODOS os sons do sistema
+  static Future<void> preloadCommonSounds() async {
+    await Future.wait([
+      preload('Sons/SomCheat.mp3'),
+      preload('Sons/SomCheat2.mp3'),
+      preload('Sons/SomClick.mp3'),
+      preload('Sons/SomMovimento.mp3'),
+      preload('Sons/SomMovimentoBaixo.mp3'),
+      preload('Sons/Intro.mp3'),
+    ]);
+    debugPrint('✓ Todos os sons carregados e prontos para uso instantâneo');
+  }
 }
