@@ -14,6 +14,10 @@ class RawInputGamepad {
   /// Callback chamado quando qualquer botão do DualSense é pressionado/solto
   static Function(String botao, bool pressionado)? onDualSenseButton;
   
+  /// Callback chamado quando os analógicos do DualSense são movidos
+  /// valorX e valorY são no formato XInput (-32768 a 32767)
+  static Function(String stick, double x, double y, int valorX, int valorY)? onDualSenseAnalog;
+  
   /// Inicializa o listener do botão Guide
   static Future<void> inicializar() async {
     try {
@@ -42,8 +46,28 @@ class RawInputGamepad {
         final botao = args['button'] as String;
         final pressionado = args['pressed'] as bool;
         // debugPrint('🎮 DualSense: $botao ${pressionado ? "PRESSIONADO" : "SOLTO"}');
+        if(botao == "GUIDE" && pressionado) return onGuideButton?.call('GUIDE');
         onDualSenseButton?.call(botao, pressionado);
-        break;        
+        break;
+      
+      case 'onDualSenseAnalog':
+        // Novo evento: movimento dos analógicos
+        final args = call.arguments as Map;
+        final stick = args['stick'] as String;
+        final x = args['x'] as double;
+        final y = args['y'] as double;
+        final rawX = args['rawX'] as int;
+        final rawY = args['rawY'] as int;
+        
+        // Converter para valores int de -32768 a 32767 (formato XInput)
+        final int valorX = (x * 32768).round();
+        // inverter o valor de y de positivo pra negativo caso necessarios se nao o inverso
+        final int valorY = (-y * 32768).round();
+        
+        debugPrint('🕹️ $stick: X=$x Y=$y (raw: $rawX, $rawY)');
+        onDualSenseAnalog?.call(stick, x, y, valorX, valorY);
+        break;
+        
       case 'onGuideButtonPressed':
         final args = call.arguments as Map?;
         final controller = args?['controller'] ?? 'unknown';
@@ -65,6 +89,12 @@ class RawInputGamepad {
   /// Define o callback para todos os botões do DualSense
   static void escutarBotoesDualSense(Function(String botao, bool pressionado) callback) {
     onDualSenseButton = callback;
+  }
+  
+  /// Define o callback para os analógicos do DualSense
+  /// valorX e valorY são no formato XInput (-32768 a 32767)
+  static void escutarAnalogicosDualSense(Function(String stick, double x, double y, int valorX, int valorY) callback) {
+    onDualSenseAnalog = callback;
   }
 }
 

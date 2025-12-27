@@ -203,6 +203,10 @@ void FlutterWindow::ProcessarControleDualSense(BYTE* dados_brutos, DWORD tamanho
   static BYTE byte8_anterior = 0xFF;
   static BYTE byte9_anterior = 0xFF;
   static BYTE byte10_anterior = 0xFF;
+  static BYTE leftStickX_anterior = 0x80;
+  static BYTE leftStickY_anterior = 0x80;
+  static BYTE rightStickX_anterior = 0x80;
+  static BYTE rightStickY_anterior = 0x80;
   static bool callback_ja_configurado = false;
   
   if (tamanho < 11) return;
@@ -337,6 +341,35 @@ void FlutterWindow::ProcessarControleDualSense(BYTE* dados_brutos, DWORD tamanho
     byte10_anterior = byte10_atual;
   }
   
+  // Processar analógicos (sticks)
+  // Bytes 1-4: Left Stick X, Left Stick Y, Right Stick X, Right Stick Y
+  // Valores de 0-255 (centro é ~128)
+  if (tamanho >= 5) {
+    BYTE leftStickX = dados_brutos[1];
+    BYTE leftStickY = dados_brutos[2];
+    BYTE rightStickX = dados_brutos[3];
+    BYTE rightStickY = dados_brutos[4];
+    
+    // Threshold de 5 para evitar jitter/ruído
+    const int threshold = 5;
+    
+    bool leftStickChanged = (abs(leftStickX - leftStickX_anterior) > threshold) ||
+                            (abs(leftStickY - leftStickY_anterior) > threshold);
+    bool rightStickChanged = (abs(rightStickX - rightStickX_anterior) > threshold) ||
+                             (abs(rightStickY - rightStickY_anterior) > threshold);
+    
+    if (leftStickChanged) {
+      EnviarAnalogicoParaFlutter("ANALOGICO ESQUERDO", leftStickX, leftStickY);
+      leftStickX_anterior = leftStickX;
+      leftStickY_anterior = leftStickY;
+    }
+    
+    if (rightStickChanged) {
+      EnviarAnalogicoParaFlutter("ANALOGICO DIREITO", rightStickX, rightStickY);
+      rightStickX_anterior = rightStickX;
+      rightStickY_anterior = rightStickY;
+    }
+  }
   
   // if (!callback_ja_configurado) {
   //   ConfigurarCallbackBotaoPS();
@@ -423,4 +456,24 @@ void FlutterWindow::EnviarBotaoDualSenseParaFlutter(const char* nomeBotao, bool 
   char log[128];
   sprintf_s(log, "[DUALSENSE] %s %s\n", nomeBotao, pressionado ? "PRESSIONADO" : "SOLTO");
   OutputDebugStringA(log);
+}
+
+void FlutterWindow::EnviarAnalogicoParaFlutter(const char* nomeStick, BYTE x, BYTE y) {
+  if (!canal_botao_guide) return;
+  
+  // Normalizar valores de 0-255 para -1.0 a 1.0
+  double normalizedX = (x - 128.0) / 128.0;
+  double normalizedY = (y - 128.0) / 128.0;
+  
+  auto argumentos = std::make_unique<flutter::EncodableValue>(
+    flutter::EncodableMap{
+      {flutter::EncodableValue("stick"), flutter::EncodableValue(nomeStick)},
+      {flutter::EncodableValue("x"), flutter::EncodableValue(normalizedX)},
+      {flutter::EncodableValue("y"), flutter::EncodableValue(normalizedY)},
+      {flutter::EncodableValue("rawX"), flutter::EncodableValue((int)x)},
+      {flutter::EncodableValue("rawY"), flutter::EncodableValue((int)y)}
+    }
+  );
+  
+  canal_botao_guide->InvokeMethod("onDualSenseAnalog", std::move(argumentos));
 }

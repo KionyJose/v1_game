@@ -42,6 +42,7 @@ class FlutterWindow : public Win32Window {
   void EnviarBotaoGuideParaFlutter(const char* tipoControle, int indiceByte, bool pressionado);
   void EnviarDadosBrutosParaFlutter(BYTE byte7, BYTE byte8, BYTE byte9);
   void EnviarBotaoDualSenseParaFlutter(const char* nomeBotao, bool pressionado);
+  void EnviarAnalogicoParaFlutter(const char* nomeStick, BYTE x, BYTE y);
   
   // ===== MÉTODOS DE CALLBACK =====
   void ConfigurarCallbackBotaoPS();

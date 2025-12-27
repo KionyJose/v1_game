@@ -31,6 +31,7 @@ class Paad with ChangeNotifier{
   bool delay = false;
   bool comandoAtivo = true;
   bool isMouse = false;
+  bool padPs = true;
   
   // Throttle para analógicos
   // DateTime? _ultimoMovimentoMouse;
@@ -39,7 +40,12 @@ class Paad with ChangeNotifier{
   Paad({required bool escutar, required this.ctx}){
     if(escutar) escutaPaadsAsync();
     RawInputGamepad.escutarBotaoGuide((evento) => escutaClickPaad(evento));
-    RawInputGamepad.escutarBotoesDualSense((botao, press) => press ? escutaClickPaad(botao) : null);
+    RawInputGamepad.escutarBotoesDualSense((botao, press) => press == padPs ? escutaClickPaad(botao) : null);
+    RawInputGamepad.escutarAnalogicosDualSense((stick, x, y, valorX, valorY) {
+      if(padPs) return;
+      escutaClickPaad("$stick,X,$valorX");
+      escutaClickPaad("$stick,Y,$valorY");
+    });
   }
 
 

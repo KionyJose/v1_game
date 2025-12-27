@@ -200,8 +200,8 @@ final class MouseCtrl extends Struct {
   static dynamic mouseAdapt(String event) {
     try {
       // Atalhos de teclado
-      if(event.contains("RT-")) return TecladoCtrl.aumentarVolume();
-      if(event.contains("LT-")) return TecladoCtrl.diminuirVolume();
+      if(event.contains("RT-") || event == "RT") return TecladoCtrl.aumentarVolume();
+      if(event.contains("LT-") || event == "LT") return TecladoCtrl.diminuirVolume();
       if(event == "R3") return TecladoCtrl.abrirTecladoVirtual();
       if(event == "LB") return TecladoCtrl.previusPage();
       if(event == "RB") return TecladoCtrl.nextPage();
