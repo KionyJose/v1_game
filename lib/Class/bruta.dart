@@ -48,24 +48,12 @@ class RawInputGamepad {
         final args = call.arguments as Map?;
         final controller = args?['controller'] ?? 'unknown';
         final byte = args?['byte'] ?? 'unknown';
-        debugPrint('🎮 Botão Guide DETECTADO!');
-        debugPrint('   Controller: $controller | Byte Index: $byte');
-        
         if(controller == "Xbox" && byte == 12) {
           debugPrint('   ✅ Xbox Controller - Guide Button (byte 12)');
           onGuideButton?.call('GUIDE');
-        } else if(controller == "DualSense" && byte == 9) {
-          debugPrint('   ✅ PlayStation (DualSense) - PS Button (byte 9, bit 0x01)');
         }
-        break;
-        
-      case 'onGuideButtonReleased':
-        debugPrint('🎮 Botão Guide solto');
-        break;
-        
-      default:
-        // debugPrint('Método desconhecido: ${call.method}');
-        break;
+        break;        
+      default: break;
     }
   }
   

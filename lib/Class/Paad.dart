@@ -2,7 +2,6 @@
 
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:v1_game/Class/TecladoCtrl.dart';
 import 'package:v1_game/Controllers/SonsSistema.dart';
 import 'package:xinput_gamepad/xinput_gamepad.dart';
@@ -39,22 +38,8 @@ class Paad with ChangeNotifier{
 
   Paad({required bool escutar, required this.ctx}){
     if(escutar) escutaPaadsAsync();
-    
-    // Configura MethodChannel nativo para botão Guide (Xbox e DualSense)
-    // _configurarMethodChannelGuide();
-    
-    // Fallback: Configura listener para botão Xbox/PlayStation Guide (plugin)
-    RawInputGamepad.escutarBotaoGuide((evento) {
-      debugPrint('🎮 Botão Guide/Home (Plugin): $evento');
-      if(evento == 'GUIDE') voltarAoSistema();
-    });
-    RawInputGamepad.escutarBotoesDualSense((botao, pressionado) {
-      // debugPrint('🎮 DualSense (Plugin): $botao ${pressionado ? "PRESSIONADO" : "SOLTO"}');
-      if(pressionado) {
-        // Executa ações do botão pressionado
-        escutaClickPaad(botao);
-      }
-    });
+    RawInputGamepad.escutarBotaoGuide((evento) => escutaClickPaad(evento));
+    RawInputGamepad.escutarBotoesDualSense((botao, press) => press ? escutaClickPaad(botao) : null);
   }
 
 
@@ -119,20 +104,10 @@ class Paad with ChangeNotifier{
     }
   }
   voltarAoSistema(){
-
     JanelaCtrl.restoreWindow();
     SonsSistema.cheat();
     delay = true;
-    // Provider.of<PrincipalCtrl>(ctx, listen: false).focusScope.requestFocus();
-    Timer(const Duration(microseconds: 1245), () {
-
-      delay = false;
-      ativaMouse();
-      // click = "HOME";
-      // notifyListeners();
-      // click = "";
-      // notifyListeners();
-    });     
+    Timer(const Duration(microseconds: 1245), () => delay = false);     
   }
   mouseMoov(){
     // Verifica qualquer uma das sequências de ativar mouse
