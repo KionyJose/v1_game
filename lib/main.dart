@@ -8,6 +8,7 @@ import 'package:v1_game/Bando%20de%20Dados/TESTES.dart';
 import 'package:v1_game/Class/MouseCtrl.dart';
 import 'package:v1_game/Class/bruta.dart';
 import 'package:v1_game/Controllers/SonsSistema.dart';
+import 'package:v1_game/Controllers/modifica_wind.dart';
 import 'package:v1_game/Global.dart';
 import 'package:v1_game/Modelos/modeloVariaveisSistema.dart';
 import 'package:v1_game/Tela/MyApp.dart';
@@ -30,7 +31,8 @@ void main() async {
   
   // Inicializa captura do botão Xbox/PlayStation Guide
   await RawInputGamepad.inicializar();
-  
+  // Desabilita Xbox Game Bar e Steam ao iniciar o sistema
+  ModificaWind.desabilitarXboxESteam();
   // Must add this line.
   MouseCtrl.primeiroMovimento();
   await windowManager.ensureInitialized(); 

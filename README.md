@@ -31,3 +31,11 @@ Para dúvidas, sugestões ou feedback, entre em contato através do e-mail: **ki
 
 Obrigado por apoiar o V1 Launcher! 🚀
 
+
+## ⚡ Scripts executados pelo sistema
+
+- **disable_xbox_steam.ps1**: Desativa o atalho do botão Xbox para abrir a Xbox Game Bar e impede que o botão Xbox abra a Steam.
+
+- **moovMouse.ahk**: Move o mouse para o canto da tela para simular detecção de movimento.
+- **AutoHotkeyA32.exe**: Executa scripts de automação (AutoHotkey) usados pelo sistema.
+

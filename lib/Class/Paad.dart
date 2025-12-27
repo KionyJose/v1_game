@@ -59,7 +59,7 @@ class Paad with ChangeNotifier{
   }
   
   escutaClickPaad(String event) async {
-    debugPrint(event);
+    // debugPrint(event);
     if(event == "SELECT"){
     }
     if(event == "GUIDE") return voltarAoSistema();

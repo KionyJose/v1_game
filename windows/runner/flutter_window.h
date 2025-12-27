@@ -37,6 +37,7 @@ class FlutterWindow : public Win32Window {
   void ProcessarEntradaBrutaControle(LPARAM lparam);
   void ProcessarControleXbox(BYTE* dadosBrutos, DWORD tamanho);
   void ProcessarControleDualSense(BYTE* dadosBrutos, DWORD tamanho);
+  void ProcessarControleDualSenseBluetooth(BYTE* dadosBrutos, DWORD tamanho);
   
   // ===== MÉTODOS DE ENVIO PARA FLUTTER =====
   void EnviarBotaoGuideParaFlutter(const char* tipoControle, int indiceByte, bool pressionado);

@@ -163,11 +163,16 @@ void FlutterWindow::ProcessarEntradaBrutaControle(LPARAM lparam) {
     if (tamanho_dados > 0) {
       bool eh_xbox = (tamanho_dados == 16);
       bool eh_dualsense = DualSenseController::IsDualSenseController(tamanho_dados);
-      
+
       if (eh_xbox) {
         ProcessarControleXbox(dados_brutos, tamanho_dados);
       } else if (eh_dualsense && controlador_dualsense) {
-        ProcessarControleDualSense(dados_brutos, tamanho_dados);
+        // Se for DualSense via Bluetooth (tamanho típico 78), use o parser BT
+        if (tamanho_dados == 78) {
+          ProcessarControleDualSenseBluetooth(dados_brutos, tamanho_dados);
+        } else {
+          ProcessarControleDualSense(dados_brutos, tamanho_dados);
+        }
       }
     }
   }
@@ -379,8 +384,134 @@ void FlutterWindow::ProcessarControleDualSense(BYTE* dados_brutos, DWORD tamanho
   controlador_dualsense->ProcessRawInput(dados_brutos, tamanho);
 }
 
-// ============================================================================
-// CONFIGURAÇÃO DE CALLBACK
+  // ============================================================================
+  // PROCESSAMENTO ESPECÍFICO DUALSENSE (BLUETOOTH)
+  // ============================================================================
+
+  // kiony  
+  
+  // void FlutterWindow::ProcessarControleDualSenseBluetooth(BYTE* dados_brutos, DWORD tamanho) {
+  //   metodo pra captar corretamente qual botao e qual botao foi pressionado
+  //   if (tamanho < 5) return;
+
+  //   // Guardamos uma cópia do estado anterior para saber o que mudou
+  //   static BYTE estado_anterior[64] = {0};
+  //   static bool primeiro_run = true;
+
+  //   if (primeiro_run) {
+  //       memcpy(estado_anterior, dados_brutos, (tamanho > 64) ? 64 : tamanho);
+  //       primeiro_run = false;
+  //       return;
+  //   }
+
+  //   // Percorre todos os bytes recebidos
+  //   for (DWORD i = 0; i < tamanho; i++) {
+  //       // Se o valor do byte atual for diferente do que era antes...
+  //       if (dados_brutos[i] != estado_anterior[i]) {
+            
+  //           // 1. Criar uma string para identificar o que mudou
+  //           // Formato: "BYTE_8_VAL_128"
+  //           std::string log = "BYTE_" + std::to_string(i) + "_VAL_" + std::to_string(dados_brutos[i]);
+            
+  //           // 2. DISPARAR PARA O SEU BACKEND/FLUTTER
+  //           // Aqui você usa sua função existente para enviar o texto do log
+  //           EnviarBotaoDualSenseParaFlutter(log.c_str(), true);
+
+  //           // Atualiza o estado anterior
+  //           estado_anterior[i] = dados_brutos[i];
+  //       }
+  //   }
+  // }
+
+  void FlutterWindow::ProcessarControleDualSenseBluetooth(BYTE* d, DWORD tamanho) {
+    if (tamanho < 10) return;
+
+    // Estados estáticos para controle de borda (enviar apenas na mudança)
+    static struct {
+        bool quadrado, triangulo, bola, xis;
+        bool up, down, left, right;
+        bool l1, r1, l2, r2;
+        bool select, start, ps;
+        BYTE lx, ly, rx, ry;
+    } est = {0};
+
+    // --- BYTE 5: FACE BUTTONS & DPAD ---
+    BYTE b5 = d[5];
+    BYTE dpad = b5 & 0x0F;
+    bool c_up    = (dpad == 0);
+    bool c_right = (dpad == 2);
+    bool c_down  = (dpad == 4);
+    bool c_left  = (dpad == 6);
+    bool c_quad  = (b5 == 24);
+    bool c_tri   = (b5 == 136);
+    bool c_bola  = (b5 == 72);
+    bool c_xis   = (b5 == 40);
+
+    // --- BYTE 6: BUMPERS, TRIGGERS (DIGITAL) & SISTEMA ---
+    BYTE b6 = d[6];
+    bool c_l1     = (b6 & 0x01);
+    bool c_r1     = (b6 & 0x02);
+    bool c_l2_btn = (b6 & 0x04);
+    bool c_r2_btn = (b6 & 0x08);
+    bool c_select = (b6 & 0x10);
+    bool c_start  = (b6 & 0x20);
+
+    // --- BYTE 7: BOTÃO PS ---
+    // Verificamos o bit 0x01. Se (valor % 2 != 0), o bit 1 está ativo.
+    bool c_ps = (d[7] & 0x01) != 0;
+
+    // --- ANALÓGICOS (STICK E GATILHOS) ---
+    BYTE cur_lx = d[1];
+    BYTE cur_ly = d[2];
+    BYTE cur_rx = d[3];
+    BYTE cur_ry = d[4];
+    // Gatilhos analógicos (pressão 0-255)
+    // BYTE cur_l2_p = d[8]; 
+    // BYTE cur_r2_p = d[9];
+
+    // --- FUNÇÃO DE DISPARO ---
+    auto DispararSeMudou = [&](const char* nome, bool atual, bool& anterior) {
+        if (atual != anterior) {
+            EnviarBotaoDualSenseParaFlutter(nome, atual);
+            anterior = atual;
+        }
+    };
+
+    // Executando os disparos
+    DispararSeMudou("QUADRADO", c_quad, est.quadrado);
+    DispararSeMudou("TRIANGULO", c_tri, est.triangulo);
+    DispararSeMudou("BOLA", c_bola, est.bola);
+    DispararSeMudou("XIS", c_xis, est.xis);
+
+    DispararSeMudou("UP", c_up, est.up);
+    DispararSeMudou("DOWN", c_down, est.down);
+    DispararSeMudou("LEFT", c_left, est.left);
+    DispararSeMudou("RIGHT", c_right, est.right);
+
+    DispararSeMudou("L1", c_l1, est.l1);
+    DispararSeMudou("R1", c_r1, est.r1);
+    DispararSeMudou("L2", c_l2_btn, est.l2);
+    DispararSeMudou("R2", c_r2_btn, est.r2);
+    
+    DispararSeMudou("SELECT", c_select, est.select);
+    DispararSeMudou("START", c_start, est.start);
+    DispararSeMudou("GUIDE", c_ps, est.ps); // <--- Adicionado aqui
+
+    // Envio de analógicos com deadzone
+    if (abs(cur_lx - est.lx) > 5 || abs(cur_ly - est.ly) > 5) {
+        EnviarAnalogicoParaFlutter("ANALOGICO_ESQUERDO", cur_lx, cur_ly);
+        est.lx = cur_lx; est.ly = cur_ly;
+    }
+    if (abs(cur_rx - est.rx) > 5 || abs(cur_ry - est.ry) > 5) {
+        EnviarAnalogicoParaFlutter("ANALOGICO_DIREITO", cur_rx, cur_ry);
+        est.rx = cur_rx; est.ry = cur_ry;
+    }
+}
+
+
+
+
+
 // ============================================================================
 
 // void FlutterWindow::ConfigurarCallbackBotaoPS() {

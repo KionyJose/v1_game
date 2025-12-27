@@ -91,7 +91,9 @@ public:
     static bool IsDualSenseController(DWORD dataSize);
     
 private:
-    void ParseHIDData(const BYTE* hidBuffer);
+        void ParseHIDData(const BYTE* hidBuffer, DWORD dataSize);
+        void ParseHIDDataUSB(const BYTE* hidBuffer);
+        void ParseHIDDataBluetooth(const BYTE* hidBuffer);
     void NotifyCallbacks();
     
     DualSenseButtonState current_state_;
