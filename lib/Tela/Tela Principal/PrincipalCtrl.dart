@@ -17,6 +17,7 @@ import 'package:v1_game/Controllers/NavWebCtrl.dart';
 import 'package:v1_game/Global.dart';
 import 'package:v1_game/Modelos/MediaCanal.dart';
 import 'package:v1_game/Modelos/videoYT.dart';
+import 'package:v1_game/Tela/games_busca.dart/games_busca_tela.dart';
 import 'package:v1_game/Widgets/ImagemFullScren.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
@@ -112,6 +113,22 @@ class PrincipalCtrl with ChangeNotifier{
 
   PrincipalCtrl(this.ctx,){
     iniciaTela();
+  }
+
+  String _prettifyName(String raw) {
+    if (raw.isEmpty) return raw;
+    // replace underscores/hyphens with space
+    var s = raw.replaceAll(RegExp(r'[_\-]+'), ' ');
+    // insert space before capital letters that follow a lowercase/digit (CamelCase -> Camel Case)
+    s = s.replaceAllMapped(RegExp(r'(?<=[a-z0-9])([A-Z])'), (m) => ' ${m[1]}');
+    // collapse multiple spaces and trim
+    s = s.replaceAll(RegExp(r'\s+'), ' ').trim();
+    // capitalize each word
+    s = s.split(' ').map((w) {
+      if (w.isEmpty) return w;
+      return w.length == 1 ? w.toUpperCase() : (w[0].toUpperCase() + w.substring(1));
+    }).join(' ');
+    return s;
   }
 
   bool get exibirVideos {
@@ -577,6 +594,49 @@ class PrincipalCtrl with ChangeNotifier{
             configSistema.save();
             Timer(const Duration(milliseconds: 500), () => iniciaTela());
           }
+        }
+        case "busca":{
+          String retorno = await GamesBuscaTela.abrir(ctx);
+          if(retorno.isEmpty || retorno == "cancelar"){ 
+            stateTela = true;
+            // Restaura o foco após cancelar
+            focusNodeIcones[selectedIndexIcone].requestFocus();
+            focusScopeIcones.requestFocus();
+            focusScope = focusScopeIcones;
+            attTela();
+            return;
+          }
+
+          List<String> campos = [];
+
+          String nome = retorno.split('\\').last;
+          nome = nome.split('.').first;
+          nome = _prettifyName(nome);
+
+          campos.add("item-${listIconsInicial.length}");        
+          campos.add("lugar: ${listIconsInicial.length}");        
+          campos.add("nome: $nome");        
+          campos.add("local: $retorno");        
+          campos.add("img: ");        
+          campos.add("imgAux: caminho/.png");
+          IconInicial ico = IconInicial(campos);
+
+          listIconsInicial.insert(0,ico);
+          await db.attDados(listIconsInicial);
+
+          selectedIndexIcone = 0;
+          await salvaImgDownload();
+
+          
+          debugPrint("Sai navPasta");
+          Timer(const Duration(milliseconds: 500), () => iniciaTela()); 
+
+
+          
+          // if(retorno == "salvar"){
+          //   configSistema.save();
+          //   Timer(const Duration(milliseconds: 500), () => iniciaTela());
+          // }
         }
         default:{
           Timer(const Duration(milliseconds: 500), () => iniciaTela());

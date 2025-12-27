@@ -11,9 +11,9 @@ class PopMais {
     try{
     bool statePop = true;
     String retorno = "";
-    int total = 8; // 8 botões: de str0 até str7 (índices 0-7)
+    int total = 9; // 9 botões/nodes: de str0 até str7 + botão extra (índices 0-8)
     FocusScopeNode focusScope = FocusScopeNode();
-    String str0 = "Abrir";
+    String str0 = "busca";
     String str1 = "Caminho do game";
     String str2 = "Caminho de Imagem";
     String str3 = "Imagem da Download";
@@ -63,12 +63,40 @@ class PopMais {
         if (focusNodes[5].hasFocus) Navigator.pop(context, str5);
         if (focusNodes[6].hasFocus) Navigator.pop(context, str6);
         if (focusNodes[7].hasFocus) Navigator.pop(context, str7);
+        // if (focusNodes.length > 8 && focusNodes[8].hasFocus) Navigator.pop(context, str0);
         statePop = true;
       }
     }
     
 
-
+    btnM(String str, FocusNode focus, IconData ico) {
+      return Flexible(
+        flex: 1,
+        // padding: const EdgeInsets.symmetric(vertical: 6),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 6.0),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(30),
+            child: Container(
+              color: Colors.black38,
+              height: 40,
+              child: MaterialButton(
+                padding: EdgeInsets.zero,
+                  focusNode: focus,
+                  autofocus: str == str0 ? true : focus.hasFocus,
+                  focusColor: Colors.white70,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(ico,color: Colors.white),
+                    ],
+                  ),
+                  onPressed: () => Navigator.pop(context, str)),
+            ),
+          ),
+        ),
+      );
+    }
 
 
 
@@ -127,6 +155,7 @@ class PopMais {
                       if (focusNodes[5].hasFocus) Navigator.pop(context, str5);                    
                       if (focusNodes[6].hasFocus) Navigator.pop(context, str6);                   
                       if (focusNodes[7].hasFocus) Navigator.pop(context, str7);
+                      // if (focusNodes.length > 8 && focusNodes[8].hasFocus) Navigator.pop(context, str0);
                     }
                     debugPrint(event.logicalKey.toString());
                   }
@@ -134,8 +163,7 @@ class PopMais {
                 child: AlertDialog(
                   
                   backgroundColor: Colors.transparent,
-                  contentPadding:
-                      const EdgeInsets.only(left: 8, right: 8, bottom: 4),
+                  contentPadding: const EdgeInsets.only(left: 8, right: 8, bottom: 4),
                   content: ClipRRect(
                     borderRadius: BorderRadius.circular(20),
                     child: Container(
@@ -143,57 +171,81 @@ class PopMais {
                       child: Container(
                           // container da Tela ====================================
                           color: Colors.black38,
-                          height: MediaQuery.of(context).size.height * 0.55,
+                          // height: MediaQuery.of(context).size.height * 0.55,
                           width: MediaQuery.of(context).size.width * 0.17,
                           child: FocusScope(
                             // autofocus: true,
                             node: focusScope,
-                            child: ListView(children: [
-                              const SizedBox(height: 5),
-                              const Center(
-                                  child: Text(
-                                "Mais Opções",
-                                style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 22,
-                                    fontWeight: FontWeight.bold),
-                              )),
-                              const SizedBox(height: 20),
-                              btn(str0, focusNodes[0], false, null),
-                              btn(str1, focusNodes[1], false, null),
-                              btn(str2, focusNodes[2], false, null),
-                              btn(str3, focusNodes[3], false, null),
-                              btn(str4, focusNodes[4], false, null),
-                              btn(str5, focusNodes[5], false, null),
-                              // const Spacer(),
-              
-                              Padding(
-                                padding: const EdgeInsets.only(bottom: 8),
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    btn(
-                                      " $str6 ",
-                                      focusNodes[6],
-                                      true,
-                                      const Icon(
-                                        Icons.add,
+                            child: Builder(builder: (_) {
+                              // Constrói lista dinâmica de botões para calcular altura
+                              final List<Widget> optionButtons = [
+                                // btn(str0, focusNodes[0], false, null),
+                                btn(str1, focusNodes[1], false, null),
+                                btn(str2, focusNodes[2], false, null),
+                                btn(str3, focusNodes[3], false, null),
+                                btn(str4, focusNodes[4], false, null),
+                                btn(str5, focusNodes[5], false, null),
+                              ];
+
+                              // Medidas aproximadas (ajustáveis) por item e áreas fixas
+                              const double itemHeight = 56.0; // inclui padding
+                              const double headerHeight = 84.0; // título e espaçamento
+                              const double footerHeight = 80.0; // botões inferiores
+
+                              double totalHeight = optionButtons.length * itemHeight + headerHeight + footerHeight;
+                              double maxHeight = MediaQuery.of(context).size.height * 0.8;
+                              double containerHeight = totalHeight > maxHeight ? maxHeight : totalHeight;
+
+                              return SizedBox(
+                                height: containerHeight,
+                                child: ListView(children: [
+                                  const SizedBox(height: 5),
+                                  const Center(
+                                      child: Text(
+                                    "Mais Opções",
+                                    style: TextStyle(
                                         color: Colors.white,
-                                      ),
-                                    ),btn(
-                                      " $str7 ",
-                                      focusNodes[7],
-                                      true,
-                                      const Icon(
-                                        Icons.settings,
-                                        color: Colors.white,
-                                      ),
+                                        fontSize: 22,
+                                        fontWeight: FontWeight.bold),
+                                  )),
+                                  const SizedBox(height: 14),
+                                  // botões principais
+                                  ...optionButtons,
+                                  const SizedBox(height: 6),
+                                  const Text('Adicionar jogos e configurações',
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(
+                                        color: Colors.white70,
+                                        fontSize: 14,
+                                      )),
+                                  // botões inferiores em uma linha
+                                  Padding(
+                                    padding: const EdgeInsets.only(bottom: 8, right: 8, left: 8, top: 8),
+                                    child: Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        btnM(
+                                          str6,
+                                          focusNodes[6],
+                                          Icons.add,
+                                        ),
+                                        btnM(
+                                          str0,
+                                          focusNodes[0],
+                                          Icons.search,
+                                        ),
+                                        btnM(
+                                          str7,
+                                          focusNodes[7],
+                                          Icons.settings,
+                                        ),
+                                      ],
                                     ),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(height: 10),
-                            ]),
+                                  ),
+                                  // const SizedBox(height: 10),
+                                ]),
+                              );
+                            }),
                           )),
                     ),
                   ),

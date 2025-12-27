@@ -180,11 +180,14 @@ class DB{
       if (filePath.endsWith('.exe') || filePath.endsWith('.lnk')) {
         debugPrint('Executável detectado: ${filePath.split('\\').last}');
         
-        // Para .exe, executa diretamente
-        _process = await Process.start(filePath, []);
-        await _process!.stderr.drain();
-        
-        debugPrint('Executável iniciado com sucesso');
+        // Para .exe, executa sem bloquear a aplicação (modo detached).
+        _process = await Process.start(
+          filePath,
+          [],
+          mode: ProcessStartMode.detached,
+        );
+        // Não aguardamos streams para não bloquear até o processo fechar.
+        debugPrint('Executável iniciado (não bloqueante) com sucesso');
         debugPrint('========================================');
         return;
       }

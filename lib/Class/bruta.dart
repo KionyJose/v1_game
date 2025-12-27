@@ -43,42 +43,14 @@ class RawInputGamepad {
       case 'onDualSenseButton':
         // Novo evento: botão individual do DualSense
         final args = call.arguments as Map;
-        final botao = args['button'] as String;
+        String botao = args['button'] as String;
         final pressionado = args['pressed'] as bool;
         // Lista EXATA de eventos a ignorar (fornecidos por você)
-        const ignoredExact = <String>[
-          'BYTE_4_VAL_130',
-          'BYTE_4_VAL_131',
-          'BYTE_4_VAL_129',
-          'BYTE_1_VAL_130',
-          'BYTE_2_VAL_129',
-          'BYTE_7_VAL_20',
-          'BYTE_1_VAL_129',
-          'BYTE_2_VAL_128',
-          'BYTE_7_VAL_24',
-          'BYTE_7_VAL_28',
-          'BYTE_7_VAL_32',
-          'BYTE_7_VAL_36',
-          'BYTE_7_VAL_40',
-          'BYTE_7_VAL_44',
-          'BYTE_7_VAL_48',
-          'BYTE_7_VAL_52',
-          'BYTE_7_VAL_56',
-          'BYTE_7_VAL_60',
-          'BYTE_7_VAL_0',
-          'BYTE_7_VAL_4',
-          'BYTE_7_VAL_8',
-          'BYTE_7_VAL_12',
-          'BYTE_7_VAL_16',
-          'BYTE_3_VAL_127',
-          'BYTE_3_VAL_126'
-        ];
 
-        if (ignoredExact.contains(botao)) return null; // ignora exatamente esses eventos
-
+        if(!pressionado) botao = '';
         debugPrint('🎮 DualSense: $botao ${pressionado ? "PRESSIONADO" : "SOLTO"}');
         if (botao == "GUIDE" && pressionado) return onGuideButton?.call('GUIDE');
-        onDualSenseButton?.call(botao, pressionado);
+        onDualSenseButton?.call(botao, true);
         break;
       
       case 'onDualSenseAnalog':
