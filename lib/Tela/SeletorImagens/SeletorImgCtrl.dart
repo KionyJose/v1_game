@@ -105,9 +105,9 @@ class SeletorImgCtrl with ChangeNotifier{
     // Pops.popTela(ctx,const LoadingIco());
     attTela();
     
-    debugPrint('========================================');
-    debugPrint('SELETOR DE IMAGENS - CLIQUE NA PASTA');
-    debugPrint('Nome original da pasta: $str');
+    // debugPrint('========================================');
+    // debugPrint('SELETOR DE IMAGENS - CLIQUE NA PASTA');
+    // debugPrint('Nome original da pasta: $str');
     
     // Tratamento correto do nome para URL
     // Remove "Wallpapers" do final se existir
@@ -129,16 +129,16 @@ class SeletorImgCtrl with ChangeNotifier{
     // Substitui espaços por hífens
     strProcessado = strProcessado.replaceAll(' ', '-');
     
-    debugPrint('Nome processado para busca: $strProcessado');
-    debugPrint('URL que será acessada: https://wallpapercave.com/$strProcessado');
-    debugPrint('========================================');
+    // debugPrint('Nome processado para busca: $strProcessado');
+    // debugPrint('URL que será acessada: https://wallpapercave.com/$strProcessado');
+    // debugPrint('========================================');
     
     var result = await WebScrap.buscaImgsWalpaperCave(strProcessado);
     
     if(result == null) {
-      debugPrint('========================================');
-      debugPrint('ERRO: WebScrap retornou NULL');
-      debugPrint('========================================');
+      // debugPrint('========================================');
+      // debugPrint('ERRO: WebScrap retornou NULL');
+      // debugPrint('========================================');
       // loadArquivos = false;
       stateTela = true;
       attTela();
@@ -147,14 +147,14 @@ class SeletorImgCtrl with ChangeNotifier{
     
     listImgs = result[1] as List<ImgWebScrap>;
     
-    debugPrint('========================================');
-    debugPrint('RESULTADO DA BUSCA:');
-    debugPrint('Total de imagens encontradas: ${listImgs.length}');
+        // debugPrint('========================================');
+        // debugPrint('RESULTADO DA BUSCA:');
+        // debugPrint('Total de imagens encontradas: ${listImgs.length}');
     if(listImgs.isNotEmpty) {
-      debugPrint('Primeira imagem URL: ${listImgs.first.imageUrl}');
-      debugPrint('Primeira imagem dimensões: ${listImgs.first.largura}x${listImgs.first.altura}');
+      // debugPrint('Primeira imagem URL: ${listImgs.first.imageUrl}');
+      // debugPrint('Primeira imagem dimensões: ${listImgs.first.largura}x${listImgs.first.altura}');
     }
-    debugPrint('========================================');
+    // debugPrint('========================================');
     
     var imgSelect = await Pops.popTela(ctx, VisualizadorImgWeb(list: listImgs));
     stateTela = true;
@@ -176,8 +176,18 @@ class SeletorImgCtrl with ChangeNotifier{
 
   keyPress(KeyEvent key) async {
     if (key is KeyDownEvent || key is KeyRepeatEvent) {      
-      debugPrint("Teclado Press: ${key.logicalKey.debugName}");
+      // debugPrint("Teclado Press: ${key.logicalKey.debugName}");
       String event = MovimentoSistema.convertKeyBoard(key.logicalKey.keyLabel);
+      // Evita que teclas físicas (Escape/Backspace) fechem o seletor
+      if (event == "3") {
+        // debugPrint("Ignorando evento de fechar vindo do teclado: ${key.logicalKey.debugName}");
+        return;
+      }
+      if(event == "2" && teclando){
+        escutaPad('ENTER');        
+        attTela();
+        return;
+      }
       escutaPad(event);
       attTela();
     }
@@ -187,6 +197,10 @@ class SeletorImgCtrl with ChangeNotifier{
     try{      
       if(!stateTela || event == "") return;
       if(teclando){
+        if(event == "ENTER") {
+          clickBtnBuscar();
+          return;
+        }
         int total = 0;
         listComandos.insert(0,event);
         if(listComandos.length == 3){
@@ -216,7 +230,7 @@ class SeletorImgCtrl with ChangeNotifier{
         }
         clickPasta(listUser[selectedIndexGrid].title);
       }    
-      debugPrint(" ===== Click Paad: => $event" );
+      // debugPrint(" ===== Click Paad: => $event" );
       
     }catch(erro){
       debugPrint("ERRO ESCUTA PAD CLICK$erro");

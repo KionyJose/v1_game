@@ -2,7 +2,7 @@
 // ignore_for_file: file_names
 
 import 'package:flutter/material.dart';
-import 'package:v1_game/Modelos/modeloVariaveisSistema.dart';
+import 'package:v1_game/Modelos/configs_sistema.dart';
 
 
 bool notificacaoPop = false;

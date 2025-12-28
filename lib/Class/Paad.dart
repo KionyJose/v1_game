@@ -60,9 +60,16 @@ class Paad with ChangeNotifier{
   
   escutaClickPaad(String event) async {
     // debugPrint(event);
-    if(event == "SELECT"){
+    if(controlesAtivos.isEmpty) padPs =true;
+    if(controlesAtivos.isNotEmpty)  padPs =false;
+    if(event == "GUIDE"){
+      //  Timmer
+      Timer(const Duration(milliseconds: 1100), () {
+        if(comandoSequencia.last == "GUIDE"){
+          voltarAoSistema();
+        }
+      });
     }
-    if(event == "GUIDE") return voltarAoSistema();
     
     addSequencia(event);
     if(delay) return;

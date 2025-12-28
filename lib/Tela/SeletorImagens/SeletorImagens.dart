@@ -140,8 +140,13 @@ class _SeletorImagensState extends State<SeletorImagens> {
                   margin: const EdgeInsets.only(top: 10,bottom: 3),
                   width: (MediaQuery.of(context).size.width * 0.2) / 4, 
                   height: renderBox?.size.height,
-                  child: MaterialButton(onPressed: ()=> ctrl.clickBtnBuscar(),
-                  child: const Icon(Icons.search,color: Colors.black,),),
+                  child: MaterialButton(
+                    onPressed: (){
+                      if(ctrl.teclando) return;
+                      ctrl.clickBtnBuscar();
+                    },
+                    child: const Icon(Icons.search,color: Colors.black,),
+                  ),
                 ),
               ),
             ],
@@ -206,9 +211,11 @@ class _SeletorImagensState extends State<SeletorImagens> {
       // color: Colors.blue,
       child: Focus(
         focusNode: ctrl.focusNodesGrid[index],
-        onFocusChange: (value) => value?  ctrl.selectedIndexGrid = index : null,
+        onFocusChange: (value) {
+          if(!ctrl.teclando && value) ctrl.selectedIndexGrid = index;
+        },
         child: GestureDetector(
-          onTap: () => ctrl.clickPasta(ctrl.listUser[index].title),
+          onTap: ctrl.teclando ? null : () => ctrl.clickPasta(ctrl.listUser[index].title),
           // padding: const EdgeInsets.all(8),
           child: Stack(
             children: [

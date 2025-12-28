@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:v1_game/Modelos/ImgWebScrap.dart';
 import 'package:http/http.dart' as http;
 import 'package:html/parser.dart' as html;
+import 'dart:convert';
 
 import '../Modelos/videoYT.dart';
 
@@ -20,7 +21,8 @@ class WebScrap{
     final url = Uri.parse('https://wallpapercave.com/search?q=$gameName');
     final response = await http.get(url);
     if (response.statusCode == 200) {
-      final document = html.parse(response.body);
+      final bodyStr = utf8.decode(response.bodyBytes, allowMalformed: true);
+      final document = html.parse(bodyStr);
       // Seleciona todas as tags <img> e filtra os links das imagens
       final arquivo = document.querySelectorAll('img');
       list = arquivo.map((e) {
@@ -55,7 +57,8 @@ class WebScrap{
       debugPrint('Status Code: ${response.statusCode}');
       
       if (response.statusCode == 200) {
-        final document = html.parse(response.body);
+        final bodyStr = utf8.decode(response.bodyBytes, allowMalformed: true);
+        final document = html.parse(bodyStr);
         // Seleciona todas as tags <img> e filtra os links das imagens
         final arquivo = document.querySelectorAll('img');
         debugPrint('Total de tags <img> encontradas: ${arquivo.length}');
@@ -139,7 +142,7 @@ class WebScrap{
       final response = await http.get(Uri.parse(url));
 
       if (response.statusCode == 200) {
-        final htmlContent = response.body;
+        final htmlContent = utf8.decode(response.bodyBytes, allowMalformed: true);
         final videoMatches = RegExp(r'"title":{"runs":\[{"text":"([^"]+)"\}.*?"videoId":"([^"]+)"').allMatches(htmlContent);
             
         listVideos = videoMatches.map((match) {

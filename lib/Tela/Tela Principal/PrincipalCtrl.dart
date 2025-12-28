@@ -10,7 +10,6 @@ import 'package:v1_game/Bando%20de%20Dados/MediaCatalogo.dart';
 import 'package:v1_game/Class/TecladoCtrl.dart';
 import 'package:v1_game/Class/TickerProvider.dart';
 import 'package:v1_game/Class/WebScrap.dart';
-import 'package:v1_game/Class/jogos_existentes.dart';
 import 'package:v1_game/Controllers/JanelaCtrl.dart';
 import 'package:v1_game/Controllers/MovimentoSistema.dart';
 import 'package:v1_game/Controllers/NavWebCtrl.dart';
@@ -22,7 +21,6 @@ import 'package:v1_game/Widgets/ImagemFullScren.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 import 'package:v1_game/Widgets/Pops/pop_config.dart';
-import 'package:v1_game/Widgets/Pops/pop_lista.dart';
 import 'package:v1_game/Widgets/Pops/pop_mais.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart';
 import '../../Bando de Dados/db.dart';
@@ -581,12 +579,12 @@ class PrincipalCtrl with ChangeNotifier{
         }
         case "Cfg":{
           String retorno = await PopConfig.config(ctx);
-          if(retorno.isEmpty || retorno == "cancelar"){ 
-            stateTela = true;
+          if(retorno.isEmpty || retorno == "cancelar"){
             // Restaura o foco após cancelar
             focusNodeIcones[selectedIndexIcone].requestFocus();
             focusScopeIcones.requestFocus();
             focusScope = focusScopeIcones;
+            Timer(const Duration(milliseconds: 500), () => stateTela = true);
             attTela();
             return;
           }
@@ -596,27 +594,44 @@ class PrincipalCtrl with ChangeNotifier{
           }
         }
         case "busca":{
-          String retorno = await GamesBuscaTela.abrir(ctx);
-          if(retorno.isEmpty || retorno == "cancelar"){ 
-            stateTela = true;
+          final retorno = await GamesBuscaTela.abrir(ctx);
+          if(retorno == null || retorno == "cancelar"){            
             // Restaura o foco após cancelar
             focusNodeIcones[selectedIndexIcone].requestFocus();
             focusScopeIcones.requestFocus();
             focusScope = focusScopeIcones;
+            Timer(const Duration(milliseconds: 500), () => stateTela = true);
             attTela();
             return;
           }
+          // suporte a retorno antigo (string com caminho) ou novo modelo `JogoBuscado`
+          String caminhoExe;
+          String nome;
+          if (retorno is String) {
+            caminhoExe = retorno;
+            nome = retorno.split('\\').last.split('.').first;
+            nome = _prettifyName(nome);
+          } else {
+            // assume JogoBuscado-like
+            try {
+              caminhoExe = retorno.exePath ?? '';
+              nome = retorno.name ?? caminhoExe.split('\\').last.split('.').first;
+              nome = _prettifyName(nome);
+            } catch (_) {
+              // fallback
+              caminhoExe = '';
+              nome = 'Jogo';
+            }
+          }
+
+          debugPrint(nome);
+          debugPrint(caminhoExe);
 
           List<String> campos = [];
-
-          String nome = retorno.split('\\').last;
-          nome = nome.split('.').first;
-          nome = _prettifyName(nome);
-
           campos.add("item-${listIconsInicial.length}");        
           campos.add("lugar: ${listIconsInicial.length}");        
           campos.add("nome: $nome");        
-          campos.add("local: $retorno");        
+          campos.add("local: $caminhoExe");        
           campos.add("img: ");        
           campos.add("imgAux: caminho/.png");
           IconInicial ico = IconInicial(campos);
@@ -627,9 +642,8 @@ class PrincipalCtrl with ChangeNotifier{
           selectedIndexIcone = 0;
           await salvaImgDownload();
 
-          
           debugPrint("Sai navPasta");
-          Timer(const Duration(milliseconds: 500), () => iniciaTela()); 
+          Timer(const Duration(milliseconds: 500), () => iniciaTela());  
 
 
           
@@ -659,11 +673,11 @@ class PrincipalCtrl with ChangeNotifier{
     String nomeJogo = listIconsInicial[selectedIndexIcone].nome;
     var result = await Pops.popTela(ctx, SeletorImagens(nome: nomeJogo));
     if(result == null){ 
-      stateTela = true;
+      Timer(const Duration(milliseconds: 500), () => stateTela = true);
+      attTela();
       return debugPrint("Retorno NULO img Download"); // ERRO NULO PARA AQUI
     }
     String novoCaminho = result as String;
-    stateTela = true;       
 
     novoCaminho = await WebScrap.downloadImage(novoCaminho,listIconsInicial[selectedIndexIcone].nome);
     if(novoCaminho.contains("Erro::")) {
@@ -673,8 +687,15 @@ class PrincipalCtrl with ChangeNotifier{
     listIconsInicial[selectedIndexIcone].imgStr = novoCaminho;
     await db.attDados(listIconsInicial);
     
-    load = true;
-    return iniciaTela();
+    load = true;    
+    attTela();
+    await iniciaLitIcones();    
+    stateTela = true;
+    load = false;      
+    attTela();
+    // Timer(const Duration(milliseconds: 500), () {
+    // });
+    // return iniciaTela();
   }
   
 
@@ -687,24 +708,22 @@ class PrincipalCtrl with ChangeNotifier{
 
 
       if( event == "4"){
+        // JogosExistentes je = JogosExistentes();
+        // List<JogoEncontrado> jogosE = await je.buscarJogosInstalados();
 
-        JogosExistentes je = JogosExistentes();
-        List<JogoEncontrado> jogosE = await je.buscarJogosInstalados();
+        // List<String> itens = [];
 
-        List<String> itens = [];
-
-        for( var jogo in jogosE ) {
-          itens.add(jogo.nome);
-        }
-
-        await mostrarPopLista(
-          context: ctx,
-          titulo: "Comandos Salvos",
-          itens: itens,
-          onItemSelecionado: (item) {
-            // TecladoCtrl.enviarComandoSequencia(item);
-          },
-        );
+        // for( var jogo in jogosE ) {
+        //   itens.add(jogo.nome);
+        // }
+        // await mostrarPopLista(
+        //   context: ctx,
+        //   titulo: "Comandos Salvos",
+        //   itens: itens,
+        //   onItemSelecionado: (item) {
+        //     // TecladoCtrl.enviarComandoSequencia(item);
+        //   },
+        // );
       }
 
       if((event == "RB"||event=="LB") && focusScope != focusScopeVideos){

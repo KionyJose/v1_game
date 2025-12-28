@@ -48,7 +48,7 @@ class RawInputGamepad {
         // Lista EXATA de eventos a ignorar (fornecidos por você)
 
         if(!pressionado) botao = '';
-        debugPrint('🎮 DualSense: $botao ${pressionado ? "PRESSIONADO" : "SOLTO"}');
+        // debugPrint('🎮 DualSense: $botao ${pressionado ? "PRESSIONADO" : "SOLTO"}');
         if (botao == "GUIDE" && pressionado) return onGuideButton?.call('GUIDE');
         onDualSenseButton?.call(botao, true);
         break;
@@ -75,6 +75,7 @@ class RawInputGamepad {
         final args = call.arguments as Map?;
         final controller = args?['controller'] ?? 'unknown';
         final byte = args?['byte'] ?? 'unknown';
+        // print( '🎮 Botão Guide pressionado no controlador: $controller (byte $byte)' );
         if(controller == "Xbox" && byte == 12) {
           debugPrint('   ✅ Xbox Controller - Guide Button (byte 12)');
           onGuideButton?.call('GUIDE');

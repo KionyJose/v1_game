@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:path/path.dart' as path;
+import 'package:v1_game/Modelos/JogoBuscado.dart';
 
 class GameEntry {
   final String name;
@@ -47,9 +48,16 @@ class GamesBuscaCtrl with ChangeNotifier {
       r'C:\Program Files\EA Games',
       r'C:\Program Files (x86)\Origin Games',
     ],
+    'Microsoft Store': [
+      r'C:\Program Files\WindowsApps',
+      // Atalhos e dados de apps UWP (atalhos .lnk e executáveis podem estar em subpastas)
+      r'C:\Users', // Será filtrado para buscar por AppData\Local\Packages
+    ],
     'Outros': [
       r'C:\Games',
       r'D:\Games',
+      r'C:\Jogos',
+      r'D:\Jogos',
       r'C:\Program Files',
       r'C:\Program Files (x86)',
     ],
@@ -121,6 +129,107 @@ class GamesBuscaCtrl with ChangeNotifier {
 
     final List<GameEntry> found = [];
 
+    // 1. Buscar atalhos e executáveis na área de trabalho de todos os usuários
+    try {
+      final usersDir = Directory(r'C:\Users');
+      if (await usersDir.exists()) {
+        await for (final user in usersDir.list(followLinks: false)) {
+          if (user is Directory) {
+            final desktopPath = path.join(user.path, 'Desktop');
+            final desktopDir = Directory(desktopPath);
+            if (await desktopDir.exists()) {
+              await for (final f in desktopDir.list(followLinks: false)) {
+                if (f is File) {
+                  final ext = path.extension(f.path).toLowerCase();
+                  if (ext == '.lnk' || ext == '.exe') {
+                    final gameName = path.basenameWithoutExtension(f.path);
+                    if (!found.any((e) => e.name.toLowerCase() == gameName.toLowerCase())) {
+                      found.add(GameEntry(
+                        name: gameName,
+                        exePath: f.path,
+                        installDir: desktopDir.path,
+                        platform: 'Outros',
+                        thumbnailPath: null,
+                      ));
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    } catch (_) {}
+
+    // 2. Buscar jogos do Game Pass/Microsoft Store
+    // 2.1 Vasculhar C:\Program Files\WindowsApps (pode exigir permissões)
+    try {
+      final winAppsDir = Directory(r'C:\Program Files\WindowsApps');
+      if (await winAppsDir.exists()) {
+        await for (final appDir in winAppsDir.list(followLinks: false)) {
+          if (appDir is Directory) {
+            final List<FileSystemEntity> exeFiles = [];
+            await for (final f in appDir.list(recursive: true)) {
+              if (f is File && f.path.toLowerCase().endsWith('.exe')) exeFiles.add(f);
+            }
+            if (exeFiles.isNotEmpty) {
+              final mainExe = exeFiles.first as File;
+              final gameName = path.basename(appDir.path);
+              if (!found.any((e) => e.name.toLowerCase() == gameName.toLowerCase())) {
+                found.add(GameEntry(
+                  name: gameName,
+                  exePath: mainExe.path,
+                  installDir: appDir.path,
+                  platform: 'Microsoft Store',
+                  thumbnailPath: null,
+                ));
+              }
+            }
+          }
+          if (found.length >= limit) break;
+        }
+      }
+    } catch (_) {}
+
+    // 2.2 Vasculhar C:\Users\<User>\AppData\Local\Packages
+    try {
+      final usersDir = Directory(r'C:\Users');
+      if (await usersDir.exists()) {
+        await for (final user in usersDir.list(followLinks: false)) {
+          if (user is Directory) {
+            final packagesPath = path.join(user.path, 'AppData', 'Local', 'Packages');
+            final packagesDir = Directory(packagesPath);
+            if (await packagesDir.exists()) {
+              await for (final pkg in packagesDir.list(followLinks: false)) {
+                if (pkg is Directory) {
+                  final List<FileSystemEntity> exeFiles = [];
+                  await for (final f in pkg.list(recursive: true)) {
+                    if (f is File && f.path.toLowerCase().endsWith('.exe')) exeFiles.add(f);
+                  }
+                  if (exeFiles.isNotEmpty) {
+                    final mainExe = exeFiles.first as File;
+                    final gameName = path.basename(pkg.path);
+                    if (!found.any((e) => e.name.toLowerCase() == gameName.toLowerCase())) {
+                      found.add(GameEntry(
+                        name: gameName,
+                        exePath: mainExe.path,
+                        installDir: pkg.path,
+                        platform: 'Microsoft Store',
+                        thumbnailPath: null,
+                      ));
+                    }
+                  }
+                }
+                if (found.length >= limit) break;
+              }
+            }
+          }
+          if (found.length >= limit) break;
+        }
+      }
+    } catch (_) {}
+
+    // 3. Busca padrão dos roots já existentes
     for (final entry in defaultRoots.entries) {
       final platform = entry.key;
       for (final root in entry.value) {
@@ -269,8 +378,15 @@ class GamesBuscaCtrl with ChangeNotifier {
     }
   }
 
-  /// Handler when the user selects a game; returns the exePath string via Navigator in UI.
+  /// Handler when the user selects a game; returns a `JogoBuscado` model via Navigator.
   void pickGame(BuildContext context, GameEntry game) {
-    Navigator.of(context).pop(game.exePath);
+    final j = JogoBuscado(
+      name: game.name,
+      exePath: game.exePath,
+      installDir: game.installDir,
+      platform: game.platform,
+      thumbnailPath: game.thumbnailPath,
+    );
+    Navigator.of(context).pop(j);
   }
 }

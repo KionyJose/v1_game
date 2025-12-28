@@ -10,7 +10,7 @@ import 'package:v1_game/Class/bruta.dart';
 import 'package:v1_game/Controllers/SonsSistema.dart';
 import 'package:v1_game/Controllers/modifica_wind.dart';
 import 'package:v1_game/Global.dart';
-import 'package:v1_game/Modelos/modeloVariaveisSistema.dart';
+import 'package:v1_game/Modelos/configs_sistema.dart';
 import 'package:v1_game/Tela/MyApp.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:media_kit/media_kit.dart';

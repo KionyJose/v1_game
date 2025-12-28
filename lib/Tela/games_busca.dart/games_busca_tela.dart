@@ -5,13 +5,13 @@ import 'package:v1_game/Class/Paad.dart';
 import 'games_busca_ctrl.dart';
 
 class GamesBuscaTela {
-  static Future<String> abrir(BuildContext context) async {
+  static Future<dynamic> abrir(BuildContext context) async {
     // Controller de scroll para seguir o foco do Paad
     final ScrollController scrollController = ScrollController();
     // Keys para cada item do grid, usadas com Scrollable.ensureVisible
     final Map<int, GlobalKey> itemKeys = {};
 
-    final resultado = await showDialog<String>(
+    final resultado = await showDialog<dynamic>(
       context: context,
       barrierDismissible: false,
       builder: (ctx) {
@@ -180,9 +180,19 @@ class GamesBuscaTela {
                                                   ),
                                                   child: ClipRRect(
                                                     borderRadius: BorderRadius.circular(6),
-                                                    child: g.thumbnailPath != null
-                                                        ? Image.file(File(g.thumbnailPath!), fit: BoxFit.cover)
-                                                        : const Icon(Icons.videogame_asset, size: 30, color: Colors.white24),
+                                                    child: Builder(builder: (ctxImg) {
+                                                      if (g.thumbnailPath != null) {
+                                                        final f = File(g.thumbnailPath!);
+                                                        if (f.existsSync()) return Image.file(f, fit: BoxFit.cover);
+                                                      }
+                                                      // tenta ícone .ico dentro da pasta do jogo
+                                                      try {
+                                                        final icoPath = '${g.installDir}${Platform.pathSeparator}${g.name}.ico';
+                                                        final icoFile = File(icoPath);
+                                                        if (icoFile.existsSync()) return Image.file(icoFile, fit: BoxFit.cover);
+                                                      } catch (_) {}
+                                                      return const Icon(Icons.videogame_asset, size: 30, color: Colors.white24);
+                                                    }),
                                                   ),
                                                 ),
                                               ),

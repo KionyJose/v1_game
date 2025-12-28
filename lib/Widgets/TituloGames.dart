@@ -24,26 +24,29 @@ class _TituloGamesState extends State<TituloGames> {
 
   void _startAnimations() async {
     if(widget.imerso && mostraFundo)return;
-    setState(() {
-      mostraFundo = false;
-      mostraTitulo = false;
-    });
-    // Inicia a animação do contêiner
+    if (mounted) {
+      setState(() {
+        mostraFundo = false;
+        mostraTitulo = false;
+      });
+    }
     await Future.delayed(const Duration(milliseconds: 500));
-    setState(() {
-      mostraFundo = true;
-    });
-    // Aguarda a conclusão da animação do contêiner
+    if (mounted) {
+      setState(() {
+        mostraFundo = true;
+      });
+    }
     await Future.delayed(const Duration(milliseconds: 100));
-    // Inicia a animação do texto
-    setState(() {
-      mostraTitulo = true;
-    });
+    if (mounted) {
+      setState(() {
+        mostraTitulo = true;
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    _startAnimations();
+    // NÃO chame animação aqui!
     return Align(
       alignment: Alignment.topCenter,
       child: AnimatedSlide(       
@@ -77,8 +80,9 @@ class _TituloGamesState extends State<TituloGames> {
               ),
                     ),
           ),
-      ),
-              ),
+      ),)
     );
+    
   }
-}
+  }
+

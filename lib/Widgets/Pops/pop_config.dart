@@ -319,12 +319,18 @@ class PopConfig {
                             ),
                           ),
                           child: SizedBox(
-                            height: MediaQuery.of(context).size.height * 0.75,
                             width: MediaQuery.of(context).size.width * 0.38,
-                            child: FocusScope(
-                              node: focusScope,
-                              child: Column(
-                                children: [
+                            child: ConstrainedBox(
+                              constraints: BoxConstraints(
+                                // Limita a altura máxima para evitar overflow e permite rolagem quando necessário
+                                maxHeight: MediaQuery.of(context).size.height * 0.9,
+                              ),
+                              child: SingleChildScrollView(
+                                child: FocusScope(
+                                  node: focusScope,
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
                                   const SizedBox(height: 15),
                                   const Row(
                                     mainAxisAlignment: MainAxisAlignment.center,
@@ -479,6 +485,8 @@ class PopConfig {
                               ),
                             ),
                           ),
+                            )
+                          )
                         ),
                       ),
                     );

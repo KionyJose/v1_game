@@ -2,8 +2,8 @@
 import 'dart:ffi';
 import 'package:ffi/ffi.dart';
 import 'package:flutter/material.dart';
-import 'package:v1_game/Bando%20de%20Dados/db.dart';
-import 'package:v1_game/Global.dart';
+// import 'package:v1_game/Bando%20de%20Dados/db.dart';
+// import 'package:v1_game/Global.dart';
 import 'package:win32/win32.dart';
 
 // Carrega a biblioteca nativa
@@ -249,10 +249,10 @@ class TecladoCtrl{
   }
 
   static abrirTecladoVirtual() async {
-    DB db = DB();
-    final local = ('$localPai\\teclado_virtual.lnk');
-    // const local = ('C:\\Users\\kiony\\OneDrive\\Área de Trabalho\\teclado_virtual.exe - Atalho.lnk');
-    await db.openFile(local);
+    // DB db = DB();
+    // final local = ('$localPai\\teclado_virtual.lnk');
+    // // const local = ('C:\\Users\\kiony\\OneDrive\\Área de Trabalho\\teclado_virtual.exe - Atalho.lnk');
+    // await db.openFile(local);
   }
 
 }
