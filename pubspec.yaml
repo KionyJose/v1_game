@@ -73,7 +73,7 @@ flutter:
     # Imagens de FUNDO ======================
     - assets/BGdefault.jpeg
     - assets/BGICOdefault.png
-    - assets/tutorial.png
+    # - assets/tutorial.png  # Removido temporariamente — arquivo ausente
     - assets/IconeAppV1.png
     # AUDIOS ================================
     - assets/Sons/SomCheat.mp3

@@ -94,8 +94,8 @@ class ConfigSistema {
       volume: (json['volume'] is num) ? (json['volume'] as num).toDouble() : 0.9,
       telaInicialTipo: json['telaInicialTipo'] ?? 1,
       videosTelaPrincipal: json['videosTelaPrincipal'] ?? true,
-      noticias: json['videosCardGame'] ?? false,
-      intro: json['intro'] ?? false,
+      noticias: json['videosCardGame'] ?? true,
+      intro: json['intro'] ?? true,
       sequenciaEnter: json['sequenciaEnter'] != null 
           ? List<String>.from(json['sequenciaEnter']) 
           : ["SELECT", "SELECT", "2", "2", "2"],

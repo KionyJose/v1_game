@@ -249,7 +249,11 @@ class TecladoCtrl{
   }
 
   static abrirTecladoVirtual() async {
-    // DB db = DB();
+    // tecla GUIDE +  TECLA X DO CONTROLE XBOX no caso 1
+
+
+
+    // DB db = DB();O
     // final local = ('$localPai\\teclado_virtual.lnk');
     // // const local = ('C:\\Users\\kiony\\OneDrive\\Área de Trabalho\\teclado_virtual.exe - Atalho.lnk');
     // await db.openFile(local);

@@ -52,7 +52,7 @@ class JanelaCtrl with ChangeNotifier, WindowListener{
 
   bool ativa = false;
   // deixar ativo depois
-  bool telaPresa = false;
+  bool telaPresa = true;
   
   
   

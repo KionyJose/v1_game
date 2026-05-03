@@ -32,6 +32,7 @@ class Paad with ChangeNotifier{
   bool comandoAtivo = true;
   bool isMouse = false;
   bool padPs = true;
+  bool teclando = false;
   
   // Throttle para analógicos
   // DateTime? _ultimoMovimentoMouse;
@@ -73,7 +74,7 @@ class Paad with ChangeNotifier{
     
     addSequencia(event);
     if(delay) return;
-    if(isMouse) return MouseCtrl.mouseAdapt(event);
+    if(isMouse) return MouseCtrl.mouseAdapt(event, teclando);
     click = event;
     if(await naTela() && !delay)notifyListeners();
 
@@ -99,15 +100,49 @@ class Paad with ChangeNotifier{
     if(comandoSequencia.length == 5){
       comandoSequencia.removeAt(0);
       comandoSequencia.add(event);
+      fecharTelaVisivel();
       teclaEspaco();
       teclaEnter();
       voltaTela();
+      abrirTecladoSteam();
       mouseMoov();
     }else{        
       comandoSequencia.add(event);
     }
     // if(!isMouse)debugPrint("=--------------------  $comandoSequencia");
     
+  }
+
+  abrirTecladoSteam(){
+     // if(comandoSequencia)
+    debugPrint(comandoSequencia.toString());
+    if(comandoSequencia.length < 2) return;
+    String ultimo = comandoSequencia.last;
+    String penultimo = comandoSequencia[comandoSequencia.length -2];
+    if(penultimo == "GUIDE" && ultimo == "1"){
+      ativaMouse(usarEstado: true, estado: true);
+      teclando = true;
+      comandoSequencia.removeWhere((element) => element == "GUIDE");
+      return;
+    }
+    if(ultimo == "3" && teclando){
+      teclando = false;      
+      delay = true;
+      Timer(const Duration(microseconds: 1245), () => delay = false);   
+    }
+  }
+
+  fecharTelaVisivel(){
+    if(comandoSequencia.length < 2) return;
+    String ultimo = comandoSequencia.last;
+    String penultimo = comandoSequencia[comandoSequencia.length -2];
+    if(penultimo == "GUIDE" && ultimo == "3"){
+      SonsSistema.pim();
+      TecladoCtrl.fecharAltF4();
+      // limpar onde estiver escrito GUIDE
+      comandoSequencia.removeWhere((element) => element == "GUIDE");
+      return;
+    }
   }
   voltaTela(){
     // Verifica qualquer uma das sequências de voltar tela
@@ -128,6 +163,17 @@ class Paad with ChangeNotifier{
     Timer(const Duration(microseconds: 1245), () => delay = false);     
   }
   mouseMoov(){
+
+    // if(comandoSequencia)
+    debugPrint(comandoSequencia.toString());
+    if(comandoSequencia.length < 2) return;
+    String ultimo = comandoSequencia.last;
+    String penultimo = comandoSequencia[comandoSequencia.length -2];
+    if(penultimo == "GUIDE" && ultimo == "4"){
+      ativaMouse();
+      comandoSequencia.removeWhere((element) => element == "GUIDE");
+      return;
+    }
     // Verifica qualquer uma das sequências de ativar mouse
     if(_verificarSequencia(configSistema.sequenciaAtivaMouse1) ||
        _verificarSequencia(configSistema.sequenciaAtivaMouse2) ||
