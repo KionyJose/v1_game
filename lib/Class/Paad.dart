@@ -64,17 +64,18 @@ class Paad with ChangeNotifier{
     if(controlesAtivos.isEmpty) padPs =true;
     if(controlesAtivos.isNotEmpty)  padPs =false;
     if(event == "GUIDE"){
+      janelaCtrl.telaPresaReverse(estado: false, usarEstado: true);
       //  Timmer
-      Timer(const Duration(milliseconds: 1100), () {
-        if(comandoSequencia.last == "GUIDE"){
-          voltarAoSistema();
-        }
-      });
+      // Timer(const Duration(milliseconds: 1100), () {
+      //   if(comandoSequencia.last == "GUIDE"){
+      //     voltarAoSistema();
+      //   }
+      // });
     }
     
-    addSequencia(event);
+    // addSequencia(event);
     if(delay) return;
-    if(isMouse) return MouseCtrl.mouseAdapt(event, teclando);
+    // if(isMouse) return MouseCtrl.mouseAdapt(event, teclando);
     click = event;
     if(await naTela() && !delay)notifyListeners();
 
@@ -182,17 +183,18 @@ class Paad with ChangeNotifier{
     }
   }
   ativaMouse({bool usarEstado = false, bool estado = false}){
-    if(usarEstado){
-      isMouse = estado;
-    }else{
-      isMouse = !isMouse;      
-    }
+    TecladoCtrl.pressWindBar();
+    // if(usarEstado){
+    //   isMouse = estado;
+    // }else{
+    //   isMouse = !isMouse;      
+    // }
     delay = true;
-    // Provider.of<PrincipalCtrl>(ctx, listen: false).focusScope.requestFocus();
-    Timer(const Duration(microseconds: 1245), () => delay = false );   
-    JanelaCtrl().telaPresa = isMouse;
-    SonsSistema.cheat();
-    MouseCtrl.primeiroMovimento();
+    // // Provider.of<PrincipalCtrl>(ctx, listen: false).focusScope.requestFocus();
+    Timer(const Duration(milliseconds: 1245), () => delay = false );   
+    // JanelaCtrl().telaPresa = isMouse;
+    // SonsSistema.cheat();
+    // MouseCtrl.primeiroMovimento();
   }
 
   teclaEnter(){

@@ -488,6 +488,7 @@ class PrincipalCtrl with ChangeNotifier{
       if(listIconsInicial.isEmpty) return btnMais();
       await db.openFile(listIconsInicial[selectedIndexIcone].local);
       gameIniciado = true;
+      stateTela = false; // Desativa eventos durante o processo
       videosIndexYT = List.generate(listIconsInicial.length, (index) => []);
       Provider.of<JanelaCtrl>(ctx, listen: false).telaPresaReverse(usarEstado: true, estado: false);
       await moverIcoPosicaoInicial(listIconsInicial[selectedIndexIcone]);
@@ -508,6 +509,10 @@ class PrincipalCtrl with ChangeNotifier{
       focusScope = cardGamesGrid && cardInf ? focusScopeCardInf : focusScopeIcones;
       cardGamesGrid && cardInf ? focusNodeCardInf[selectedIndexCardInfo].requestFocus() : focusNodeIcones[selectedIndexIcone].requestFocus();
       if(selectedIndexIcone != 0) selectedIndexIcone --;
+      
+      // Delay antes de reativar eventos para evitar cliques duplos
+      await Future.delayed(const Duration(milliseconds: 300));
+      stateTela = true;
 
       // focusNodeIcones[selectedIndexIcone].requestFocus();
       // focusScopeIcones.requestFocus();
@@ -875,18 +880,23 @@ class PrincipalCtrl with ChangeNotifier{
   sairDaTelaMedia(String url, String texto)async {
     
       gameIniciado = true;
+      stateTela = false; // Desativa eventos durante o processo
       // Liberar Tela do sistema
       Provider.of<JanelaCtrl>(ctx, listen: false).telaPresaReverse(usarEstado: true, estado: false);
       // Ativar Mouse
       Provider.of<Paad>(ctx, listen: false).ativaMouse(usarEstado: true,  estado: true);
       await NavWebCtrl.openLink(url);
-      // await Future.delayed(const Duration(milliseconds: 650));
       await Pops().carregandoGames(ctx, texto);
+      
       // Desativa o uso do mouse;
       Provider.of<Paad>(ctx, listen: false).ativaMouse( usarEstado: true,  estado: false);
       // Trava na tela novamente
       // Provider.of<JanelaCtrl>(ctx, listen: false).telaPresaReverse();
       gameIniciado = false;
+      
+      // Delay antes de reativar eventos para evitar cliques duplos
+      await Future.delayed(const Duration(milliseconds: 300));
+      stateTela = true;
   }
 
   movAbaGuias(String event) async {
@@ -1022,7 +1032,8 @@ class PrincipalCtrl with ChangeNotifier{
 
       if(result == MovimentoSistema.horizontal || result == MovimentoSistema.vertical  ){
         // desativado temporariamente
-        if(event=="BAIXO"){
+        //verificar se a opçao de ver videos esta ativa e se tem videos para mostrar
+        if(event=="BAIXO" && videosYT.isNotEmpty && configSistema.videosTelaPrincipal){
           debugPrint("Lista VIDEOS :${videosYT.length}");
           if(videosYT.isNotEmpty){
             focusNodeVideos[selectedIndexVideo].requestFocus();

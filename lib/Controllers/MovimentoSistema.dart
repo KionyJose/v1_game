@@ -9,6 +9,8 @@ class MovimentoSistema {
 
    static direcaoListView(FocusScopeNode focusScope, String event){
     String estilo = "";
+    
+    if(event.contains("ANALOGICO")) return estilo;
     if(event == "ESQUERDA" || event == "A"){//ESQUERDA
         focusScope.focusInDirection(TraversalDirection.left);
         estilo = horizontal;

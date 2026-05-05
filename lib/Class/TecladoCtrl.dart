@@ -149,6 +149,24 @@ class TecladoCtrl{
 
     calloc.free(input);
   }
+  static void pressWindBar(){
+    final input = calloc<INPUT>(2);
+
+    input[0].type = INPUT_TYPE.INPUT_KEYBOARD;
+    input[0].ki.wVk = VIRTUAL_KEY.VK_LWIN; // Windows
+
+    //teclad junto de wind a tecla /
+    input[1].type = INPUT_TYPE.INPUT_KEYBOARD;
+    input[1].ki.wVk = VIRTUAL_KEY.VK_OEM_2; // /
+
+    SendInput(2, input, sizeOf<INPUT>());
+
+    input[1].ki.dwFlags = KEYBD_EVENT_FLAGS.KEYEVENTF_KEYUP;
+    input[0].ki.dwFlags = KEYBD_EVENT_FLAGS.KEYEVENTF_KEYUP;
+    SendInput(2, input, sizeOf<INPUT>());
+
+    calloc.free(input);
+  }
 
   static void pressWinTab() {
     final input = calloc<INPUT>(2);
