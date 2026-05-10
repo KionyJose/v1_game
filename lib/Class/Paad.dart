@@ -6,6 +6,7 @@ import 'package:v1_game/Class/TecladoCtrl.dart';
 import 'package:v1_game/Controllers/SonsSistema.dart';
 import 'package:xinput_gamepad/xinput_gamepad.dart';
 import 'package:v1_game/Global.dart';
+import 'package:v1_game/Metodos/nav_mouse_watcher.dart';
 
 import '../Controllers/JanelaCtrl.dart';
 import 'MouseCtrl.dart';
@@ -60,6 +61,15 @@ class Paad with ChangeNotifier{
   }
   
   escutaClickPaad(String event) async {
+    // ⚡ Bloqueia entrada se o modo mouse (rastro) do Nav estiver ativo
+    if (NavMouseWatcher.isNavMouseActive) {
+      if (event == "GUIDE" || event == "SELECT" || event == "START") {
+        // Opcional: Permitir botões de sistema mesmo em modo mouse? 
+        // Por enquanto bloqueia tudo conforme pedido.
+      }
+      return; 
+    }
+
     // debugPrint(event);
     if(controlesAtivos.isEmpty) padPs =true;
     if(controlesAtivos.isNotEmpty)  padPs =false;

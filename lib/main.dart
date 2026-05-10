@@ -12,6 +12,7 @@ import 'package:v1_game/Controllers/modifica_wind.dart';
 import 'package:v1_game/Global.dart';
 import 'package:v1_game/Modelos/configs_sistema.dart';
 import 'package:v1_game/Tela/MyApp.dart';
+import 'package:v1_game/Metodos/nav_mouse_watcher.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:media_kit/media_kit.dart';
 import 'Metodos/leituraArquivo.dart';
@@ -31,6 +32,8 @@ void main() async {
   
   // Inicializa captura do botão Xbox/PlayStation Guide
   await RawInputGamepad.inicializar();
+  // Inicializa o observador do rastro (mouse) do nav_flutuante
+  NavMouseWatcher.start();
   // Desabilita Xbox Game Bar e Steam ao iniciar o sistema
   ModificaWind.desabilitarXboxESteam();
   // Must add this line.
