@@ -18,6 +18,7 @@ import 'Widgets/BodyIconesJogos.dart';
 import 'Widgets/BodyIconesCinema.dart';
 import 'Widgets/BodyIconesMusica.dart';
 import 'Widgets/BodyIconesJogosGrid.dart';
+import 'Widgets/BodyIconesJogosModerno.dart';
 import 'Widgets/CardInfWidget.dart';
 import 'Widgets/ListVideosWidget.dart';
 
@@ -314,8 +315,19 @@ class _PrincipalPageState extends State<PrincipalPage> with WindowListener {
       scrollDirection: Axis.horizontal,
       controller: ctrl.bodyCtrl,
       children: [
-        if(ctrl.cardGamesGrid) gridAnimado(ctrl, tamanhoBloco),
-        if(!ctrl.cardGamesGrid) BodyIconesJogos(
+        // if(ctrl.cardGamesGrid) gridAnimado(ctrl, tamanhoBloco),
+        if (ctrl.cardGamesGrid)
+          BodyIconesJogosGrid(
+            ctrl: ctrl,
+            tamanhoBloco: tamanhoBloco,
+          ),
+        if(!ctrl.cardGamesGrid && ctrl.cardGamesModerno) BodyIconesJogosModerno(
+          ctrl: ctrl,
+          tamanhoBloco: tamanhoBloco,
+          // cardAnimado: (ctrl, index, tamanho) => cardAnimado(ctrl, index, tamanho: tamanho),
+          // cardAnimadoAdd: (ctrl, index) => cardAnimadoAdd(ctrl, index),
+        ),
+        if(!ctrl.cardGamesGrid && !ctrl.cardGamesModerno) BodyIconesJogos(
           ctrl: ctrl,
           tamanhoBloco: tamanhoBloco,
           cardAnimado: (ctrl, index, tamanho) => cardAnimado(ctrl, index, tamanho: tamanho),

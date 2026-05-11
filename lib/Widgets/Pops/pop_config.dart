@@ -13,7 +13,7 @@ class PopConfig {
     try{
     bool statePop = true;
     String retorno = "";
-    int total = 7; // 7 controles de configuração (adicionado sequencia custom)
+    int total = 8; // +1 para interface
     FocusScopeNode focusScope = FocusScopeNode();
     
     // Cria cópias das configurações para poder cancelar
@@ -22,6 +22,7 @@ class PopConfig {
     bool videosTelaPrincipalTemp = configSistema.videosTelaPrincipal;
     bool videosCardGameTemp = configSistema.noticias;
     List<String> sequenciaCustomTemp = List.from(configSistema.sequenciaAtivaMouseCustom);
+    String interfaceTemp = configSistema.viewType == 'grid' ? 'list' : configSistema.viewType; // ignora grid
     
     // Estado de edição da sequência
     bool editandoSequencia = false;
@@ -116,9 +117,23 @@ class PopConfig {
           return;
         }
         
-        // Videos Card Game (focusNodes[3]) - Toggle com setas
+        // Noticias Card Game (focusNodes[3]) - Toggle com setas
         if(focusNodes[3].hasFocus){
           videosCardGameTemp = !videosCardGameTemp;
+          SonsSistema.click();
+          setStateDialog?.call((){});
+          return;
+        }
+
+        // Interface (focusNodes[4]) - Cicla com setas
+        if(focusNodes[4].hasFocus){
+          final opcoes = ['list', 'moderno'];
+          final idx = opcoes.indexOf(interfaceTemp);
+          if (event == 'DIREITA') {
+            interfaceTemp = opcoes[(idx + 1) % opcoes.length];
+          } else {
+            interfaceTemp = opcoes[(idx - 1 + opcoes.length) % opcoes.length];
+          }
           SonsSistema.click();
           setStateDialog?.call((){});
           return;
@@ -156,8 +171,18 @@ class PopConfig {
           return;
         }
         
-        // Editar Sequência Custom (focusNodes[4])
+        // Interface (focusNodes[4]) - Toggle com botão 2
         if(focusNodes[4].hasFocus){
+          final opcoes = ['list', 'moderno'];
+          final idx = opcoes.indexOf(interfaceTemp);
+          interfaceTemp = opcoes[(idx + 1) % opcoes.length];
+          SonsSistema.click();
+          setStateDialog?.call((){});
+          return;
+        }
+        
+        // Editar Sequência Custom (focusNodes[5])
+        if(focusNodes[5].hasFocus){
           editandoSequencia = true;
           sequenciaEditando.clear();
           SonsSistema.cheat();
@@ -167,18 +192,19 @@ class PopConfig {
         
         statePop = false;
         
-        // Salvar (focusNodes[5])
-        if (focusNodes[5].hasFocus) {
+        // Salvar (focusNodes[6])
+        if (focusNodes[6].hasFocus) {
           configSistema.volume = volumeTemp;
           configSistema.intro = introTemp;
           configSistema.videosTelaPrincipal = videosTelaPrincipalTemp;
           configSistema.noticias = videosCardGameTemp;
           configSistema.sequenciaAtivaMouseCustom = sequenciaCustomTemp;
+          configSistema.viewType = interfaceTemp;
           fecharDialog(context, "salvar", paad);
         }
         
-        // Cancelar (focusNodes[6])
-        if (focusNodes[6].hasFocus) {
+        // Cancelar (focusNodes[7])
+        if (focusNodes[7].hasFocus) {
           fecharDialog(context, "cancelar", paad);
         }
         
@@ -260,6 +286,7 @@ class PopConfig {
                     configSistema.videosTelaPrincipal = videosTelaPrincipalTemp;
                     configSistema.noticias = videosCardGameTemp;
                     configSistema.sequenciaAtivaMouseCustom = sequenciaCustomTemp;
+                    configSistema.viewType = interfaceTemp;
                     fecharDialog(context, "salvar", paad);
                   } else {
                     fecharDialog(context, "cancelar", paad);
@@ -401,12 +428,107 @@ class PopConfig {
                                     ),
                                     focusNodes[3],
                                   ),
-                                  
+
+                                  // Interface
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
+                                    child: Focus(
+                                      focusNode: focusNodes[4],
+                                      child: Builder(builder: (ctx) {
+                                        final hf = Focus.of(ctx).hasFocus;
+                                        final opcoes = [
+                                          {'key': 'list',    'label': 'Normal',   'icon': Icons.view_list_rounded},
+                                          {'key': 'moderno', 'label': 'Moderna',  'icon': Icons.auto_awesome_rounded},
+                                          {'key': '__soon1', 'label': 'Em breve', 'icon': Icons.hourglass_empty_rounded},
+                                        ];
+                                        return Container(
+                                          padding: const EdgeInsets.all(10),
+                                          decoration: BoxDecoration(
+                                            color: hf ? Colors.white12 : Colors.black26,
+                                            borderRadius: BorderRadius.circular(12),
+                                            border: Border.all(
+                                              color: hf ? Colors.white : Colors.transparent,
+                                              width: 2,
+                                            ),
+                                          ),
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Text('Interface',
+                                                  style: TextStyle(
+                                                    color: Colors.white,
+                                                    fontSize: 16,
+                                                    fontWeight: hf ? FontWeight.bold : FontWeight.normal,
+                                                  )),
+                                              const SizedBox(height: 10),
+                                              Row(
+                                                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                                                children: opcoes.map((o) {
+                                                  final key      = o['key']   as String;
+                                                  final label    = o['label'] as String;
+                                                  final icon     = o['icon']  as IconData;
+                                                  final selected = interfaceTemp == key;
+                                                  final emBreve  = key.startsWith('__');
+                                                  return Expanded(
+                                                    child: GestureDetector(
+                                                      onTap: emBreve ? null : () {
+                                                        interfaceTemp = key;
+                                                        setStateDialog?.call(() {});
+                                                      },
+                                                      child: AnimatedContainer(
+                                                        duration: const Duration(milliseconds: 150),
+                                                        margin: const EdgeInsets.symmetric(horizontal: 4),
+                                                        padding: const EdgeInsets.symmetric(vertical: 10),
+                                                        decoration: BoxDecoration(
+                                                          color: selected
+                                                              ? const Color(0xFF3B2BDB).withValues(alpha: 0.7)
+                                                              : Colors.white10,
+                                                          borderRadius: BorderRadius.circular(10),
+                                                          border: Border.all(
+                                                            color: selected ? const Color(0xFF7B5EA7) : Colors.white12,
+                                                            width: selected ? 2 : 1,
+                                                          ),
+                                                        ),
+                                                        child: Column(
+                                                          mainAxisSize: MainAxisSize.min,
+                                                          children: [
+                                                            Icon(icon,
+                                                                color: emBreve
+                                                                    ? Colors.white24
+                                                                    : selected
+                                                                        ? Colors.white
+                                                                        : Colors.white54,
+                                                                size: 22),
+                                                            const SizedBox(height: 5),
+                                                            Text(label,
+                                                                style: TextStyle(
+                                                                  color: emBreve
+                                                                      ? Colors.white24
+                                                                      : selected
+                                                                          ? Colors.white
+                                                                          : Colors.white54,
+                                                                  fontSize: 11,
+                                                                  fontWeight: selected ? FontWeight.bold : FontWeight.normal,
+                                                                )),
+                                                          ],
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  );
+                                                }).toList(),
+                                              ),
+                                            ],
+                                          ),
+                                        );
+                                      }),
+                                    ),
+                                  ),
+
                                   // Sequência Custom de Ativar Mouse
                                   Padding(
                                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                                           child: Focus(
-                                            focusNode: focusNodes[4],
+                                            focusNode: focusNodes[5],
                                             child: Builder(
                                               builder: (context) {
                                                 final hasFocus = Focus.of(context).hasFocus;
@@ -474,8 +596,8 @@ class PopConfig {
                                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                                     child: Row(
                                       children: [
-                                        buildButton("Salvar", focusNodes[5], Icons.save),
-                                        buildButton("Cancelar", focusNodes[6], Icons.close),
+                                        buildButton("Salvar", focusNodes[6], Icons.save),
+                                        buildButton("Cancelar", focusNodes[7], Icons.close),
                                       ],
                                     ),
                                   ),

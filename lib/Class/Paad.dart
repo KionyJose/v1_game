@@ -9,7 +9,7 @@ import 'package:v1_game/Global.dart';
 import 'package:v1_game/Metodos/nav_mouse_watcher.dart';
 
 import '../Controllers/JanelaCtrl.dart';
-import 'MouseCtrl.dart';
+
 import 'bruta.dart';
 
 class Paad with ChangeNotifier{

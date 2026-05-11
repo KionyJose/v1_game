@@ -15,6 +15,7 @@ import 'package:v1_game/Controllers/MovimentoSistema.dart';
 import 'package:v1_game/Controllers/NavWebCtrl.dart';
 import 'package:v1_game/Global.dart';
 import 'package:v1_game/Modelos/MediaCanal.dart';
+import 'package:v1_game/Modelos/NoticiaGame.dart';
 import 'package:v1_game/Modelos/videoYT.dart';
 import 'package:v1_game/Tela/games_busca.dart/games_busca_tela.dart';
 import 'package:v1_game/Widgets/ImagemFullScren.dart';
@@ -43,8 +44,15 @@ class PrincipalCtrl with ChangeNotifier{
   late List<FocusNode> focusNodeCinema; 
   late List<FocusNode> focusNodeAbaGuias;  
   List<FocusNode> focusNodeVideos = [];
+  List<FocusNode> focusNodeNoticias = [];
   
   CarouselSliderController carouselVideosCtrl = CarouselSliderController();
+  
+  // Callback para abrir notícia no Widget
+  void Function(NoticiaGame)? abrirNoticiaCallback;
+  // Controle de popup de notícia — recebe eventos de gamepad enquanto aberto
+  NoticiaGame? noticiaPopupAberta;
+  VoidCallback? fecharNoticiaPopup;
 
   FocusScopeNode focusScope = FocusScopeNode();
   
@@ -54,6 +62,7 @@ class PrincipalCtrl with ChangeNotifier{
   FocusScopeNode focusScopeIcones = FocusScopeNode();
   FocusScopeNode focusScopeVideos = FocusScopeNode();
   FocusScopeNode focusScopeCardInf = FocusScopeNode();
+  FocusScopeNode focusScopeNoticias = FocusScopeNode();
   
 
   ScrollController scrolListIcones = ScrollController();  
@@ -64,6 +73,7 @@ class PrincipalCtrl with ChangeNotifier{
   int selectedIndexCinema = 0;
   int selectedIndexAbaGuias = 0;
   int selectedIndexMusica = 0;
+  int selectedIndexNoticia = 0;
 
   // final ValueNotifier<int> selectedIndexNotifier = ValueNotifier<int>(0);
   Timer? timerLoadVideos;
@@ -72,6 +82,7 @@ class PrincipalCtrl with ChangeNotifier{
 
   bool cardInf = false;
   bool cardGamesGrid = false;
+  bool cardGamesModerno = false;
   bool contadorVideo = false;
   bool imersao = false;
   bool imersaoVideos = false;
@@ -86,6 +97,8 @@ class PrincipalCtrl with ChangeNotifier{
   bool home = true;
   bool load = false;
   List<VideoYT> videosYT= [];
+  List<NoticiaGame> noticias = []; 
+  bool loadingNoticias = false;
   
 
   PageController bodyCtrl = PageController();
@@ -146,6 +159,7 @@ class PrincipalCtrl with ChangeNotifier{
 
   iniciaTela() async {
     cardGamesGrid = configSistema.viewType == "grid";
+    cardGamesModerno = configSistema.viewType == "moderno";
     selectedIndexIcone = 0;
     selectedIndexVideo = 0;
     selectedIndexCinema = 0;
@@ -589,13 +603,27 @@ class PrincipalCtrl with ChangeNotifier{
             focusNodeIcones[selectedIndexIcone].requestFocus();
             focusScopeIcones.requestFocus();
             focusScope = focusScopeIcones;
-            Timer(const Duration(milliseconds: 500), () => stateTela = true);
+            Timer(const Duration(milliseconds: 300), () {
+              stateTela = true;
+              focusNodeIcones[selectedIndexIcone].requestFocus();
+              focusScopeIcones.requestFocus();
+            });
             attTela();
             return;
           }
           if(retorno == "salvar"){
             configSistema.save();
-            Timer(const Duration(milliseconds: 500), () => iniciaTela());
+            // Aplica viewType imediatamente
+            cardGamesGrid   = configSistema.viewType == "grid";
+            cardGamesModerno = configSistema.viewType == "moderno";
+            attTela();
+            Timer(const Duration(milliseconds: 300), () {
+              stateTela = true;
+              focusNodeIcones[selectedIndexIcone].requestFocus();
+              focusScopeIcones.requestFocus();
+              focusScope = focusScopeIcones;
+              iniciaTela();
+            });
           }
         }
         case "busca":{
@@ -710,6 +738,23 @@ class PrincipalCtrl with ChangeNotifier{
     try{
       if(!stateTela || event == "") return;
 
+      // Intercept: popup de notícia aberto — roteamento A=2 e B=3 para popup
+      if (noticiaPopupAberta != null) {
+        if (event == "3") {
+          fecharNoticiaPopup?.call(); // fecha o pop, foco volta automaticamente
+          noticiaPopupAberta = null;
+          fecharNoticiaPopup = null;
+        } else if (event == "2") {
+          final url = noticiaPopupAberta!.url;
+          final cb = fecharNoticiaPopup;
+          noticiaPopupAberta = null;
+          fecharNoticiaPopup = null;
+          cb?.call();
+          if (url.isNotEmpty) unawaited(sairDaTelaMedia(url, 'Lendo notícia.'));
+        }
+        return;
+      }
+
 
 
       if( event == "4"){
@@ -737,6 +782,8 @@ class PrincipalCtrl with ChangeNotifier{
         movIcones(event);}
       else if(focusScope == focusScopeCardInf && selectedIndexAbaGuias == 0){
         movCardInf(event);}
+      else if(focusScope == focusScopeNoticias && selectedIndexAbaGuias == 0){
+        movNoticias(event);}
       else if(focusScope == focusScopeVideos && selectedIndexAbaGuias == 0){
         movVideos(event);}
       else if(focusScope == focusScopeCinema && selectedIndexAbaGuias == 1){
@@ -764,8 +811,16 @@ class PrincipalCtrl with ChangeNotifier{
       // imersaoVideoRestart();
       if(event=="CIMA" && !videoAtivo){
         imersaoRestart();
-        cardGamesGrid ? focusScopeCardInf.requestFocus() : focusScopeIcones.requestFocus();
-        focusScope = cardGamesGrid ? focusScopeCardInf : focusScopeIcones;        
+        if(cardGamesModerno){
+          // No modo moderno CIMA sobe para as notícias
+          focusScopeNoticias.requestFocus();
+          focusScope = focusScopeNoticias;
+          if (focusNodeNoticias.isNotEmpty) focusNodeNoticias[selectedIndexNoticia.clamp(0, focusNodeNoticias.length - 1)].requestFocus();
+          attTela();
+        } else {
+          cardGamesGrid ? focusScopeCardInf.requestFocus() : focusScopeIcones.requestFocus();
+          focusScope = cardGamesGrid ? focusScopeCardInf : focusScopeIcones;
+        }
       }
       if (event == "RB"){
         // mediaPlayer.seek(Duration.zero);
@@ -988,6 +1043,44 @@ class PrincipalCtrl with ChangeNotifier{
     }
   }
 
+  movNoticias(String event){
+    try{
+      MovimentoSistema.direcaoListView(focusScopeNoticias, event);
+      if(event == "CIMA"){
+        // Sobe para o strip de ícones
+        focusScopeIcones.requestFocus();
+        focusScope = focusScopeIcones;
+        focusNodeIcones[selectedIndexIcone].requestFocus();
+        attTela();
+      }
+      if(event == "BAIXO"){
+        // No modo moderno vai direto se há vídeos; senão usa gate completo
+        final podeIr = cardGamesModerno ? videosYT.isNotEmpty : exibirVideos;
+        if(podeIr){
+          focusNodeVideos[selectedIndexVideo].requestFocus();
+          focusScopeVideos.requestFocus();
+          focusScope = focusScopeVideos;
+          attTela();
+        }
+      }
+      if(event == "3"){
+        // Volta para ícones (botão B/Backspace)
+        focusScopeIcones.requestFocus();
+        focusScope = focusScopeIcones;
+        focusNodeIcones[selectedIndexIcone].requestFocus();
+        attTela();
+      }
+      if(event == "2"){
+        // Abre a notícia selecionada
+        if(abrirNoticiaCallback != null && noticias.isNotEmpty){
+          abrirNoticiaCallback!(noticias[selectedIndexNoticia]);
+        }
+      }
+    }catch(e){
+      debugPrint("ERRO movNoticias $e");
+    }
+  }
+
   movCardInf(String event) async {
     try{
       String result = MovimentoSistema.direcaoListView(focusScope, event);
@@ -996,20 +1089,30 @@ class PrincipalCtrl with ChangeNotifier{
         return;
       }
       if(result == MovimentoSistema.horizontal || result == MovimentoSistema.vertical  ){
-        // desativado temporariamente
         if(event=="BAIXO"){
-          debugPrint("Lista VIDEOS :${videosYT.length}");
-          if(videosYT.isNotEmpty){
-            focusNodeVideos[selectedIndexVideo].requestFocus();
-            focusScopeVideos.requestFocus();
-            focusScope = focusScopeVideos;
+          // No modo moderno, BAIXO vai para as notícias
+          if(cardGamesModerno){
+            focusScopeNoticias.requestFocus();
+            focusScope = focusScopeNoticias;
+            if (focusNodeNoticias.isNotEmpty) focusNodeNoticias[selectedIndexNoticia.clamp(0, focusNodeNoticias.length - 1)].requestFocus();
+            attTela();
+          } else {
+            debugPrint("Lista VIDEOS :${videosYT.length}");
+            if(videosYT.isNotEmpty){
+              focusNodeVideos[selectedIndexVideo].requestFocus();
+              focusScopeVideos.requestFocus();
+              focusScope = focusScopeVideos;
+            }
           }
         }
-      }else if(event == "3" || event == "2" && selectedIndexCardInfo == 1){
-        cardInf = false;
+      }else if(event == "3"){
         focusScopeIcones.requestFocus();
         focusScope = focusScopeIcones;
         focusNodeIcones[selectedIndexIcone].requestFocus();
+      }else if (event == "2" && selectedIndexCardInfo == 1){
+        // Ação para MAIS INFO pode ser adicionada aqui se necessário
+        // Por enquanto, apenas volta se for o comportamento esperado, 
+        // ou podemos abrir algo. O usuário pediu "me permitindo assim movimentar por la".
       }else if (event == "2" && selectedIndexCardInfo == 0){
         btnEntrar();
       }else if (event == "START"){
@@ -1028,6 +1131,25 @@ class PrincipalCtrl with ChangeNotifier{
         return;
       }
       if(cardGamesGrid) return movCardGrid(event);
+
+      // No modo moderno, CIMA vai para o card glass (inferior direito)
+      if(event == "CIMA" && cardGamesModerno){
+        focusScopeCardInf.requestFocus();
+        focusScope = focusScopeCardInf;
+        focusNodeCardInf[selectedIndexCardInfo].requestFocus();
+        attTela();
+        return;
+      }
+
+      // No modo moderno, BAIXO vai para as notícias
+      if(event == "BAIXO" && cardGamesModerno){
+        focusScopeNoticias.requestFocus();
+        focusScope = focusScopeNoticias;
+        if (focusNodeNoticias.isNotEmpty) focusNodeNoticias[selectedIndexNoticia.clamp(0, focusNodeNoticias.length - 1)].requestFocus();
+        attTela();
+        return;
+      }
+
       String result = MovimentoSistema.direcaoListView(focusScope, event);
 
       if(result == MovimentoSistema.horizontal || result == MovimentoSistema.vertical  ){
@@ -1045,7 +1167,16 @@ class PrincipalCtrl with ChangeNotifier{
       
       if (event == 'SELECT')trocaViewIcones();
       if (event == "START")btnMais();      
-      if (event == "2")btnEntrar();
+      if (event == "2"){
+        if(cardGamesModerno){
+          focusScopeCardInf.requestFocus();
+          focusScope = focusScopeCardInf;
+          focusNodeCardInf[0].requestFocus();
+          attTela();
+        } else {
+          btnEntrar();
+        }
+      }
       // if(event == "4")mostrarBottomSheet();
       
     }catch(e){
@@ -1055,9 +1186,23 @@ class PrincipalCtrl with ChangeNotifier{
   }
 
   trocaViewIcones() async {
+    // SELECT: alterna apenas entre grid e list (interface via Configurações)
     cardGamesGrid = !cardGamesGrid;
-    configSistema.viewType = cardGamesGrid ? "grid" : "list";
+    if (cardGamesGrid) {
+      configSistema.viewType = "grid";
+    } else {
+      // Mantém a interface escolhida nas configurações
+      final salvo = configSistema.viewType;
+      if (salvo != "grid") {
+        configSistema.viewType = salvo; // moderno ou list
+        cardGamesModerno = salvo == "moderno";
+      } else {
+        configSistema.viewType = "list";
+        cardGamesModerno = false;
+      }
+    }
     configSistema.save();
+    attTela();
   }
   
 
