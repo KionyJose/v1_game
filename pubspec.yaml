@@ -25,6 +25,7 @@ dependencies:
   win32: ^5.0.0 
   window_manager: ^0.4.3
   # Designer ==================================
+  infinite_carousel: ^1.1.1
   carousel_slider: ^5.0.0
   fluent_ui: ^3.9.1
   bitsdojo_window: ^0.1.6 # Tamanho da tela sem barra superior

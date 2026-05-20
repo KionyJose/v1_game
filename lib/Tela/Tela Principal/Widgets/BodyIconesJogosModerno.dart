@@ -686,7 +686,7 @@ class _BodyIconesJogosModernoState extends State<BodyIconesJogosModerno> {
                       decoration: BoxDecoration(
                         color: _corP.withValues(alpha: 0.85),
                         shape: BoxShape.circle,
-                        boxShadow: [BoxShadow(color: _corP, blurRadius: 12)],
+                        boxShadow: const [BoxShadow(color: _corP, blurRadius: 12)],
                       ),
                       child: const Icon(Icons.open_in_new_rounded, color: Colors.white, size: 12),
                     ),
@@ -773,7 +773,7 @@ class _BodyIconesJogosModernoState extends State<BodyIconesJogosModerno> {
                                   decoration: BoxDecoration(
                                     shape: BoxShape.circle,
                                     color: _corA.withValues(alpha: 0.9),
-                                    boxShadow: [
+                                    boxShadow: const [
                                       BoxShadow(
                                           color: _corA, blurRadius: 24)
                                     ],

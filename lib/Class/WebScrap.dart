@@ -316,12 +316,12 @@ class WebScrap{
       final noticias = <NoticiaGame>[];
 
       final itemMatches = RegExp(r'<item>([\s\S]*?)</item>').allMatches(body);
-      bool _firstPrinted = false;
+      bool firstPrinted = false;
 
       for (final m in itemMatches.take(12)) {
         final s = m.group(1) ?? '';
-        if (!_firstPrinted) {
-          _firstPrinted = true;
+        if (!firstPrinted) {
+          firstPrinted = true;
           // debugPrint('=== RAW ITEM[0] ===\n$s\n=== FIM RAW ===');
         }
 

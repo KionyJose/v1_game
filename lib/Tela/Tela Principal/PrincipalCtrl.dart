@@ -83,6 +83,7 @@ class PrincipalCtrl with ChangeNotifier{
   bool cardInf = false;
   bool cardGamesGrid = false;
   bool cardGamesModerno = false;
+  bool cardGamesRetro = false;
   bool contadorVideo = false;
   bool imersao = false;
   bool imersaoVideos = false;
@@ -160,6 +161,7 @@ class PrincipalCtrl with ChangeNotifier{
   iniciaTela() async {
     cardGamesGrid = configSistema.viewType == "grid";
     cardGamesModerno = configSistema.viewType == "moderno";
+    cardGamesRetro = configSistema.viewType == "retro";
     selectedIndexIcone = 0;
     selectedIndexVideo = 0;
     selectedIndexCinema = 0;
@@ -1186,22 +1188,24 @@ class PrincipalCtrl with ChangeNotifier{
   }
 
   trocaViewIcones() async {
-    // SELECT: alterna apenas entre grid e list (interface via Configurações)
-    cardGamesGrid = !cardGamesGrid;
-    if (cardGamesGrid) {
-      configSistema.viewType = "grid";
+    // SELECT: alterna entre o modo Grid e o modo salvo nas configurações (Normal, Moderno ou Retro)
+    if (!cardGamesGrid) {
+      // Entra no modo Grid
+      cardGamesGrid = true;
+      cardGamesModerno = false;
+      cardGamesRetro = false;
     } else {
-      // Mantém a interface escolhida nas configurações
-      final salvo = configSistema.viewType;
-      if (salvo != "grid") {
-        configSistema.viewType = salvo; // moderno ou list
-        cardGamesModerno = salvo == "moderno";
-      } else {
-        configSistema.viewType = "list";
-        cardGamesModerno = false;
-      }
+      // Sai do modo Grid e volta para o modo que está salvo no configSistema
+      cardGamesGrid = false;
+      cardGamesModerno = configSistema.viewType == "moderno";
+      cardGamesRetro = configSistema.viewType == "retro";
+      // Se não for nenhum dos dois, o modo padrão (BodyIconesJogos) será exibido
     }
-    configSistema.save();
+    
+    // Reseta o estado de informações extras ao trocar de visão
+    cardInf = false;
+    
+    // Notifica a mudança para atualizar a UI
     attTela();
   }
   
