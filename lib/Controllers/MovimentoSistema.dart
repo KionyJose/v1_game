@@ -28,7 +28,7 @@ class MovimentoSistema {
         estilo = vertical;
       }
       if(estilo.isEmpty) SonsSistema.click();
-      if(estilo.isNotEmpty) SonsSistema.direction();
+      if(estilo.isNotEmpty) SonsSistema.directionAtual();
     return estilo;
   }
 

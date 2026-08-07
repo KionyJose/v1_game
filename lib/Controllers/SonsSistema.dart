@@ -7,6 +7,7 @@ class SonsSistema {
   // Instância singleton do SoLoud (inicializada uma vez)
   static final SoLoud _soloud = SoLoud.instance;
   static bool _initialized = false;
+  static bool clickRetroAtivo = false;
   
   // Cache de sons carregados para melhor performance
   static final Map<String, AudioSource> _loadedSounds = {};
@@ -17,6 +18,8 @@ class SonsSistema {
   static void cheat() => _playSound('Sons/SomCheat.mp3');
   static void pim() => _playSound('Sons/SomCheat2.mp3');
   static void click() => _playSound('Sons/SomClick.mp3');
+  static void clickRetro() => _playSound('somClickRetro.MP3');
+  static void directionAtual() => clickRetroAtivo ? clickRetro() : direction();
   static void intro() => _playSound('Sons/Intro.mp3');
 
   // Inicializa o SoLoud (chamar no início do app)
@@ -94,6 +97,7 @@ class SonsSistema {
       preload('Sons/SomCheat.mp3'),
       preload('Sons/SomCheat2.mp3'),
       preload('Sons/SomClick.mp3'),
+      preload('somClickRetro.MP3'),
       preload('Sons/SomMovimento.mp3'),
       preload('Sons/SomMovimentoBaixo.mp3'),
       preload('Sons/Intro.mp3'),

@@ -3,22 +3,21 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:math';
+import 'package:carousel_slider/carousel_slider.dart';
 import 'package:flutter/material.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart' as mkv;
-import 'package:scroll_snap_list/scroll_snap_list.dart';
 import 'package:v1_game/Modelos/IconeInicial.dart';
 import 'package:v1_game/Tela/Tela%20Principal/PrincipalCtrl.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart';
 
 // ── Paleta Retro NES ─────────────────────────────────────────────────────────
-const _navy    = Color(0xFF08102A);
+const _navy = Color(0xFF08102A);
 const _navyMid = Color(0xFF0D1A3D);
-const _cyan    = Color(0xFF00E5FF);
-const _cyanDim = Color(0x5500E5FF);
+const _cyan = Color(0xFF00E5FF);
 const _white70 = Color(0xB3FFFFFF);
-const _cardBg  = Color(0xFF111928);
-const _barBg   = Color(0xFF04070F);
+const _cardBg = Color(0xFF111928);
+const _barBg = Color(0xFF04070F);
 
 class BodyIconesJogosRetro extends StatefulWidget {
   final PrincipalCtrl ctrl;
@@ -37,60 +36,82 @@ class BodyIconesJogosRetro extends StatefulWidget {
 class _BodyIconesJogosRetroState extends State<BodyIconesJogosRetro> {
   PrincipalCtrl get ctrl => widget.ctrl;
 
-  final _scrollCtrl  = ScrollController();
+  final _carouselCtrl = CarouselSliderController();
   final _thumbScroll = ScrollController();
 
   late final Player _heroPlayer;
   late final mkv.VideoController _heroCtrl;
   bool _heroAtivo = false;
   String _lastGame = '';
+  int _lastIndex = 0;
 
   // ── ciclo de vida ────────────────────────────────────────────────────────
   @override
   void initState() {
     super.initState();
+    _lastIndex = ctrl.selectedIndexIcone;
     _heroPlayer = Player();
     _heroCtrl = mkv.VideoController(_heroPlayer);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final nome = _nomeAtual;
-      if (nome.isNotEmpty) { _lastGame = nome; _iniciarVideo(nome); }
+      if (nome.isNotEmpty) {
+        _lastGame = nome;
+        _iniciarVideo(nome);
+      }
     });
   }
 
   @override
   void didUpdateWidget(BodyIconesJogosRetro old) {
     super.didUpdateWidget(old);
+    if (ctrl.selectedIndexIcone != _lastIndex) {
+      _lastIndex = ctrl.selectedIndexIcone;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _animarParaIndice(_lastIndex);
+      });
+    }
     final nome = _nomeAtual;
-    if (nome != _lastGame && nome.isNotEmpty) { _lastGame = nome; _iniciarVideo(nome); }
+    if (nome != _lastGame && nome.isNotEmpty) {
+      _lastGame = nome;
+      _iniciarVideo(nome);
+    }
   }
 
   @override
   void dispose() {
-    _scrollCtrl.dispose();
     _thumbScroll.dispose();
-    try { _heroPlayer.dispose(); } catch (_) {}
+    try {
+      _heroPlayer.dispose();
+    } catch (_) {}
     super.dispose();
   }
 
   // ── helpers ──────────────────────────────────────────────────────────────
   String get _nomeAtual => ctrl.listIconsInicial.isEmpty
-      ? '' : ctrl.listIconsInicial[ctrl.selectedIndexIcone].nome;
+      ? ''
+      : ctrl.listIconsInicial[ctrl.selectedIndexIcone].nome;
 
   IconInicial? get _jogo => ctrl.listIconsInicial.isEmpty
-      ? null : ctrl.listIconsInicial[ctrl.selectedIndexIcone];
+      ? null
+      : ctrl.listIconsInicial[ctrl.selectedIndexIcone];
 
   Future<void> _iniciarVideo(String nome) async {
-    try { await _heroPlayer.stop(); } catch (_) {}
+    try {
+      await _heroPlayer.stop();
+    } catch (_) {}
     if (mounted) setState(() => _heroAtivo = false);
     try {
       final tags = ctrl.tagVideo;
-      final tag  = tags[Random().nextInt(tags.length)];
-      final yt   = YoutubeExplode();
-      final res  = await yt.search.search('$nome $tag');
-      if (res.isEmpty) { yt.close(); return; }
-      final vid  = res[Random().nextInt(res.length.clamp(1, 5))];
+      final tag = tags[Random().nextInt(tags.length)];
+      final yt = YoutubeExplode();
+      final res = await yt.search.search('$nome $tag');
+      if (res.isEmpty) {
+        yt.close();
+        return;
+      }
+      final vid = res[Random().nextInt(res.length.clamp(1, 5))];
       final mani = await yt.videos.streamsClient.getManifest(vid.id);
-      final str  = mani.muxed.bestQuality;
+      final str = mani.muxed.bestQuality;
       await _heroPlayer.open(Media(str.url.toString()));
       _heroPlayer.setVolume(0);
       yt.close();
@@ -100,19 +121,31 @@ class _BodyIconesJogosRetroState extends State<BodyIconesJogosRetro> {
 
   void _onFoco(int i) {
     if (!mounted) return;
+    _lastIndex = i;
+    _animarParaIndice(i);
+    ctrl.onFocusChangeIcones(true, i, tamanho: widget.tamanhoBloco);
+  }
+
+  void _animarParaIndice(int i) {
+    if (ctrl.listIconsInicial.isEmpty) return;
+    final safeIndex = i.clamp(0, ctrl.listIconsInicial.length - 1);
     try {
-      if (_scrollCtrl.hasClients) {
-        _scrollCtrl.animateTo(i * widget.tamanhoBloco,
-            duration: const Duration(milliseconds: 600), curve: Curves.decelerate);
-      }
+      const duration = Duration(milliseconds: 460);
+      const curve = Curves.easeInOutCubic;
+      _carouselCtrl.animateToPage(safeIndex, duration: duration, curve: curve);
     } catch (_) {}
     try {
       if (_thumbScroll.hasClients) {
-        _thumbScroll.animateTo(i * 64.0,
-            duration: const Duration(milliseconds: 400), curve: Curves.ease);
+        const itemWidth = 64.0;
+        final max = _thumbScroll.position.maxScrollExtent;
+        final target = (safeIndex * itemWidth).clamp(0.0, max);
+        _thumbScroll.animateTo(
+          target,
+          duration: const Duration(milliseconds: 420),
+          curve: Curves.easeInOutCubic,
+        );
       }
     } catch (_) {}
-    ctrl.onFocusChangeIcones(true, i, tamanho: widget.tamanhoBloco);
   }
 
   // ── build ────────────────────────────────────────────────────────────────
@@ -145,17 +178,18 @@ class _BodyIconesJogosRetroState extends State<BodyIconesJogosRetro> {
           // Vídeo de fundo com efeito de vidro
           if (_heroAtivo)
             Opacity(
-              opacity: 0.25, 
-              child: mkv.Video(controller: _heroCtrl, controls: mkv.NoVideoControls)
-            ),
+                opacity: 0.25,
+                child: mkv.Video(
+                    controller: _heroCtrl, controls: mkv.NoVideoControls)),
           if (!_heroAtivo && img.isNotEmpty)
             Opacity(
               opacity: 0.20,
-              child: Image.file(File(img), fit: BoxFit.cover,
+              child: Image.file(File(img),
+                  fit: BoxFit.cover,
                   filterQuality: FilterQuality.low, // Estilo retro
                   errorBuilder: (_, __, ___) => const SizedBox()),
             ),
-          
+
           // Efeito de "Vignette" Retro
           Container(
             decoration: BoxDecoration(
@@ -174,8 +208,14 @@ class _BodyIconesJogosRetroState extends State<BodyIconesJogosRetro> {
           const DecoratedBox(
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                begin: Alignment.topCenter, end: Alignment.bottomCenter,
-                colors: [Color(0xEE08102A), Colors.transparent, Colors.transparent, Color(0xFF08102A)],
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Color(0xEE08102A),
+                  Colors.transparent,
+                  Colors.transparent,
+                  Color(0xFF08102A)
+                ],
                 stops: [0.0, 0.2, 0.8, 1.0],
               ),
             ),
@@ -186,122 +226,141 @@ class _BodyIconesJogosRetroState extends State<BodyIconesJogosRetro> {
   }
 
   Widget _scanlines(Size sz) => Positioned.fill(
-    child: IgnorePointer(
-      child: CustomPaint(painter: _ScanlinesPainter(spacing: 3)),
-    ),
-  );
+        child: IgnorePointer(
+          child: CustomPaint(painter: _ScanlinesPainter(spacing: 3)),
+        ),
+      );
 
   Widget _topIcons(Size sz) => Positioned(
-    top: 14, left: 0, right: 0,
-    child: Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        _retroIcon(Icons.desktop_windows, true),
-        _retroIcon(Icons.settings, false),
-        _retroIcon(Icons.language, false),
-        _retroIcon(Icons.format_list_bulleted, false),
-        _retroIcon(Icons.help_outline, false),
-      ],
-    ),
-  );
-
-  Widget _retroIcon(IconData ico, bool sel) => Container(
-    margin: const EdgeInsets.symmetric(horizontal: 10),
-    padding: const EdgeInsets.all(8),
-    decoration: BoxDecoration(
-      border: Border.all(color: sel ? Colors.white : Colors.white24, width: sel ? 2 : 1),
-      color: sel ? Colors.white12 : Colors.transparent,
-    ),
-    child: Icon(ico, color: sel ? Colors.white : Colors.white54, size: 20),
-  );
-
-  Widget _titleBar(Size sz) => Positioned(
-    top: 78, left: 0, right: 0,
-    child: Column(
-      children: [
-        Container(
-          width: sz.width * 0.85,
-          padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 24),
-          decoration: const BoxDecoration(
-            color: _navyMid,
-            border: Border.symmetric(
-              horizontal: BorderSide(color: _cyan, width: 1),
-            ),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.arrow_right, color: _cyan, size: 24),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  _nomeAtual.toUpperCase(),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 24,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 4,
-                    shadows: [
-                      Shadow(color: _cyan, blurRadius: 10),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              const Icon(Icons.arrow_left, color: _cyan, size: 24),
-            ],
-          ),
-        ),
-        // Detalhe decorativo abaixo do título
-        Container(
-          width: sz.width * 0.6,
-          height: 2,
-          margin: const EdgeInsets.only(top: 4),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Colors.transparent, _cyan.withValues(alpha: 0.5), Colors.transparent],
-            ),
-          ),
-        ),
-      ],
-    ),
-  );
-
-  Widget _carrossel(Size sz) {
-    // Cálculo de dimensões responsivas
-    final cardWidth = sz.width * 0.28; // Card ocupa 28% da largura da tela
-    final cardHeight = sz.height * 0.45;
-    
-    return Container(
-      // color: Colors.red,
-      child: Positioned(
-        top: sz.height * 0.22,
+        top: 14,
         left: 0,
         right: 0,
-        height: cardHeight * 1.3, // Espaço extra para o efeito de escala
-        child: FocusScope(
-          node: ctrl.focusScopeIcones,
-          child: Container(
-            // color: Colors.red,
-            child: 
-            ScrollSnapList(
-              // quero que seja loop infinito
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            _retroIcon(Icons.desktop_windows, true),
+            _retroIcon(Icons.settings, false),
+            _retroIcon(Icons.language, false),
+            _retroIcon(Icons.format_list_bulleted, false),
+            _retroIcon(Icons.help_outline, false),
+          ],
+        ),
+      );
 
+  Widget _retroIcon(IconData ico, bool sel) => Container(
+        margin: const EdgeInsets.symmetric(horizontal: 10),
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          border: Border.all(
+              color: sel ? Colors.white : Colors.white24, width: sel ? 2 : 1),
+          color: sel ? Colors.white12 : Colors.transparent,
+        ),
+        child: Icon(ico, color: sel ? Colors.white : Colors.white54, size: 20),
+      );
 
-              initialIndex: ctrl.selectedIndexIcone.toDouble(),
-              // padding: EdgeInsets.symmetric(horizontal: (sz.width - cardWidth) /6),
-              listController: _scrollCtrl,
-              itemCount: ctrl.focusNodeIcones.length,
-              onItemFocus: (index) {
-                // Sincroniza se necessário, mas o foco real vem do Focus widget
-              },
-              itemSize: cardWidth + 20, // largura do card + margem
-              itemBuilder: (_, i) => _card(i, sz, cardWidth, cardHeight),
+  Widget _titleBar(Size sz) => Positioned(
+        top: 78,
+        left: 0,
+        right: 0,
+        child: Column(
+          children: [
+            Container(
+              width: sz.width * 0.85,
+              padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 24),
+              decoration: const BoxDecoration(
+                color: _navyMid,
+                border: Border.symmetric(
+                  horizontal: BorderSide(color: _cyan, width: 1),
+                ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.arrow_right, color: _cyan, size: 24),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      _nomeAtual.toUpperCase(),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 24,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 4,
+                        shadows: [
+                          Shadow(color: _cyan, blurRadius: 10),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  const Icon(Icons.arrow_left, color: _cyan, size: 24),
+                ],
+              ),
             ),
+            // Detalhe decorativo abaixo do título
+            Container(
+              width: sz.width * 0.6,
+              height: 2,
+              margin: const EdgeInsets.only(top: 4),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    Colors.transparent,
+                    _cyan.withValues(alpha: 0.5),
+                    Colors.transparent
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+
+  Widget _carrossel(Size sz) {
+    if (ctrl.focusNodeIcones.isEmpty || ctrl.listIconsInicial.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    final cardWidth = (sz.width * 0.54).clamp(340.0, 760.0);
+    final cardHeight = (sz.height * 0.50).clamp(280.0, 500.0);
+    final carouselHeight = min(sz.height * 0.68, cardHeight * 1.28);
+    final viewportFraction = ((cardWidth * 1.02) / sz.width).clamp(0.54, 0.82);
+    final initialPage =
+        ctrl.selectedIndexIcone.clamp(0, ctrl.listIconsInicial.length - 1);
+
+    return Positioned(
+      top: sz.height * 0.22,
+      left: 0,
+      right: 0,
+      height: carouselHeight,
+      child: FocusScope(
+        node: ctrl.focusScopeIcones,
+        child: CarouselSlider(
+          carouselController: _carouselCtrl,
+          options: CarouselOptions(
+            height: carouselHeight,
+            initialPage: initialPage,
+            pageSnapping: true,
+            autoPlay: false,
+            enlargeCenterPage: true,
+            enableInfiniteScroll: false,
+            viewportFraction: viewportFraction,
+            enlargeStrategy: CenterPageEnlargeStrategy.zoom,
+            onPageChanged: (index, reason) {
+              if (!mounted || index >= ctrl.focusNodeIcones.length) return;
+              _lastIndex = index;
+              ctrl.focusNodeIcones[index].requestFocus();
+              ctrl.onFocusChangeIcones(true, index,
+                  tamanho: widget.tamanhoBloco);
+            },
           ),
+          items: [
+            for (int i = 0; i < ctrl.listIconsInicial.length; i++)
+              Center(child: _card(i, sz, cardWidth, cardHeight)),
+          ],
         ),
       ),
     );
@@ -309,15 +368,16 @@ class _BodyIconesJogosRetroState extends State<BodyIconesJogosRetro> {
 
   Widget _card(int i, Size sz, double baseWidth, double baseHeight) {
     final focused = ctrl.selectedIndexIcone == i;
-    final item = (i < ctrl.listIconsInicial.length) ? ctrl.listIconsInicial[i] : null;
-    final img  = item?.imgStr ?? '';
+    final item =
+        (i < ctrl.listIconsInicial.length) ? ctrl.listIconsInicial[i] : null;
+    final img = item?.imgStr ?? '';
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 300),
       curve: Curves.easeOutCubic,
-      width: focused ? baseWidth * 1.15 : baseWidth,
-      height: focused ? baseHeight * 1.15 : baseHeight,
-      margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 20),
+      width: focused ? baseWidth * 1.12 : baseWidth * 1.08,
+      height: focused ? baseHeight * 1.12 : baseHeight * 1.18,
+      margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
       decoration: BoxDecoration(
         color: _cardBg,
         borderRadius: BorderRadius.circular(4),
@@ -327,18 +387,27 @@ class _BodyIconesJogosRetroState extends State<BodyIconesJogosRetro> {
         ),
         boxShadow: focused
             ? [
-                BoxShadow(color: _cyan.withValues(alpha: 0.5), blurRadius: 30, spreadRadius: 2),
-                BoxShadow(color: _cyan.withValues(alpha: 0.2), blurRadius: 60, spreadRadius: 5),
+                BoxShadow(
+                    color: _cyan.withValues(alpha: 0.5),
+                    blurRadius: 30,
+                    spreadRadius: 2),
+                BoxShadow(
+                    color: _cyan.withValues(alpha: 0.2),
+                    blurRadius: 60,
+                    spreadRadius: 5),
               ]
             : [
-                BoxShadow(color: Colors.black.withValues(alpha: 0.5), blurRadius: 10, offset: const Offset(0, 5)),
+                BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.5),
+                    blurRadius: 10,
+                    offset: const Offset(0, 5)),
               ],
       ),
       child: Focus(
         focusNode: ctrl.focusNodeIcones[i],
-        onFocusChange: (hasFocus) { 
+        onFocusChange: (hasFocus) {
           if (hasFocus) {
-            _onFoco(i); 
+            _onFoco(i);
           }
         },
         child: ClipRRect(
@@ -349,7 +418,7 @@ class _BodyIconesJogosRetroState extends State<BodyIconesJogosRetro> {
               // Imagem principal
               if (img.isNotEmpty)
                 Image.file(
-                  File(img), 
+                  File(img),
                   fit: BoxFit.cover,
                   filterQuality: FilterQuality.medium,
                   errorBuilder: (_, __, ___) => _semImagem(),
@@ -376,14 +445,18 @@ class _BodyIconesJogosRetroState extends State<BodyIconesJogosRetro> {
                   top: 8,
                   left: 8,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                     decoration: BoxDecoration(
                       color: Colors.red.withValues(alpha: 0.9),
                       borderRadius: BorderRadius.circular(2),
                     ),
                     child: const Text(
                       'HI-RES',
-                      style: TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 8,
+                          fontWeight: FontWeight.bold),
                     ),
                   ),
                 ),
@@ -395,7 +468,8 @@ class _BodyIconesJogosRetroState extends State<BodyIconesJogosRetro> {
                   left: 0,
                   right: 0,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+                    padding: const EdgeInsets.symmetric(
+                        vertical: 10, horizontal: 12),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -416,12 +490,16 @@ class _BodyIconesJogosRetroState extends State<BodyIconesJogosRetro> {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Row(
-                              children: List.generate(3, (index) => Container(
-                                width: 6,
-                                height: 6,
-                                margin: const EdgeInsets.only(right: 4),
-                                decoration: const BoxDecoration(color: _cyan, shape: BoxShape.circle),
-                              )),
+                              children: List.generate(
+                                  3,
+                                  (index) => Container(
+                                        width: 6,
+                                        height: 6,
+                                        margin: const EdgeInsets.only(right: 4),
+                                        decoration: const BoxDecoration(
+                                            color: _cyan,
+                                            shape: BoxShape.circle),
+                                      )),
                             ),
                             const Text(
                               'PRESS START',
@@ -438,7 +516,7 @@ class _BodyIconesJogosRetroState extends State<BodyIconesJogosRetro> {
                     ),
                   ),
                 ),
-                
+
               // Overlay de scanlines internas (mais sutis)
               Positioned.fill(
                 child: IgnorePointer(
@@ -456,21 +534,25 @@ class _BodyIconesJogosRetroState extends State<BodyIconesJogosRetro> {
   }
 
   Widget _semImagem() => const Center(
-    child: Icon(Icons.videogame_asset, color: Colors.white24, size: 48),
-  );
+        child: Icon(Icons.videogame_asset, color: Colors.white24, size: 48),
+      );
 
   Widget _setaIndicador(Size sz) => Positioned(
-    top: sz.height * 0.62,
-    left: 0, right: 0,
-    child: const Center(
-      child: Icon(Icons.arrow_drop_down, color: _cyan, size: 28),
-    ),
-  );
+        top: sz.height * 0.62,
+        left: 0,
+        right: 0,
+        child: const Center(
+          child: Icon(Icons.arrow_drop_down, color: _cyan, size: 28),
+        ),
+      );
 
   Widget _thumbStrip(Size sz) {
     if (ctrl.listIconsInicial.isEmpty) return const SizedBox();
     return Positioned(
-      bottom: 44, left: 0, right: 0, height: 62,
+      bottom: 44,
+      left: 0,
+      right: 0,
+      height: 62,
       child: ListView.builder(
         controller: _thumbScroll,
         scrollDirection: Axis.horizontal,
@@ -481,9 +563,11 @@ class _BodyIconesJogosRetroState extends State<BodyIconesJogosRetro> {
           final img = ctrl.listIconsInicial[i].imgStr;
           return GestureDetector(
             onTap: () => _onFoco(i),
+            behavior: HitTestBehavior.opaque,
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 150),
-              width: 58, height: 58,
+              width: 58,
+              height: 58,
               margin: const EdgeInsets.symmetric(horizontal: 2),
               decoration: BoxDecoration(
                 border: Border.all(
@@ -493,10 +577,14 @@ class _BodyIconesJogosRetroState extends State<BodyIconesJogosRetro> {
                 color: _cardBg,
               ),
               child: img.isNotEmpty
-                  ? Image.file(File(img), fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) =>
-                          const Icon(Icons.videogame_asset, color: Colors.white24, size: 18))
-                  : const Icon(Icons.videogame_asset, color: Colors.white24, size: 18),
+                  ? Image.file(File(img),
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => const Icon(
+                          Icons.videogame_asset,
+                          color: Colors.white24,
+                          size: 18))
+                  : const Icon(Icons.videogame_asset,
+                      color: Colors.white24, size: 18),
             ),
           );
         },
@@ -505,51 +593,61 @@ class _BodyIconesJogosRetroState extends State<BodyIconesJogosRetro> {
   }
 
   Widget _bottomBar(Size sz) => Positioned(
-    bottom: 0, left: 0, right: 0,
-    child: Container(
-      color: _barBg,
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          const Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
+        bottom: 0,
+        left: 0,
+        right: 0,
+        child: Container(
+          color: _barBg,
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('RETRO', style: TextStyle(
-                  color: Colors.red, fontSize: 18, fontWeight: FontWeight.w900, letterSpacing: 1)),
-              Text('ENTERTAINMENT SYSTEM', style: TextStyle(
-                  color: Colors.red, fontSize: 9, letterSpacing: 1)),
+              const Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text('RETRO',
+                      style: TextStyle(
+                          color: Colors.red,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 1)),
+                  Text('ENTERTAINMENT SYSTEM',
+                      style: TextStyle(
+                          color: Colors.red, fontSize: 9, letterSpacing: 1)),
+                ],
+              ),
+              Row(children: [
+                _hint('+', 'Menu'),
+                const SizedBox(width: 14),
+                _hint('SELECT', 'Ordenar'),
+                const SizedBox(width: 14),
+                _hint('START', 'Iniciar'),
+              ]),
             ],
           ),
-          Row(children: [
-            _hint('+', 'Menu'),
-            const SizedBox(width: 14),
-            _hint('SELECT', 'Ordenar'),
-            const SizedBox(width: 14),
-            _hint('START', 'Iniciar'),
-          ]),
-        ],
-      ),
-    ),
-  );
+        ),
+      );
 
   Widget _hint(String btn, String label) => Row(
-    children: [
-      Container(
-        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
-        decoration: BoxDecoration(
-          color: btn == 'START' ? Colors.red : const Color(0xFF1A2040),
-          borderRadius: BorderRadius.circular(4),
-          border: Border.all(color: Colors.white24),
-        ),
-        child: Text(btn, style: const TextStyle(
-            color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
-      ),
-      const SizedBox(width: 4),
-      Text(label, style: const TextStyle(color: _white70, fontSize: 11)),
-    ],
-  );
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+            decoration: BoxDecoration(
+              color: btn == 'START' ? Colors.red : const Color(0xFF1A2040),
+              borderRadius: BorderRadius.circular(4),
+              border: Border.all(color: Colors.white24),
+            ),
+            child: Text(btn,
+                style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold)),
+          ),
+          const SizedBox(width: 4),
+          Text(label, style: const TextStyle(color: _white70, fontSize: 11)),
+        ],
+      );
 }
 
 // ── Scanlines ────────────────────────────────────────────────────────────────

@@ -9,6 +9,12 @@ set(BINARY_NAME "v1_game")
 # Explicitly opt in to modern CMake behaviors to avoid warnings with recent
 # versions of CMake.
 cmake_policy(VERSION 3.14...3.25)
+if(POLICY CMP0175)
+  # Some Flutter plugins still call add_custom_command(TARGET ...) without an
+  # explicit PRE_BUILD/PRE_LINK/POST_BUILD. Keep CMake's compatibility behavior
+  # for third-party plugin subdirectories until those plugins update upstream.
+  set(CMAKE_POLICY_DEFAULT_CMP0175 OLD)
+endif()
 
 # Define build configuration option.
 get_property(IS_MULTICONFIG GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
@@ -56,6 +62,30 @@ add_subdirectory("runner")
 # Generated plugin build rules, which manage building the plugins and adding
 # them to the application.
 include(flutter/generated_plugins.cmake)
+
+if(TARGET flutter_soloud_plugin)
+  target_compile_options(flutter_soloud_plugin PRIVATE
+    /wd4018 # signed/unsigned mismatch
+    /wd4189 # local variable initialized but not referenced
+    /wd4244 # conversion: possible loss of data
+    /wd4245 # signed/unsigned mismatch
+    /wd4267 # size_t conversion
+    /wd4305 # truncation
+    /wd4389 # signed/unsigned mismatch
+    /wd4456 # declaration hides previous local declaration
+    /wd4457 # declaration hides function parameter
+    /wd4458 # declaration hides class member
+    /wd4459 # declaration hides global declaration
+    /wd4701 # potentially uninitialized local variable
+    /wd4996 # deprecated POSIX name
+  )
+endif()
+
+if(TARGET permission_handler_windows_plugin)
+  target_compile_definitions(permission_handler_windows_plugin PRIVATE
+    _SILENCE_EXPERIMENTAL_COROUTINE_DEPRECATION_WARNINGS
+  )
+endif()
 
 
 # === Installation ===

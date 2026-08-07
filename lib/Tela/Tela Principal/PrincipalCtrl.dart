@@ -13,6 +13,7 @@ import 'package:v1_game/Class/WebScrap.dart';
 import 'package:v1_game/Controllers/JanelaCtrl.dart';
 import 'package:v1_game/Controllers/MovimentoSistema.dart';
 import 'package:v1_game/Controllers/NavWebCtrl.dart';
+import 'package:v1_game/Controllers/SonsSistema.dart';
 import 'package:v1_game/Global.dart';
 import 'package:v1_game/Modelos/MediaCanal.dart';
 import 'package:v1_game/Modelos/NoticiaGame.dart';
@@ -150,7 +151,9 @@ class PrincipalCtrl with ChangeNotifier{
     telaIniciada &&
     videosCarregados &&
     selectedIndexAbaGuias == 0 &&
-    (cardGamesGrid && cardInf || !cardGamesGrid);
+    !cardGamesGrid &&
+    !cardGamesModerno &&
+    !cardGamesRetro;
   }
 
   urlImgFilme(int i ){
@@ -739,6 +742,8 @@ class PrincipalCtrl with ChangeNotifier{
   escutaPad(String event) async {    
     try{
       if(!stateTela || event == "") return;
+      SonsSistema.clickRetroAtivo =
+          selectedIndexAbaGuias == 0 && cardGamesRetro && !cardGamesGrid;
 
       // Intercept: popup de notícia aberto — roteamento A=2 e B=3 para popup
       if (noticiaPopupAberta != null) {

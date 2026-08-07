@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:bitsdojo_window/bitsdojo_window.dart';
 import 'package:flutter/material.dart';
+import 'package:path/path.dart' as p;
 import 'package:permission_handler/permission_handler.dart';
 import 'package:v1_game/Bando%20de%20Dados/TESTES.dart';
 import 'package:v1_game/Class/MouseCtrl.dart';
@@ -48,6 +49,7 @@ void main() async {
   await configucacoesSistema();
   if(configSistema.intro) SonsSistema.intro();
   localizaCaminhos();
+  await registrarAppNoSetupV1();
 
 
   
@@ -86,6 +88,83 @@ localizaCaminhos(){
   assetsPath = "${diretorioAtual.path}\\data\\flutter_assets\\assets\\";
 
   criaAtalhoTecladoApp();
+}
+  
+Future<void> registrarAppNoSetupV1() async {
+  if (!Platform.isWindows) return;
+
+  final localAppData = Platform.environment['LOCALAPPDATA'];
+  if (localAppData == null || localAppData.isEmpty) {
+    debugPrint('LOCALAPPDATA nao encontrado. Configuracao do setupV1 ignorada.');
+    return;
+  }
+
+  final publishedDir = Directory(p.join(localAppData, 'setupV1', 'Published'));
+  final executablePath = Platform.resolvedExecutable;
+  final processName = p.basenameWithoutExtension(executablePath);
+  const displayName = 'V1 Launcher';
+  final iconCandidate = File(p.join(
+    p.dirname(executablePath),
+    'data',
+    'flutter_assets',
+    'assets',
+    'IconeAppV1.png',
+  ));
+  final iconPath = iconCandidate.existsSync() ? iconCandidate.path : '';
+
+  try {
+    if (!publishedDir.existsSync()) {
+      publishedDir.createSync(recursive: true);
+    }
+
+    final configFile = File(p.join(publishedDir.path, 'monitor_app.txt'));
+
+    final conteudo = _gerarConfigSetupV1(
+      executablePath: executablePath,
+      processName: processName,
+      displayName: displayName,
+      iconPath: iconPath,
+    );
+
+    await configFile.writeAsString(conteudo);
+    debugPrint('Configuracao do setupV1 atualizada em: ${configFile.path}');
+  } catch (e) {
+    debugPrint('Erro ao atualizar configuracao do setupV1: $e');
+  }
+}
+
+String _gerarConfigSetupV1({
+  required String executablePath,
+  required String processName,
+  required String displayName,
+  required String iconPath,
+}) {
+  return '''
+# Configuracao do app monitorado pelo setupV1
+#
+# Este arquivo deve ficar na mesma pasta do setupV1.exe publicado.
+# Pasta segura padrao:
+# %LOCALAPPDATA%\\setupV1\\Published
+#
+# Como preencher:
+# executablePath=C:\\caminho\\do\\V1Laucher.exe
+# processName=V1Laucher
+# displayName=V1Laucher
+# iconPath=C:\\caminho\\opcional\\icone.png
+#
+# Regras:
+# - executablePath e o caminho que sera aberto ao clicar no monitor.
+# - processName e o nome do processo sem ".exe", usado para saber se esta aberto.
+# - displayName e o nome mostrado na tela.
+# - iconPath e opcional. Se ficar vazio, usa Assets\\IconeAppV1.png.
+#
+# assinatura=V1 Launcher atualizado automaticamente
+
+executablePath=$executablePath
+processName=$processName
+displayName=$displayName
+iconPath=$iconPath
+''';
 }
   
 criaAtalhoTecladoApp() async {

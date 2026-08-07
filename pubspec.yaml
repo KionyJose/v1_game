@@ -83,6 +83,7 @@ flutter:
     - assets/Sons/SomMovimento.mp3
     - assets/Sons/SomMovimentoBaixo.mp3
     - assets/Sons/Intro.mp3
+    - assets/somClickRetro.MP3
     # Scripts ===================
     - assets/Scripts/AutoHotkeyA32.exe
     - assets/Scripts/moovMouse.ahk
