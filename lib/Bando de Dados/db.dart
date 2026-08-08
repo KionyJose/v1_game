@@ -147,9 +147,42 @@ class DB{
   }
 
   Process? process; // Variável para armazenar o processo
+  int? processoAbertoPid;
+  String? processoAbertoPath;
+
+  bool _isExecutavelDireto(String filePath) {
+    final lower = filePath.toLowerCase();
+    return lower.endsWith('.exe') || lower.endsWith('.lnk');
+  }
+
+  Future<Set<int>> _pidsPorCaminhoExecutavel(String filePath) async {
+    if (!Platform.isWindows || !_isExecutavelDireto(filePath)) return {};
+    final escaped = filePath.replaceAll("'", "''");
+    final script = "Get-CimInstance Win32_Process | "
+        "Where-Object { \$_.ExecutablePath -eq '$escaped' } | "
+        "Select-Object -ExpandProperty ProcessId";
+    try {
+      final result = await Process.run(
+        'powershell',
+        ['-NoProfile', '-Command', script],
+        runInShell: true,
+      );
+      if (result.exitCode != 0) return {};
+      return result.stdout
+          .toString()
+          .split(RegExp(r'\s+'))
+          .map((v) => int.tryParse(v.trim()))
+          .whereType<int>()
+          .toSet();
+    } catch (e) {
+      debugPrint('Erro buscando PID por caminho: $e');
+      return {};
+    }
+  }
 
   openFile(String filePath) async {
     try {
+      final pidsAntes = await _pidsPorCaminhoExecutavel(filePath);
       debugPrint('========================================');
       debugPrint('ABRINDO ARQUIVO/JOGO');
       debugPrint('Caminho: $filePath');
@@ -170,6 +203,8 @@ class DB{
           ['/c', 'start', '', filePath],
           runInShell: true,
         );
+        processoAbertoPid = process?.pid;
+        processoAbertoPath = filePath;
         
         debugPrint('Deep link processado com sucesso');
         debugPrint('========================================');
@@ -184,9 +219,19 @@ class DB{
         process = await Process.start(
           filePath,
           [],
-          mode: ProcessStartMode.detached,
+          mode: ProcessStartMode.normal,
         );
-        // Não aguardamos streams para não bloquear até o processo fechar.
+        processoAbertoPid = process?.pid;
+        processoAbertoPath = filePath;
+        process?.stdout.listen((_) {});
+        process?.stderr.listen((_) {});
+        await Future.delayed(const Duration(milliseconds: 700));
+        final pidsDepois = await _pidsPorCaminhoExecutavel(filePath);
+        final novosPids = pidsDepois.difference(pidsAntes);
+        if (novosPids.isNotEmpty) {
+          processoAbertoPid = novosPids.first;
+          debugPrint('PID real do executavel detectado: $processoAbertoPid');
+        }
         debugPrint('Executável iniciado (não bloqueante) com sucesso');
         debugPrint('========================================');
         return;
@@ -208,6 +253,56 @@ class DB{
       debugPrint('========================================');
       debugPrint('ERRO desconhecido: $e');
       debugPrint('========================================');
+    }
+  }
+
+  Future<bool> closeOpenedFile() async {
+    final pids = <int>{};
+    if (processoAbertoPid != null) pids.add(processoAbertoPid!);
+    final path = processoAbertoPath;
+    if (path != null && path.isNotEmpty) {
+      pids.addAll(await _pidsPorCaminhoExecutavel(path));
+    }
+
+    if (pids.isEmpty) {
+      debugPrint('Nenhum processo aberto pelo app para fechar.');
+      return false;
+    }
+
+    debugPrint('Tentando fechar processo aberto: PIDs ${pids.join(', ')}');
+    try {
+      var fechou = false;
+      if (Platform.isWindows) {
+        for (final pid in pids) {
+          final result = await Process.run(
+            'taskkill',
+            ['/PID', pid.toString(), '/T', '/F'],
+            runInShell: true,
+          );
+          final ok = result.exitCode == 0;
+          debugPrint(ok
+              ? 'Processo $pid fechado com taskkill.'
+              : 'Falha no taskkill $pid: ${result.stderr}');
+          fechou = fechou || ok;
+        }
+        if (fechou) {
+          process = null;
+          processoAbertoPid = null;
+          processoAbertoPath = null;
+          return true;
+        }
+      }
+
+      final killed = process?.kill(ProcessSignal.sigterm) ?? false;
+      if (killed) {
+        process = null;
+        processoAbertoPid = null;
+        processoAbertoPath = null;
+      }
+      return killed;
+    } catch (e) {
+      debugPrint('Erro ao fechar processo aberto: $e');
+      return false;
     }
   }
 

@@ -316,12 +316,8 @@ class _PrincipalPageState extends State<PrincipalPage> with WindowListener {
       scrollDirection: Axis.horizontal,
       controller: ctrl.bodyCtrl,
       children: [
-        // if(ctrl.cardGamesGrid) gridAnimado(ctrl, tamanhoBloco),
         if (ctrl.cardGamesGrid)
-          BodyIconesJogosGrid(
-            ctrl: ctrl,
-            tamanhoBloco: tamanhoBloco,
-          ),
+          gridAnimado(ctrl, tamanhoBloco),
         if(!ctrl.cardGamesGrid && ctrl.cardGamesModerno) BodyIconesJogosModerno(
           ctrl: ctrl,
           tamanhoBloco: tamanhoBloco,
@@ -517,21 +513,30 @@ class _PrincipalPageState extends State<PrincipalPage> with WindowListener {
       animation: ctrl.ctrlAnimeBgFundo,
       builder: (context, child) {
         // debugPrint(ctrl.showNewImage.toString());
-        return AnimatedOpacity( // Anima A Opacidade.
-          opacity: ctrl.showNewImage ? 1.0 : 0.0,
-          duration: !ctrl.showNewImage ?  const Duration(milliseconds: 350) :  const Duration(seconds: 1),
-          child: Transform.scale(
-            scale: ctrl.scaleAnimation.value,
-            child: Container(
-              width: double.maxFinite,
-              height: double.maxFinite,
-              decoration: BoxDecoration(
-                color: Colors.blue.withOpacity(0.5),
-                borderRadius: BorderRadius.circular(50),
+        return Stack(
+          fit: StackFit.expand,
+          children: [
+            Container(color: Colors.black),
+            AnimatedOpacity(
+              opacity: ctrl.showNewImage ? 1.0 : 0.0,
+              duration: ctrl.showNewImage ? const Duration(seconds: 1) : const Duration(milliseconds: 350),
+              child: Transform.scale(
+                scale: ctrl.scaleAnimation.value,
+                child: imagemFundo(ctrl),
               ),
-              child: imagemFundo(ctrl),
             ),
-          ),
+            AnimatedOpacity(
+              opacity: ctrl.showBgVideo ? 1.0 : 0.0,
+              duration: const Duration(seconds: 1),
+              child: SizedBox.expand(
+                child: Video(
+                  controller: ctrl.bgMediaController,
+                  controls: NoVideoControls,
+                  fit: BoxFit.cover,
+                ),
+              ),
+            ),
+          ],
         );
       },
     );
@@ -539,14 +544,12 @@ class _PrincipalPageState extends State<PrincipalPage> with WindowListener {
   
   imagemFundo(PrincipalCtrl ctrl) {
     final item = BoxDecoration( image: DecorationImage( fit: BoxFit.cover, image: FileImage(File("${assetsPath}BGdefault.jpeg"),scale: 5)));
-    return Container(
+    return SizedBox.expand(
+      child: DecoratedBox(
       decoration: ctrl.imgFundoStr.isNotEmpty ? File(ctrl.imgFundoStr).existsSync() ? BoxDecoration( image: DecorationImage(fit: BoxFit.cover, image 
       : FileImage( File(ctrl.imgFundoStr),)))
       : item : item,
-      // : const BoxDecoration(color: Colors.transparent),
-      height: 200,
-      width: 135,
-      // child: focus ? Center(child: Text(iconInitial.nome,style: const TextStyle(fontSize: 25,color: Colors.white),)) : Container()
+      ),
     );
   }
 

@@ -17,6 +17,12 @@ typedef FindWindowDart = int Function(Pointer<Utf16> lpClassName, Pointer<Utf16>
 typedef SetForegroundWindowC = Int32 Function(IntPtr hWnd);
 typedef SetForegroundWindowDart = int Function(int hWnd);
 
+typedef GetForegroundWindowC = IntPtr Function();
+typedef GetForegroundWindowDart = int Function();
+
+typedef GetAncestorC = IntPtr Function(IntPtr hWnd, Uint32 gaFlags);
+typedef GetAncestorDart = int Function(int hWnd, int gaFlags);
+
 
 
 //==============================================================================================
@@ -45,10 +51,12 @@ class JanelaCtrl with ChangeNotifier, WindowListener{
 
   
   String nomeJanelaSistema = "v1_game"; 
+  static const String _nomeJanelaSistema = "v1_game";
+  static const String _classeJanelaFlutter = "FLUTTER_RUNNER_WIN32_WINDOW";
+  static const int GA_ROOT = 2;
   static const int SW_MINIMIZE = 6;
   static const int SW_RESTORE = 9;  
   static const int SW_SHOWNORMAL = 1;  
-  static final hWnd = user32.lookupFunction<FindWindowC, FindWindowDart>('FindWindowW')(nullptr, "v1_game".toNativeUtf16());
 
   bool ativa = false;
   // deixar ativo depois
@@ -91,6 +99,49 @@ class JanelaCtrl with ChangeNotifier, WindowListener{
 
   static janelaAtiva () async => await windowManager.isFocused();
 
+  static int _buscarJanelaPrincipal() {
+    final findWindow = user32.lookupFunction<FindWindowC, FindWindowDart>('FindWindowW');
+    final lpClassName = _classeJanelaFlutter.toNativeUtf16();
+    final lpWindowName = _nomeJanelaSistema.toNativeUtf16();
+    var hwnd = findWindow(lpClassName, lpWindowName);
+    if (hwnd == 0) {
+      hwnd = findWindow(lpClassName, nullptr);
+    }
+    if (hwnd == 0) {
+      hwnd = findWindow(nullptr, lpWindowName);
+    }
+    calloc.free(lpClassName);
+    calloc.free(lpWindowName);
+    return hwnd;
+  }
+
+  static bool appNaFrente() {
+    final hwnd = _buscarJanelaPrincipal();
+    if (hwnd == 0) return false;
+
+    final getForegroundWindow =
+        user32.lookupFunction<GetForegroundWindowC, GetForegroundWindowDart>('GetForegroundWindow');
+    final getAncestor = user32.lookupFunction<GetAncestorC, GetAncestorDart>('GetAncestor');
+    final foregroundWindow = getForegroundWindow();
+    final foregroundRoot = foregroundWindow == 0 ? 0 : getAncestor(foregroundWindow, GA_ROOT);
+    return foregroundWindow == hwnd || foregroundRoot == hwnd;
+  }
+
+  static Future<bool> garantirFocoSeNaFrente() async {
+    if (await windowManager.isFocused()) return true;
+    if (!appNaFrente()) return false;
+
+    final hwnd = _buscarJanelaPrincipal();
+    if (hwnd != 0) {
+      final setForegroundWindow =
+          user32.lookupFunction<SetForegroundWindowC, SetForegroundWindowDart>('SetForegroundWindow');
+      setForegroundWindow(hwnd);
+    }
+
+    await windowManager.focus();
+    return await windowManager.isFocused() || appNaFrente();
+  }
+
 
 
   static void restoreWindow () async {
@@ -113,6 +164,7 @@ class JanelaCtrl with ChangeNotifier, WindowListener{
 
     final lpWindowName = windowName.toNativeUtf16();
     // final hWnd = findWindow(nullptr, lpWindowName);
+    final hWnd = _buscarJanelaPrincipal();
 
     if (hWnd != 0) {
       // Minimiza a janela
@@ -133,6 +185,7 @@ class JanelaCtrl with ChangeNotifier, WindowListener{
   static verificaVisibilidade(){
 
     final isWindowVisible = user32.lookupFunction<IsWindowVisibleC, IsWindowVisibleDart>('IsWindowVisible');
+    final hWnd = _buscarJanelaPrincipal();
     final visible = isWindowVisible(hWnd) != 0;
     debugPrint(visible ? 'A janela está visível' : 'A janela está oculta');
     return visible;
@@ -140,12 +193,14 @@ class JanelaCtrl with ChangeNotifier, WindowListener{
 
   static janelaMoveTopo(){    
     final bringWindowToTop = user32.lookupFunction<BringWindowToTopC, BringWindowToTopDart>('BringWindowToTop');
+    final hWnd = _buscarJanelaPrincipal();
     bringWindowToTop(hWnd);    
   }
 
   static trocaNomeJanela(){
     final setWindowText = user32.lookupFunction<SetWindowTextC, SetWindowTextDart>('SetWindowTextW');
     final newTitle = 'V1 Launch'.toNativeUtf16();
+    final hWnd = _buscarJanelaPrincipal();
     setWindowText(hWnd, newTitle);
     calloc.free(newTitle);  
   }

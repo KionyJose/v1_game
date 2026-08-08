@@ -41,9 +41,12 @@ class _BodyIconesJogosRetroState extends State<BodyIconesJogosRetro> {
 
   late final Player _heroPlayer;
   late final mkv.VideoController _heroCtrl;
+  Timer? _videoDebounce;
   bool _heroAtivo = false;
+  bool _fundoPreto = true;
   String _lastGame = '';
   int _lastIndex = 0;
+  int _videoVersao = 0;
 
   // ── ciclo de vida ────────────────────────────────────────────────────────
   @override
@@ -56,7 +59,7 @@ class _BodyIconesJogosRetroState extends State<BodyIconesJogosRetro> {
       final nome = _nomeAtual;
       if (nome.isNotEmpty) {
         _lastGame = nome;
-        _iniciarVideo(nome);
+        _agendarVideo(nome);
       }
     });
   }
@@ -73,12 +76,13 @@ class _BodyIconesJogosRetroState extends State<BodyIconesJogosRetro> {
     final nome = _nomeAtual;
     if (nome != _lastGame && nome.isNotEmpty) {
       _lastGame = nome;
-      _iniciarVideo(nome);
+      _agendarVideo(nome);
     }
   }
 
   @override
   void dispose() {
+    _videoDebounce?.cancel();
     _thumbScroll.dispose();
     try {
       _heroPlayer.dispose();
@@ -95,28 +99,57 @@ class _BodyIconesJogosRetroState extends State<BodyIconesJogosRetro> {
       ? null
       : ctrl.listIconsInicial[ctrl.selectedIndexIcone];
 
-  Future<void> _iniciarVideo(String nome) async {
+  void _agendarVideo(String nome) {
+    final versao = ++_videoVersao;
+    _videoDebounce?.cancel();
+    if (mounted) {
+      setState(() => _fundoPreto = true);
+    }
+    _videoDebounce = Timer(const Duration(milliseconds: 500), () {
+      _iniciarVideo(nome, versao);
+    });
+  }
+
+  Future<void> _iniciarVideo(String nome, int versao) async {
+    YoutubeExplode? yt;
     try {
       await _heroPlayer.stop();
     } catch (_) {}
+    if (!mounted || versao != _videoVersao) return;
     if (mounted) setState(() => _heroAtivo = false);
     try {
-      final tags = ctrl.tagVideo;
+      const tags = ['Gameplay', 'cinematic'];
       final tag = tags[Random().nextInt(tags.length)];
-      final yt = YoutubeExplode();
+      yt = YoutubeExplode();
       final res = await yt.search.search('$nome $tag');
+      if (!mounted || versao != _videoVersao) return;
       if (res.isEmpty) {
-        yt.close();
         return;
       }
       final vid = res[Random().nextInt(res.length.clamp(1, 5))];
       final mani = await yt.videos.streamsClient.getManifest(vid.id);
+      if (!mounted || versao != _videoVersao) return;
       final str = mani.muxed.bestQuality;
       await _heroPlayer.open(Media(str.url.toString()));
       _heroPlayer.setVolume(0);
-      yt.close();
-      if (mounted) setState(() => _heroAtivo = true);
-    } catch (_) {}
+      try {
+        await _heroPlayer.stream.playing
+            .firstWhere((playing) => playing)
+            .timeout(const Duration(seconds: 2));
+      } catch (_) {}
+      if (mounted && versao == _videoVersao) {
+        setState(() {
+          _heroAtivo = true;
+          _fundoPreto = false;
+        });
+      }
+    } catch (_) {
+      if (mounted && versao == _videoVersao) {
+        setState(() => _fundoPreto = true);
+      }
+    } finally {
+      yt?.close();
+    }
   }
 
   void _onFoco(int i) {
@@ -124,6 +157,11 @@ class _BodyIconesJogosRetroState extends State<BodyIconesJogosRetro> {
     _lastIndex = i;
     _animarParaIndice(i);
     ctrl.onFocusChangeIcones(true, i, tamanho: widget.tamanhoBloco);
+    final nome = _nomeAtual;
+    if (nome != _lastGame && nome.isNotEmpty) {
+      _lastGame = nome;
+      _agendarVideo(nome);
+    }
   }
 
   void _animarParaIndice(int i) {
@@ -180,7 +218,9 @@ class _BodyIconesJogosRetroState extends State<BodyIconesJogosRetro> {
             Opacity(
                 opacity: 0.25,
                 child: mkv.Video(
-                    controller: _heroCtrl, controls: mkv.NoVideoControls)),
+                    controller: _heroCtrl,
+                    controls: mkv.NoVideoControls,
+                    fit: BoxFit.fill)),
           if (!_heroAtivo && img.isNotEmpty)
             Opacity(
               opacity: 0.20,
@@ -219,6 +259,12 @@ class _BodyIconesJogosRetroState extends State<BodyIconesJogosRetro> {
                 stops: [0.0, 0.2, 0.8, 1.0],
               ),
             ),
+          ),
+          AnimatedOpacity(
+            opacity: _fundoPreto ? 1.0 : 0.0,
+            duration: const Duration(milliseconds: 350),
+            curve: Curves.easeInOut,
+            child: const ColoredBox(color: Colors.black),
           ),
         ],
       ),
@@ -375,8 +421,8 @@ class _BodyIconesJogosRetroState extends State<BodyIconesJogosRetro> {
     return AnimatedContainer(
       duration: const Duration(milliseconds: 300),
       curve: Curves.easeOutCubic,
-      width: focused ? baseWidth * 1.12 : baseWidth * 1.08,
-      height: focused ? baseHeight * 1.12 : baseHeight * 1.18,
+      width: focused ? baseWidth * 1.12 : baseWidth * 0.68,
+      height: focused ? baseHeight * 1.12 : baseHeight * 0.88,
       margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
       decoration: BoxDecoration(
         color: _cardBg,

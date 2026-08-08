@@ -78,6 +78,7 @@ class PrincipalCtrl with ChangeNotifier{
 
   // final ValueNotifier<int> selectedIndexNotifier = ValueNotifier<int>(0);
   Timer? timerLoadVideos;
+  Timer? timerFundoCard;
   Timer? timerImersaoVideos;
   Timer? timerImersao;
 
@@ -95,6 +96,8 @@ class PrincipalCtrl with ChangeNotifier{
   bool telaIniciada = false;
   bool videosCarregados = false;
   bool showNewImage = false;
+  bool showBgVideo = false;
+  int _fundoCardVersao = 0;
   String imgFundoStr = "";
   bool home = true;
   bool load = false;
@@ -107,6 +110,8 @@ class PrincipalCtrl with ChangeNotifier{
 
   late Player mediaPlayer;
   late VideoController mediaController;
+  late Player bgMediaPlayer;
+  late VideoController bgMediaController;
   List<String> tagVideo = ["gameplay","montage","funny","clip","dica","tutorial de","Shorts","Engraçado","lool","noticias","Novidades","Update","review","análise","walkthrough","speedrun","highlights","best moments","top plays","epic moments"];
   
   List<String> listAbaGuias= ["Games","Cinema","Musica"];
@@ -174,6 +179,9 @@ class PrincipalCtrl with ChangeNotifier{
     // Inicializa media_kit player
     mediaPlayer = Player();
     mediaController = VideoController(mediaPlayer);
+    bgMediaPlayer = Player();
+    bgMediaController = VideoController(bgMediaPlayer);
+    bgMediaPlayer.setVolume(0);
     
     // Escuta duração e posição
     mediaPlayer.stream.duration.listen((duration) {
@@ -245,7 +253,9 @@ class PrincipalCtrl with ChangeNotifier{
     timerImersao?.cancel();
     timerImersaoVideos?.cancel();
     timerLoadVideos?.cancel();
+    timerFundoCard?.cancel();
     try { mediaPlayer.dispose(); } catch (_) {}
+    try { bgMediaPlayer.dispose(); } catch (_) {}
     try { ctrlAnimeBgFundo.dispose(); } catch (_) {}
     try { scrolListIcones.dispose(); } catch (_) {}
     try { scrolListAbaGuias.dispose(); } catch (_) {}
@@ -355,6 +365,64 @@ class PrincipalCtrl with ChangeNotifier{
     });
   }
 
+  void agendarFundoCard(int index) {
+    if(index < 0 || index >= listIconsInicial.length) return;
+
+    final versao = ++_fundoCardVersao;
+    timerFundoCard?.cancel();
+    timerLoadVideos?.cancel();
+    showNewImage = false;
+    showBgVideo = false;
+    selectedIndexVideo = 0;
+    videosYT.clear();
+    videosCarregados = false;
+    try { bgMediaPlayer.stop(); } catch (_) {}
+    attTela();
+
+    timerFundoCard = Timer(const Duration(milliseconds: 1500), () async {
+      if(versao != _fundoCardVersao || selectedIndexIcone != index || selectedIndexAbaGuias != 0) return;
+
+      final item = listIconsInicial[index];
+      var videoAberto = false;
+
+      if(item.nome.isNotEmpty) {
+        YoutubeExplode? yt;
+        try {
+          yt = YoutubeExplode();
+          final pesquisa = await yt.search.search('${item.nome} gameplay');
+          final resultado = pesquisa.first;
+          final manifest = await yt.videos.streamsClient.getManifest(resultado.id);
+          final stream = manifest.muxed.bestQuality;
+
+          if(versao == _fundoCardVersao && selectedIndexIcone == index && selectedIndexAbaGuias == 0) {
+            await bgMediaPlayer.open(Media(stream.url.toString()));
+            await bgMediaPlayer.setVolume(0);
+            showBgVideo = true;
+            showNewImage = false;
+            videoAberto = true;
+            attTela();
+            pesquisaVideosYT(item.nome, index);
+          }
+        } catch (e) {
+          debugPrint('Fundo video indisponivel: $e');
+        } finally {
+          yt?.close();
+        }
+      }
+
+      if(videoAberto || versao != _fundoCardVersao || selectedIndexIcone != index || selectedIndexAbaGuias != 0) return;
+
+      imgFundoStr = item.imgStr;
+      showBgVideo = false;
+      showNewImage = true;
+      attTela();
+
+      if(versao == _fundoCardVersao && selectedIndexIcone == index && selectedIndexAbaGuias == 0) {
+        pesquisaVideosYT(item.nome, index);
+      }
+    });
+  }
+
 
   imersaoVideoRestart() async {
     if(!videoAtivo) return imersaoVideos = false;
@@ -393,19 +461,23 @@ class PrincipalCtrl with ChangeNotifier{
       } catch (_) {}
       
       attTela();
-      
-      selectedIndexVideo = 0;
-      videosYT.clear();
-      videosCarregados = false;
-      timerLoadVideos?.cancel();
-      timerLoadVideos = Timer(const Duration(milliseconds: 350), () {
-        if(selectedIndexAbaGuias != 0)return;
-        showNewImage = true;        
-        if(listIconsInicial.isNotEmpty){
-          imgFundoStr = listIconsInicial[index].imgStr;
-          pesquisaVideosYT(listIconsInicial[selectedIndexIcone].nome,index);
-        }
-      });
+
+      if(!cardGamesModerno && !cardGamesRetro && !cardGamesGrid) {
+        agendarFundoCard(index);
+      } else {
+        selectedIndexVideo = 0;
+        videosYT.clear();
+        videosCarregados = false;
+        timerLoadVideos?.cancel();
+        timerLoadVideos = Timer(const Duration(milliseconds: 350), () {
+          if(selectedIndexAbaGuias != 0)return;
+          showNewImage = true;        
+          if(listIconsInicial.isNotEmpty){
+            imgFundoStr = listIconsInicial[index].imgStr;
+            pesquisaVideosYT(listIconsInicial[selectedIndexIcone].nome,index);
+          }
+        });
+      }
     }catch(e){
       debugPrint(e.toString());
     }
@@ -419,6 +491,17 @@ class PrincipalCtrl with ChangeNotifier{
     }catch(e){
       debugPrint(e.toString());
     }
+  }
+
+  void abrirCardInfDoJogoAtual() {
+    if (listIconsInicial.isEmpty) return;
+    cardInf = true;
+    selectedIndexCardInfo = 0;
+    focusScopeCardInf.requestFocus();
+    focusScope = focusScopeCardInf;
+    focusNodeCardInf[0].requestFocus();
+    carregaVideosDoGame();
+    attTela();
   }
 
   carregaNovoVideo(int index) async {
@@ -538,6 +621,28 @@ class PrincipalCtrl with ChangeNotifier{
       // focusScope = focusScopeIcones;
     }catch(e){
       debugPrint(e.toString());
+    }
+  }
+
+  Future<void> btnFecharJogoAberto() async {
+    try {
+      final fechado = await db.closeOpenedFile();
+      gameIniciado = false;
+      stateTela = true;
+      Provider.of<JanelaCtrl>(ctx, listen: false)
+          .telaPresaReverse(estado: true, usarEstado: true);
+      Provider.of<Paad>(ctx, listen: false)
+          .ativaMouse(usarEstado: true, estado: false);
+      focusScopeCardInf.requestFocus();
+      focusScope = focusScopeCardInf;
+      selectedIndexCardInfo = 1;
+      focusNodeCardInf[1].requestFocus();
+      debugPrint(fechado
+          ? 'Jogo fechado pelo botao FECHAR.'
+          : 'Nao foi possivel fechar o jogo pelo PID salvo.');
+      attTela();
+    } catch (e) {
+      debugPrint('ERRO btnFecharJogoAberto $e');
     }
   }
 
@@ -999,20 +1104,18 @@ class PrincipalCtrl with ChangeNotifier{
   }
 
   movCardGrid(String event) async {    
-    MovimentoSistema.direcaoListView(focusScope, event);
     if(gameIniciado) {
       if(event == "3") Navigator.pop(ctx);
       return;
-    }    
+    }
+    if (cardInf) return movCardInf(event);
+
+    MovimentoSistema.direcaoListView(focusScope, event);
     if (event == "START") {
       btnMais();
     }else if (event == "2"){
       if(!cardInf){
-        cardInf = true;
-        focusScopeCardInf.requestFocus();
-        focusScope = focusScopeCardInf;
-        focusNodeCardInf[0].requestFocus();
-        carregaVideosDoGame();
+        abrirCardInfDoJogoAtual();
       }
     }else if (event == 'SELECT'){
       trocaViewIcones();
@@ -1113,13 +1216,13 @@ class PrincipalCtrl with ChangeNotifier{
           }
         }
       }else if(event == "3"){
+        cardInf = false;
         focusScopeIcones.requestFocus();
         focusScope = focusScopeIcones;
         focusNodeIcones[selectedIndexIcone].requestFocus();
+        attTela();
       }else if (event == "2" && selectedIndexCardInfo == 1){
-        // Ação para MAIS INFO pode ser adicionada aqui se necessário
-        // Por enquanto, apenas volta se for o comportamento esperado, 
-        // ou podemos abrir algo. O usuário pediu "me permitindo assim movimentar por la".
+        await btnFecharJogoAberto();
       }else if (event == "2" && selectedIndexCardInfo == 0){
         btnEntrar();
       }else if (event == "START"){
@@ -1175,11 +1278,8 @@ class PrincipalCtrl with ChangeNotifier{
       if (event == 'SELECT')trocaViewIcones();
       if (event == "START")btnMais();      
       if (event == "2"){
-        if(cardGamesModerno){
-          focusScopeCardInf.requestFocus();
-          focusScope = focusScopeCardInf;
-          focusNodeCardInf[0].requestFocus();
-          attTela();
+        if(cardGamesModerno || cardGamesRetro){
+          abrirCardInfDoJogoAtual();
         } else {
           btnEntrar();
         }

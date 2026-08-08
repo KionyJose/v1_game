@@ -45,9 +45,23 @@ class Paad with ChangeNotifier{
     RawInputGamepad.escutarBotoesDualSense((botao, press) => press == padPs ? escutaClickPaad(botao) : null);
     RawInputGamepad.escutarAnalogicosDualSense((stick, x, y, valorX, valorY) {
       if(!padPs) return;
-      escutaClickPaad("$stick,X,$valorX");
-      escutaClickPaad("$stick,Y,$valorY");
+      final absX = x.abs();
+      final absY = y.abs();
+      if(absX < 0.25 && absY < 0.25) return;
+      if(absX >= absY) {
+        escutaClickPaad("$stick,X,${(x * MAX_VALOR_ANALOGICO).round()}");
+      } else {
+        escutaClickPaad("$stick,Y,${(-y * MAX_VALOR_ANALOGICO).round()}");
+      }
     });
+  }
+
+  String _analogicoXInput(String stick, String eixo, dynamic value) {
+    final num valor = value is num ? value : (num.tryParse(value.toString()) ?? 0);
+    final normalizado = valor.abs() <= 1
+        ? (valor * MAX_VALOR_ANALOGICO).round()
+        : valor.round();
+    return "$stick,$eixo,$normalizado";
   }
 
 
@@ -100,7 +114,7 @@ class Paad with ChangeNotifier{
 
  Future <bool> naTela() async {
     
-    bool it =  await JanelaCtrl.janelaAtiva();
+    bool it =  await JanelaCtrl.garantirFocoSeNaFrente();
     if (!it) debugPrint(" ===== Aplicativo está INATIVO. =====");
     // if (it) debugPrint(" ===== NA TELA =====");
     return it;
@@ -272,10 +286,10 @@ class Paad with ChangeNotifier{
         VariableControllerKey.RIGHT_TRIGGER: (value) => escutaClickPaad("RT-$value"),
 
 
-        VariableControllerKey.THUMB_LX: (value) => escutaClickPaad("ANALOGICO ESQUERDO,X,$value"),
-        VariableControllerKey.THUMB_LY: (value) => escutaClickPaad("ANALOGICO ESQUERDO,Y,$value"),
-        VariableControllerKey.THUMB_RX: (value) => escutaClickPaad("ANALOGICO DIREITO,X,$value"),
-        VariableControllerKey.THUMB_RY: (value) => escutaClickPaad("ANALOGICO DIREITO,Y,$value")
+        VariableControllerKey.THUMB_LX: (value) => escutaClickPaad(_analogicoXInput("ANALOGICO ESQUERDO", "X", value)),
+        VariableControllerKey.THUMB_LY: (value) => escutaClickPaad(_analogicoXInput("ANALOGICO ESQUERDO", "Y", value)),
+        VariableControllerKey.THUMB_RX: (value) => escutaClickPaad(_analogicoXInput("ANALOGICO DIREITO", "X", value)),
+        VariableControllerKey.THUMB_RY: (value) => escutaClickPaad(_analogicoXInput("ANALOGICO DIREITO", "Y", value))
       };
       // Detectar soltura de botões
       controller.onReleaseButton = (button) => escutaClickPaad("");

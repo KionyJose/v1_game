@@ -5,8 +5,47 @@
 #include "flutter_window.h"
 #include "utils.h"
 
+namespace {
+
+constexpr const wchar_t kSingleInstanceMutex[] =
+    L"Local\\V1Launcher_v1_game_single_instance";
+constexpr const wchar_t kMainWindowTitle[] = L"v1_game";
+constexpr const wchar_t kFlutterWindowClass[] = L"FLUTTER_RUNNER_WIN32_WINDOW";
+
+void BringExistingInstanceToFront() {
+  HWND existing_window = ::FindWindowW(kFlutterWindowClass, kMainWindowTitle);
+  if (existing_window == nullptr) {
+    existing_window = ::FindWindowW(nullptr, kMainWindowTitle);
+  }
+
+  if (existing_window == nullptr) {
+    return;
+  }
+
+  if (::IsIconic(existing_window)) {
+    ::ShowWindow(existing_window, SW_RESTORE);
+  } else {
+    ::ShowWindow(existing_window, SW_SHOW);
+  }
+
+  ::SetForegroundWindow(existing_window);
+}
+
+}  // namespace
+
 int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
                       _In_ wchar_t *command_line, _In_ int show_command) {
+  HANDLE single_instance_mutex =
+      ::CreateMutexW(nullptr, TRUE, kSingleInstanceMutex);
+  if (single_instance_mutex == nullptr) {
+    return EXIT_FAILURE;
+  }
+
+  if (::GetLastError() == ERROR_ALREADY_EXISTS) {
+    BringExistingInstanceToFront();
+    ::CloseHandle(single_instance_mutex);
+    return EXIT_SUCCESS;
+  }
                         
   // Attach to console when present (e.g., 'flutter run') or create a
   // new console when running with a debugger.
@@ -28,7 +67,9 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
   FlutterWindow window(project);
   Win32Window::Point origin(10, 10);
   Win32Window::Size size(1280, 720);
-  if (!window.Create(L"v1_game", origin, size)) {
+  if (!window.Create(kMainWindowTitle, origin, size)) {
+    ::ReleaseMutex(single_instance_mutex);
+    ::CloseHandle(single_instance_mutex);
     return EXIT_FAILURE;
   }
   window.SetQuitOnClose(true);
@@ -40,5 +81,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
   }
 
   ::CoUninitialize();
+  ::ReleaseMutex(single_instance_mutex);
+  ::CloseHandle(single_instance_mutex);
   return EXIT_SUCCESS;
 }
