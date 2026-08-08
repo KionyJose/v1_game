@@ -207,12 +207,10 @@ class Paad with ChangeNotifier{
     }
   }
   ativaMouse({bool usarEstado = false, bool estado = false}){
+    final novoEstado = usarEstado ? estado : !isMouse;
+    if (novoEstado == isMouse) return;
+    isMouse = novoEstado;
     TecladoCtrl.pressWindBar();
-    // if(usarEstado){
-    //   isMouse = estado;
-    // }else{
-    //   isMouse = !isMouse;      
-    // }
     delay = true;
     // // Provider.of<PrincipalCtrl>(ctx, listen: false).focusScope.requestFocus();
     Timer(const Duration(milliseconds: 1245), () => delay = false );   

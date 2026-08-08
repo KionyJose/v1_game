@@ -613,9 +613,25 @@ class _NovoMediaCardPopState extends State<_NovoMediaCardPop> {
   final _nomeCtrl = TextEditingController();
   final _urlCtrl = TextEditingController();
   final _imgCtrl = TextEditingController();
+  Paad? _paad;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _paad ??= Provider.of<Paad>(context, listen: false);
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _paad?.ativaMouse(usarEstado: true, estado: true);
+    });
+  }
 
   @override
   void dispose() {
+    _paad?.ativaMouse(usarEstado: true, estado: false);
     _nomeCtrl.dispose();
     _urlCtrl.dispose();
     _imgCtrl.dispose();
@@ -625,7 +641,9 @@ class _NovoMediaCardPopState extends State<_NovoMediaCardPop> {
   Future<void> _buscarImagem() async {
     final nome = _nomeCtrl.text.trim();
     if (nome.isEmpty) return;
+    _paad?.ativaMouse(usarEstado: true, estado: true);
     final result = await Pops.popTela(context, SeletorImagens(nome: nome));
+    _paad?.ativaMouse(usarEstado: true, estado: true);
     if (result is String && result.isNotEmpty) {
       final caminho = await WebScrap.downloadImage(result, nome);
       _imgCtrl.text = caminho.contains("Erro::") ? result : caminho;
