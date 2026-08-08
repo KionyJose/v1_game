@@ -93,11 +93,15 @@ class _BodyIconesJogosRetroState extends State<BodyIconesJogosRetro> {
   // ── helpers ──────────────────────────────────────────────────────────────
   String get _nomeAtual => ctrl.listIconsInicial.isEmpty
       ? ''
-      : ctrl.listIconsInicial[ctrl.selectedIndexIcone].nome;
+      : ctrl
+          .listIconsInicial[
+              ctrl.selectedIndexIcone.clamp(0, ctrl.listIconsInicial.length - 1)]
+          .nome;
 
   IconInicial? get _jogo => ctrl.listIconsInicial.isEmpty
       ? null
-      : ctrl.listIconsInicial[ctrl.selectedIndexIcone];
+      : ctrl.listIconsInicial[
+          ctrl.selectedIndexIcone.clamp(0, ctrl.listIconsInicial.length - 1)];
 
   void _agendarVideo(String nome) {
     final versao = ++_videoVersao;
@@ -370,12 +374,15 @@ class _BodyIconesJogosRetroState extends State<BodyIconesJogosRetro> {
       return const SizedBox.shrink();
     }
 
+    final itemCount = min(ctrl.listIconsInicial.length, ctrl.focusNodeIcones.length);
+    if (itemCount <= 0) return const SizedBox.shrink();
+
     final cardWidth = (sz.width * 0.54).clamp(340.0, 760.0);
     final cardHeight = (sz.height * 0.50).clamp(280.0, 500.0);
     final carouselHeight = min(sz.height * 0.68, cardHeight * 1.28);
     final viewportFraction = ((cardWidth * 1.02) / sz.width).clamp(0.54, 0.82);
     final initialPage =
-        ctrl.selectedIndexIcone.clamp(0, ctrl.listIconsInicial.length - 1);
+        ctrl.selectedIndexIcone.clamp(0, itemCount - 1);
 
     return Positioned(
       top: sz.height * 0.22,
@@ -396,7 +403,7 @@ class _BodyIconesJogosRetroState extends State<BodyIconesJogosRetro> {
             viewportFraction: viewportFraction,
             enlargeStrategy: CenterPageEnlargeStrategy.zoom,
             onPageChanged: (index, reason) {
-              if (!mounted || index >= ctrl.focusNodeIcones.length) return;
+              if (!mounted || index >= itemCount) return;
               _lastIndex = index;
               ctrl.focusNodeIcones[index].requestFocus();
               ctrl.onFocusChangeIcones(true, index,
@@ -404,7 +411,7 @@ class _BodyIconesJogosRetroState extends State<BodyIconesJogosRetro> {
             },
           ),
           items: [
-            for (int i = 0; i < ctrl.listIconsInicial.length; i++)
+            for (int i = 0; i < itemCount; i++)
               Center(child: _card(i, sz, cardWidth, cardHeight)),
           ],
         ),
@@ -413,6 +420,11 @@ class _BodyIconesJogosRetroState extends State<BodyIconesJogosRetro> {
   }
 
   Widget _card(int i, Size sz, double baseWidth, double baseHeight) {
+    if (i < 0 ||
+        i >= ctrl.listIconsInicial.length ||
+        i >= ctrl.focusNodeIcones.length) {
+      return const SizedBox.shrink();
+    }
     final focused = ctrl.selectedIndexIcone == i;
     final item =
         (i < ctrl.listIconsInicial.length) ? ctrl.listIconsInicial[i] : null;

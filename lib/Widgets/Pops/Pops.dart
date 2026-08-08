@@ -47,39 +47,7 @@ class Pops {
       ),
       backgroundColor: Colors.transparent,
       builder: (context) {
-        return Container(
-          padding: const EdgeInsets.symmetric(vertical: 50),
-          margin: const EdgeInsets.only(bottom: 65),
-          width: 2000,
-          // height: MediaQuery.of(context).size.height * 0.20,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(40),
-            color: Colors.black87,            
-            boxShadow:  [
-              BoxShadow(
-                blurRadius: 30,
-                color: Colors.deepPurple.withOpacity(0.2),
-                spreadRadius: 1
-              ),
-              BoxShadow(
-                blurRadius: 30,
-                color: Colors.blue.withOpacity(0.2),
-                spreadRadius: 1
-              ),
-            ]
-          ),
-          child:  Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const LoadingIco(),
-              const SizedBox(height: 15),
-              Text(str,style:const  TextStyle(color: Colors.white),),
-              
-              
-            ],
-          ),
-        );
+        return _CarregandoGamesSheet(texto: str);
       },
     );
   }
@@ -520,5 +488,103 @@ class Pops {
     }catch(e){
       debugPrint("Erro nav dentro = $e");
     }
+  }
+}
+
+class _CarregandoGamesSheet extends StatefulWidget {
+  final String texto;
+
+  const _CarregandoGamesSheet({required this.texto});
+
+  @override
+  State<_CarregandoGamesSheet> createState() => _CarregandoGamesSheetState();
+}
+
+class _CarregandoGamesSheetState extends State<_CarregandoGamesSheet> {
+  final FocusNode _focusNode = FocusNode();
+  late final DateTime _abriuEm;
+  bool _fechando = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _abriuEm = DateTime.now();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _focusNode.requestFocus();
+    });
+  }
+
+  @override
+  void dispose() {
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  bool get _podeFechar =>
+      DateTime.now().difference(_abriuEm) >= const Duration(seconds: 2);
+
+  void _tentarFechar(BuildContext context, String event) {
+    if (_fechando || (event != '2' && event != '3')) return;
+    if (!_podeFechar) return;
+    _fechando = true;
+    Navigator.pop(context);
+    try {
+      Provider.of<Paad>(context, listen: false).click = '';
+      Provider.of<Paad>(context, listen: false).attTela();
+    } catch (_) {}
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Selector<Paad, String>(
+      selector: (_, paad) => paad.click,
+      builder: (context, click, child) {
+        if (click.isNotEmpty) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) _tentarFechar(context, click);
+          });
+        }
+
+        return KeyboardListener(
+          focusNode: _focusNode,
+          onKeyEvent: (event) {
+            if (event is! KeyDownEvent) return;
+            final comando =
+                MovimentoSistema.convertKeyBoard(event.logicalKey.keyLabel);
+            _tentarFechar(context, comando);
+          },
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 50),
+            margin: const EdgeInsets.only(bottom: 65),
+            width: 2000,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(40),
+              color: Colors.black87,
+              boxShadow: [
+                BoxShadow(
+                  blurRadius: 30,
+                  color: Colors.deepPurple.withOpacity(0.2),
+                  spreadRadius: 1,
+                ),
+                BoxShadow(
+                  blurRadius: 30,
+                  color: Colors.blue.withOpacity(0.2),
+                  spreadRadius: 1,
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const LoadingIco(),
+                const SizedBox(height: 15),
+                Text(widget.texto, style: const TextStyle(color: Colors.white)),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 }

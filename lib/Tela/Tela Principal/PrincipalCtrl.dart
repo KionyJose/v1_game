@@ -239,13 +239,27 @@ class PrincipalCtrl with ChangeNotifier{
   iniciaLitIcones()async{
     listIconsInicial = await db.leituraDeDados();
     if(listIconsInicial.isNotEmpty){
+      try {
+        for (final f in focusNodeIcones) {
+          f.dispose();
+        }
+      } catch (_) {}
       focusNodeIcones = List.generate(listIconsInicial.length, (index) => FocusNode());
       videosIndexYT = List.generate(listIconsInicial.length, (index) => []);
+      selectedIndexIcone = selectedIndexIcone.clamp(0, listIconsInicial.length - 1);
       imgFundoStr = listIconsInicial.first.imgStr;
       videosYT.clear();
       pesquisaVideosYT(listIconsInicial.first.nome,0);
     }
-    if(listIconsInicial.isEmpty) focusNodeIcones = [FocusNode()];
+    if(listIconsInicial.isEmpty) {
+      try {
+        for (final f in focusNodeIcones) {
+          f.dispose();
+        }
+      } catch (_) {}
+      selectedIndexIcone = 0;
+      focusNodeIcones = [FocusNode()];
+    }
   }
 
   @override
@@ -608,9 +622,14 @@ class PrincipalCtrl with ChangeNotifier{
       
       // Garantir que o foco volte para o escopo correto após abrir o arquivo
 
-      focusScope = cardGamesGrid && cardInf ? focusScopeCardInf : focusScopeIcones;
-      cardGamesGrid && cardInf ? focusNodeCardInf[selectedIndexCardInfo].requestFocus() : focusNodeIcones[selectedIndexIcone].requestFocus();
-      if(selectedIndexIcone != 0) selectedIndexIcone --;
+      cardInf = false;
+      focusScopeIcones.requestFocus();
+      focusScope = focusScopeIcones;
+      if (focusNodeIcones.isNotEmpty) {
+        selectedIndexIcone =
+            selectedIndexIcone.clamp(0, focusNodeIcones.length - 1);
+        focusNodeIcones[selectedIndexIcone].requestFocus();
+      }
       
       // Delay antes de reativar eventos para evitar cliques duplos
       await Future.delayed(const Duration(milliseconds: 300));
@@ -1278,7 +1297,7 @@ class PrincipalCtrl with ChangeNotifier{
       if (event == 'SELECT')trocaViewIcones();
       if (event == "START")btnMais();      
       if (event == "2"){
-        if(cardGamesModerno || cardGamesRetro){
+        if(cardGamesModerno){
           abrirCardInfDoJogoAtual();
         } else {
           btnEntrar();
