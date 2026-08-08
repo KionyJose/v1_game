@@ -1,5 +1,8 @@
 // ignore_for_file: file_names, unused_element
 
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:v1_game/Modelos/MediaCanal.dart';
 
 import '../Global.dart';
@@ -8,9 +11,45 @@ class MediaCatalogo{
 
   static List<String> listaCatalogoNomesC = ["Netflix","Prime Video","MAX","Apple TV","Disney +", "Globo Play","TeleCine","CrunchyRoll","Paramount+"];
   static List<String> listaCatalogoNomesM = ["spotify","Youtube Music","Apple Music","Deezer"];
+  static const String _dbPath = "C:\\Users\\Public\\Documents\\v1_media_cards.json";
 
-  static  catalogoCine () =>  _meuCatalogoC();
-  static  catalogoMusc () =>  _meuCatalogoM();
+  static Future<List<MediaCanal>> catalogoCine() async =>
+      _catalogoComDadosSalvos('cinema', _meuCatalogoC());
+
+  static Future<List<MediaCanal>> catalogoMusc() async =>
+      _catalogoComDadosSalvos('musica', _meuCatalogoM());
+
+  static Future<void> salvarCatalogo(String tipo, List<MediaCanal> lista) async {
+    final dados = await _lerDadosSalvos();
+    dados[tipo] = lista.map((item) => item.toMap()).toList();
+    await File(_dbPath).writeAsString(const JsonEncoder.withIndent('  ').convert(dados));
+  }
+
+  static Future<List<MediaCanal>> _catalogoComDadosSalvos(
+      String tipo, List<MediaCanal> padrao) async {
+    final dados = await _lerDadosSalvos();
+    final salvos = dados[tipo];
+    if (salvos is! List || salvos.isEmpty) {
+      await salvarCatalogo(tipo, padrao);
+      return padrao;
+    }
+    return salvos
+        .whereType<Map>()
+        .map((item) => MediaCanal.fromMap(Map<String, dynamic>.from(item)))
+        .where((item) => item.nome.isNotEmpty && item.url.isNotEmpty)
+        .toList();
+  }
+
+  static Future<Map<String, dynamic>> _lerDadosSalvos() async {
+    final file = File(_dbPath);
+    if (!await file.exists()) return {};
+    try {
+      final decoded = jsonDecode(await file.readAsString());
+      return decoded is Map ? Map<String, dynamic>.from(decoded) : {};
+    } catch (_) {
+      return {};
+    }
+  }
 
   static _meuCatalogoM(){
     List<MediaCanal> list = [];

@@ -217,8 +217,8 @@ class PrincipalCtrl with ChangeNotifier{
     focusScope = focusScopeIcones;
     selectedIndexIcone = 0;
     animaFundo();
-    listCinema = MediaCatalogo.catalogoCine();
-    listMusica = MediaCatalogo.catalogoMusc();
+    listCinema = await MediaCatalogo.catalogoCine();
+    listMusica = await MediaCatalogo.catalogoMusc();
     focusNodeCinema = List.generate(listCinema.length, (index) => FocusNode());
     focusNodeMusica = List.generate(listMusica.length, (index) => FocusNode());
 
@@ -516,6 +516,68 @@ class PrincipalCtrl with ChangeNotifier{
     focusNodeCardInf[0].requestFocus();
     carregaVideosDoGame();
     attTela();
+  }
+
+  Future<void> adicionarMediaCard(String tipo) async {
+    try {
+      stateTela = false;
+      final novo = await Pops.popNovoMediaCard(ctx, tipo);
+      if (novo != null) {
+        if (tipo == cine) {
+          listCinema.insert(0, novo);
+          await MediaCatalogo.salvarCatalogo('cinema', listCinema);
+          for (final f in focusNodeCinema) {
+            try { f.dispose(); } catch (_) {}
+          }
+          focusNodeCinema =
+              List.generate(listCinema.length, (index) => FocusNode());
+          selectedIndexCinema = 0;
+          focusNodeCinema[selectedIndexCinema].requestFocus();
+          focusScopeCinema.requestFocus();
+          focusScope = focusScopeCinema;
+        } else {
+          listMusica.insert(0, novo);
+          await MediaCatalogo.salvarCatalogo('musica', listMusica);
+          for (final f in focusNodeMusica) {
+            try { f.dispose(); } catch (_) {}
+          }
+          focusNodeMusica =
+              List.generate(listMusica.length, (index) => FocusNode());
+          selectedIndexMusica = 0;
+          focusNodeMusica[selectedIndexMusica].requestFocus();
+          focusScopeMusica.requestFocus();
+          focusScope = focusScopeMusica;
+        }
+      }
+    } catch (e) {
+      debugPrint('ERRO adicionarMediaCard $e');
+    } finally {
+      stateTela = true;
+      attTela();
+    }
+  }
+
+  Future<void> moverMediaUsadaParaTopo(String tipo, int index) async {
+    try {
+      if (tipo == cine) {
+        if (index <= 0 || index >= listCinema.length) return;
+        final item = listCinema.removeAt(index);
+        listCinema.insert(0, item);
+        await MediaCatalogo.salvarCatalogo('cinema', listCinema);
+        selectedIndexCinema = 0;
+        focusNodeCinema[0].requestFocus();
+      } else {
+        if (index <= 0 || index >= listMusica.length) return;
+        final item = listMusica.removeAt(index);
+        listMusica.insert(0, item);
+        await MediaCatalogo.salvarCatalogo('musica', listMusica);
+        selectedIndexMusica = 0;
+        focusNodeMusica[0].requestFocus();
+      }
+      attTela();
+    } catch (e) {
+      debugPrint('ERRO moverMediaUsadaParaTopo $e');
+    }
   }
 
   carregaNovoVideo(int index) async {
@@ -1148,8 +1210,15 @@ class PrincipalCtrl with ChangeNotifier{
       if(event == "3") Navigator.pop(ctx);
       return;
     }
+    if (event == "START") {
+      await adicionarMediaCard(musc);
+      return;
+    }
     if (event == "2"){
-      await sairDaTelaMedia(listMusica[selectedIndexMusica].url, "Festa Ativa!");
+      final indexUsado = selectedIndexMusica;
+      final url = listMusica[indexUsado].url;
+      await moverMediaUsadaParaTopo(musc, indexUsado);
+      await sairDaTelaMedia(url, "Festa Ativa!");
       // Garantir que o foco volte para o escopo correto após abrir o arquivo
       focusNodeMusica[selectedIndexMusica].requestFocus();
       focusScopeMusica.requestFocus();
@@ -1163,8 +1232,15 @@ class PrincipalCtrl with ChangeNotifier{
       if(event == "3") Navigator.pop(ctx);
       return;
     }
+    if (event == "START") {
+      await adicionarMediaCard(cine);
+      return;
+    }
     if (event == "2"){
-      await sairDaTelaMedia(listCinema[selectedIndexCinema].url, "Comendo pipoca.");
+      final indexUsado = selectedIndexCinema;
+      final url = listCinema[indexUsado].url;
+      await moverMediaUsadaParaTopo(cine, indexUsado);
+      await sairDaTelaMedia(url, "Comendo pipoca.");
       // Garantir que o foco volte para o escopo correto após abrir o arquivo
       focusNodeCinema[selectedIndexCinema].requestFocus();
       focusScopeCinema.requestFocus();

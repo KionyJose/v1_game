@@ -3,12 +3,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:v1_game/Class/Paad.dart';
+import 'package:v1_game/Class/WebScrap.dart';
 import 'package:v1_game/Widgets/LoadWid.dart';
 
 import '../../Bando de Dados/db.dart';
 import '../../Controllers/MovimentoSistema.dart';
 import '../../Modelos/IconeInicial.dart';
+import '../../Modelos/MediaCanal.dart';
 import '../../Tela/NavegadorPasta.dart';
+import '../../Tela/SeletorImagens/SeletorImagens.dart';
 
 class Pops {
   static popTela(BuildContext ctx, Widget tela) {
@@ -49,6 +52,14 @@ class Pops {
       builder: (context) {
         return _CarregandoGamesSheet(texto: str);
       },
+    );
+  }
+
+  static Future<MediaCanal?> popNovoMediaCard(
+      BuildContext ctx, String tipo) async {
+    return showDialog<MediaCanal>(
+      context: ctx,
+      builder: (_) => _NovoMediaCardPop(tipo: tipo),
     );
   }
 
@@ -585,6 +596,133 @@ class _CarregandoGamesSheetState extends State<_CarregandoGamesSheet> {
           ),
         );
       },
+    );
+  }
+}
+
+class _NovoMediaCardPop extends StatefulWidget {
+  final String tipo;
+
+  const _NovoMediaCardPop({required this.tipo});
+
+  @override
+  State<_NovoMediaCardPop> createState() => _NovoMediaCardPopState();
+}
+
+class _NovoMediaCardPopState extends State<_NovoMediaCardPop> {
+  final _nomeCtrl = TextEditingController();
+  final _urlCtrl = TextEditingController();
+  final _imgCtrl = TextEditingController();
+
+  @override
+  void dispose() {
+    _nomeCtrl.dispose();
+    _urlCtrl.dispose();
+    _imgCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _buscarImagem() async {
+    final nome = _nomeCtrl.text.trim();
+    if (nome.isEmpty) return;
+    final result = await Pops.popTela(context, SeletorImagens(nome: nome));
+    if (result is String && result.isNotEmpty) {
+      final caminho = await WebScrap.downloadImage(result, nome);
+      _imgCtrl.text = caminho.contains("Erro::") ? result : caminho;
+      setState(() {});
+    }
+  }
+
+  void _salvar() {
+    final nome = _nomeCtrl.text.trim();
+    final url = _urlCtrl.text.trim();
+    final img = _imgCtrl.text.trim();
+    if (nome.isEmpty || url.isEmpty || img.isEmpty) return;
+    Navigator.pop(
+      context,
+      MediaCanal(nome: nome, url: url, imgLocal: img),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      child: Container(
+        width: 520,
+        padding: const EdgeInsets.all(22),
+        decoration: BoxDecoration(
+          color: const Color(0xF0131722),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.white12),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              'Novo card de ${widget.tipo}',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 18),
+            _campo(_nomeCtrl, 'Nome'),
+            const SizedBox(height: 12),
+            _campo(_urlCtrl, 'URL para abrir'),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(child: _campo(_imgCtrl, 'Caminho da imagem')),
+                const SizedBox(width: 10),
+                SizedBox(
+                  height: 50,
+                  child: ElevatedButton.icon(
+                    onPressed: _buscarImagem,
+                    icon: const Icon(Icons.image_search),
+                    label: const Text('Buscar'),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cancelar'),
+                ),
+                const SizedBox(width: 10),
+                ElevatedButton(
+                  onPressed: _salvar,
+                  child: const Text('Salvar'),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _campo(TextEditingController controller, String label) {
+    return TextField(
+      controller: controller,
+      style: const TextStyle(color: Colors.white),
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: const TextStyle(color: Colors.white70),
+        filled: true,
+        fillColor: Colors.black26,
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: Colors.white24),
+        ),
+      ),
     );
   }
 }
