@@ -76,6 +76,9 @@ flutter:
     - assets/BGICOdefault.png
     # - assets/tutorial.png  # Removido temporariamente — arquivo ausente
     - assets/IconeAppV1.png
+    - assets/retro=01.png
+    - assets/retro=02.png
+    - assets/retro=03.png
     # AUDIOS ================================
     - assets/Sons/SomCheat.mp3
     - assets/Sons/SomCheat2.mp3

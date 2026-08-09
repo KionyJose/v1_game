@@ -20,11 +20,24 @@ class BodyIconesMusica extends StatefulWidget {
 
 class _BodyIconesMusicaState extends State<BodyIconesMusica> {
   late ScrollController _localScrollController;
+  late int _ultimoPedidoTopo;
 
   @override
   void initState() {
     super.initState();
     _localScrollController = ScrollController();
+    _ultimoPedidoTopo = widget.ctrl.musicaScrollTopRequest;
+  }
+
+  @override
+  void didUpdateWidget(BodyIconesMusica oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (_ultimoPedidoTopo == widget.ctrl.musicaScrollTopRequest) return;
+    _ultimoPedidoTopo = widget.ctrl.musicaScrollTopRequest;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_localScrollController.hasClients) return;
+      _localScrollController.jumpTo(0);
+    });
   }
 
   @override

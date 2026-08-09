@@ -20,11 +20,24 @@ class BodyIconesCinema extends StatefulWidget {
 
 class _BodyIconesCinemaState extends State<BodyIconesCinema> {
   late ScrollController _localScrollController;
+  late int _ultimoPedidoTopo;
 
   @override
   void initState() {
     super.initState();
     _localScrollController = ScrollController();
+    _ultimoPedidoTopo = widget.ctrl.cinemaScrollTopRequest;
+  }
+
+  @override
+  void didUpdateWidget(BodyIconesCinema oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (_ultimoPedidoTopo == widget.ctrl.cinemaScrollTopRequest) return;
+    _ultimoPedidoTopo = widget.ctrl.cinemaScrollTopRequest;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_localScrollController.hasClients) return;
+      _localScrollController.jumpTo(0);
+    });
   }
 
   @override

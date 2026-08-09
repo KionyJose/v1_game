@@ -206,11 +206,17 @@ class Paad with ChangeNotifier{
       ativaMouse();
     }
   }
-  ativaMouse({bool usarEstado = false, bool estado = false}){
+  ativaMouse({
+    bool usarEstado = false,
+    bool estado = false,
+    bool enviarAtalho = true,
+  }){
     final novoEstado = usarEstado ? estado : !isMouse;
     if (novoEstado == isMouse) return;
     isMouse = novoEstado;
-    TecladoCtrl.pressWindBar();
+    if (enviarAtalho) {
+      TecladoCtrl.pressWindBar();
+    }
     delay = true;
     // // Provider.of<PrincipalCtrl>(ctx, listen: false).focusScope.requestFocus();
     Timer(const Duration(milliseconds: 1245), () => delay = false );   

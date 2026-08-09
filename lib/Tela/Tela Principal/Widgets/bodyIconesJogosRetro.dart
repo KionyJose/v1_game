@@ -18,6 +18,11 @@ const _cyan = Color(0xFF00E5FF);
 const _white70 = Color(0xB3FFFFFF);
 const _cardBg = Color(0xFF111928);
 const _barBg = Color(0xFF04070F);
+const _retroCompanyBadges = [
+  'assets/retro=01.png',
+  'assets/retro=02.png',
+  'assets/retro=03.png',
+];
 
 class BodyIconesJogosRetro extends StatefulWidget {
   final PrincipalCtrl ctrl;
@@ -47,6 +52,7 @@ class _BodyIconesJogosRetroState extends State<BodyIconesJogosRetro> {
   String _lastGame = '';
   int _lastIndex = 0;
   int _videoVersao = 0;
+  final List<String> _badgesPorCard = [];
 
   // ── ciclo de vida ────────────────────────────────────────────────────────
   @override
@@ -55,6 +61,7 @@ class _BodyIconesJogosRetroState extends State<BodyIconesJogosRetro> {
     _lastIndex = ctrl.selectedIndexIcone;
     _heroPlayer = Player();
     _heroCtrl = mkv.VideoController(_heroPlayer);
+    _garantirBadges();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final nome = _nomeAtual;
       if (nome.isNotEmpty) {
@@ -67,6 +74,7 @@ class _BodyIconesJogosRetroState extends State<BodyIconesJogosRetro> {
   @override
   void didUpdateWidget(BodyIconesJogosRetro old) {
     super.didUpdateWidget(old);
+    _garantirBadges();
     if (ctrl.selectedIndexIcone != _lastIndex) {
       _lastIndex = ctrl.selectedIndexIcone;
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -102,6 +110,21 @@ class _BodyIconesJogosRetroState extends State<BodyIconesJogosRetro> {
       ? null
       : ctrl.listIconsInicial[
           ctrl.selectedIndexIcone.clamp(0, ctrl.listIconsInicial.length - 1)];
+
+  void _garantirBadges() {
+    final random = Random();
+    while (_badgesPorCard.length < ctrl.listIconsInicial.length) {
+      _badgesPorCard.add(
+        _retroCompanyBadges[random.nextInt(_retroCompanyBadges.length)],
+      );
+    }
+    if (_badgesPorCard.length > ctrl.listIconsInicial.length) {
+      _badgesPorCard.removeRange(
+        ctrl.listIconsInicial.length,
+        _badgesPorCard.length,
+      );
+    }
+  }
 
   void _agendarVideo(String nome) {
     final versao = ++_videoVersao;
@@ -268,7 +291,7 @@ class _BodyIconesJogosRetroState extends State<BodyIconesJogosRetro> {
             opacity: _fundoPreto ? 1.0 : 0.0,
             duration: const Duration(milliseconds: 350),
             curve: Curves.easeInOut,
-            child: const ColoredBox(color: Colors.black),
+            child: const ColoredBox(color: _navy),
           ),
         ],
       ),
@@ -498,26 +521,37 @@ class _BodyIconesJogosRetroState extends State<BodyIconesJogosRetro> {
                 ),
 
               // Elementos Decorativos Retro (dentro do card)
-              if (focused)
-                Positioned(
-                  top: 8,
-                  left: 8,
-                  child: Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: Colors.red.withValues(alpha: 0.9),
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                    child: const Text(
-                      'HI-RES',
-                      style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 8,
-                          fontWeight: FontWeight.bold),
+              Positioned(
+                top: 10,
+                left: 10,
+                child: IgnorePointer(
+                  child: AnimatedOpacity(
+                    opacity: focused ? 1.0 : 0.0,
+                    duration: const Duration(milliseconds: 220),
+                    curve: Curves.easeOut,
+                    child: Container(
+                      width: baseWidth * 1.12 * 0.07 * 1.32,
+                      height: baseHeight * 1.12 * 0.04 * 1.25,
+                      padding: const EdgeInsets.all(2),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: Image.asset(
+                          i < _badgesPorCard.length
+                              ? _badgesPorCard[i]
+                              : _retroCompanyBadges.first,
+                          fit: BoxFit.contain,
+                          filterQuality: FilterQuality.medium,
+                          errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                        ),
+                      ),
                     ),
                   ),
                 ),
+              ),
 
               // Rodapé do card selecionado
               if (focused && (item?.nome.isNotEmpty ?? false))

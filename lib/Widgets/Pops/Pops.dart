@@ -639,13 +639,21 @@ class _NovoMediaCardPopState extends State<_NovoMediaCardPop> {
       _imgCtrl.text = inicial.imgLocal;
     }
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _paad?.ativaMouse(usarEstado: true, estado: true);
+      _paad?.ativaMouse(
+        usarEstado: true,
+        estado: true,
+        enviarAtalho: false,
+      );
     });
   }
 
   @override
   void dispose() {
-    _paad?.ativaMouse(usarEstado: true, estado: false);
+    _paad?.ativaMouse(
+      usarEstado: true,
+      estado: false,
+      enviarAtalho: false,
+    );
     _nomeCtrl.dispose();
     _urlCtrl.dispose();
     _imgCtrl.dispose();
@@ -655,9 +663,17 @@ class _NovoMediaCardPopState extends State<_NovoMediaCardPop> {
   Future<void> _buscarImagem() async {
     final nome = _nomeCtrl.text.trim();
     if (nome.isEmpty) return;
-    _paad?.ativaMouse(usarEstado: true, estado: true);
+    _paad?.ativaMouse(
+      usarEstado: true,
+      estado: true,
+      enviarAtalho: false,
+    );
     final result = await Pops.popTela(context, SeletorImagens(nome: nome));
-    _paad?.ativaMouse(usarEstado: true, estado: true);
+    _paad?.ativaMouse(
+      usarEstado: true,
+      estado: true,
+      enviarAtalho: false,
+    );
     if (result is String && result.isNotEmpty) {
       final caminho = await WebScrap.downloadImage(result, nome);
       _imgCtrl.text = caminho.contains("Erro::") ? result : caminho;
@@ -772,7 +788,6 @@ class _OpcoesMediaCardPopState extends State<_OpcoesMediaCardPop> {
   final _focusScope = FocusScopeNode();
   final _focusNodes = List.generate(3, (_) => FocusNode());
   Paad? _paad;
-  bool _ativo = true;
 
   @override
   void didChangeDependencies() {
@@ -784,14 +799,22 @@ class _OpcoesMediaCardPopState extends State<_OpcoesMediaCardPop> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _paad?.ativaMouse(usarEstado: true, estado: true);
+      _paad?.ativaMouse(
+        usarEstado: true,
+        estado: true,
+        enviarAtalho: false,
+      );
       if (mounted) _focusNodes[0].requestFocus();
     });
   }
 
   @override
   void dispose() {
-    _paad?.ativaMouse(usarEstado: true, estado: false);
+    _paad?.ativaMouse(
+      usarEstado: true,
+      estado: false,
+      enviarAtalho: false,
+    );
     _focusScope.dispose();
     for (final node in _focusNodes) {
       node.dispose();
@@ -799,69 +822,47 @@ class _OpcoesMediaCardPopState extends State<_OpcoesMediaCardPop> {
     super.dispose();
   }
 
-  void _escutaPad(String event) {
-    if (!_ativo || event.isEmpty) return;
-    MovimentoSistema.direcaoListView(_focusScope, event);
-    if (event == '3') {
-      _ativo = false;
-      Navigator.pop(context);
-    }
-    if (event == '2' || event == 'SELECT') {
-      _ativo = false;
-      if (_focusNodes[0].hasFocus) Navigator.pop(context, 'editar');
-      if (_focusNodes[1].hasFocus) Navigator.pop(context, 'remover');
-      if (_focusNodes[2].hasFocus) Navigator.pop(context);
-    }
-  }
-
   void _acao(String? valor) {
-    _ativo = false;
     Navigator.pop(context, valor);
   }
 
   @override
   Widget build(BuildContext context) {
-    return Selector<Paad, String>(
-      selector: (_, paad) => paad.click,
-      builder: (_, valorAtual, child) {
-        _escutaPad(valorAtual);
-        return Dialog(
-          backgroundColor: Colors.transparent,
-          child: Container(
-            width: 360,
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: const Color(0xF0131722),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Colors.white12),
-            ),
-            child: FocusScope(
-              node: _focusScope,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const Text(
-                    'Opcoes do card',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 18),
-                  _btn('Editar', Icons.edit, _focusNodes[0], () => _acao('editar')),
-                  const SizedBox(height: 10),
-                  _btn('Remover', Icons.delete_outline, _focusNodes[1],
-                      () => _acao('remover')),
-                  const SizedBox(height: 10),
-                  _btn('Cancelar', Icons.close, _focusNodes[2], () => _acao(null)),
-                ],
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      child: Container(
+        width: 360,
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: const Color(0xF0131722),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.white12),
+        ),
+        child: FocusScope(
+          node: _focusScope,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Text(
+                'Opcoes do card',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
-            ),
+              const SizedBox(height: 18),
+              _btn('Editar', Icons.edit, _focusNodes[0], () => _acao('editar')),
+              const SizedBox(height: 10),
+              _btn('Remover', Icons.delete_outline, _focusNodes[1],
+                  () => _acao('remover')),
+              const SizedBox(height: 10),
+              _btn('Cancelar', Icons.close, _focusNodes[2], () => _acao(null)),
+            ],
           ),
-        );
-      },
+        ),
+      ),
     );
   }
 

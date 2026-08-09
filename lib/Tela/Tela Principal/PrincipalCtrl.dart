@@ -75,6 +75,8 @@ class PrincipalCtrl with ChangeNotifier{
   int selectedIndexAbaGuias = 0;
   int selectedIndexMusica = 0;
   int selectedIndexNoticia = 0;
+  int cinemaScrollTopRequest = 0;
+  int musicaScrollTopRequest = 0;
 
   // final ValueNotifier<int> selectedIndexNotifier = ValueNotifier<int>(0);
   Timer? timerLoadVideos;
@@ -657,11 +659,15 @@ class PrincipalCtrl with ChangeNotifier{
     final index = tipo == cine ? selectedIndexCinema : selectedIndexMusica;
     final lista = tipo == cine ? listCinema : listMusica;
     if (index < 0 || index >= lista.length) return;
+    stateTela = false;
     try {
-      Provider.of<Paad>(ctx, listen: false)
-          .ativaMouse(usarEstado: true, estado: true);
+      final paad = Provider.of<Paad>(ctx, listen: false);
+      paad.click = "";
+      paad.ativaMouse(usarEstado: true, estado: true, enviarAtalho: false);
+      paad.attTela();
     } catch (_) {}
     final opcao = await Pops.popOpcoesMediaCard(ctx);
+    stateTela = true;
     if (opcao == 'editar') {
       await editarMediaCard(tipo, index);
     } else if (opcao == 'remover') {
@@ -689,6 +695,7 @@ class PrincipalCtrl with ChangeNotifier{
         listCinema.insert(0, item);
         await MediaCatalogo.salvarCatalogo('cinema', listCinema);
         selectedIndexCinema = 0;
+        cinemaScrollTopRequest++;
         focusNodeCinema[0].requestFocus();
       } else {
         if (index <= 0 || index >= listMusica.length) return;
@@ -696,6 +703,7 @@ class PrincipalCtrl with ChangeNotifier{
         listMusica.insert(0, item);
         await MediaCatalogo.salvarCatalogo('musica', listMusica);
         selectedIndexMusica = 0;
+        musicaScrollTopRequest++;
         focusNodeMusica[0].requestFocus();
       }
       attTela();
