@@ -34,6 +34,9 @@ class Paad with ChangeNotifier{
   bool isMouse = false;
   bool padPs = true;
   bool teclando = false;
+  int _analogicoEsqX = 0;
+  int _analogicoEsqY = 0;
+  DateTime? _ultimaTentativaFoco;
   
   // Throttle para analógicos
   // DateTime? _ultimoMovimentoMouse;
@@ -57,10 +60,20 @@ class Paad with ChangeNotifier{
   }
 
   String _analogicoXInput(String stick, String eixo, dynamic value) {
+    if (!stick.contains("ESQUERDO")) return "";
     final num valor = value is num ? value : (num.tryParse(value.toString()) ?? 0);
     final normalizado = valor.abs() <= 1
         ? (valor * MAX_VALOR_ANALOGICO).round()
         : valor.round();
+    if (eixo == "X") _analogicoEsqX = normalizado;
+    if (eixo == "Y") _analogicoEsqY = normalizado;
+
+    final absX = _analogicoEsqX.abs();
+    final absY = _analogicoEsqY.abs();
+    if (absX < 10000 && absY < 10000) return "";
+    final eixoDominante = absX >= absY ? "X" : "Y";
+    if (eixo != eixoDominante) return "";
+
     return "$stick,$eixo,$normalizado";
   }
 
@@ -115,6 +128,16 @@ class Paad with ChangeNotifier{
  Future <bool> naTela() async {
     
     bool it =  await JanelaCtrl.garantirFocoSeNaFrente();
+    if (!it && janelaCtrl.telaPresa) {
+      final agora = DateTime.now();
+      if (_ultimaTentativaFoco == null ||
+          agora.difference(_ultimaTentativaFoco!) >
+              const Duration(milliseconds: 800)) {
+        _ultimaTentativaFoco = agora;
+        JanelaCtrl.restoreWindow();
+      }
+      return true;
+    }
     if (!it) debugPrint(" ===== Aplicativo está INATIVO. =====");
     // if (it) debugPrint(" ===== NA TELA =====");
     return it;
@@ -209,14 +232,10 @@ class Paad with ChangeNotifier{
   ativaMouse({
     bool usarEstado = false,
     bool estado = false,
-    bool enviarAtalho = true,
   }){
     final novoEstado = usarEstado ? estado : !isMouse;
     if (novoEstado == isMouse) return;
     isMouse = novoEstado;
-    if (enviarAtalho) {
-      TecladoCtrl.pressWindBar();
-    }
     delay = true;
     // // Provider.of<PrincipalCtrl>(ctx, listen: false).focusScope.requestFocus();
     Timer(const Duration(milliseconds: 1245), () => delay = false );   
@@ -292,8 +311,6 @@ class Paad with ChangeNotifier{
 
         VariableControllerKey.THUMB_LX: (value) => escutaClickPaad(_analogicoXInput("ANALOGICO ESQUERDO", "X", value)),
         VariableControllerKey.THUMB_LY: (value) => escutaClickPaad(_analogicoXInput("ANALOGICO ESQUERDO", "Y", value)),
-        VariableControllerKey.THUMB_RX: (value) => escutaClickPaad(_analogicoXInput("ANALOGICO DIREITO", "X", value)),
-        VariableControllerKey.THUMB_RY: (value) => escutaClickPaad(_analogicoXInput("ANALOGICO DIREITO", "Y", value))
       };
       // Detectar soltura de botões
       controller.onReleaseButton = (button) => escutaClickPaad("");

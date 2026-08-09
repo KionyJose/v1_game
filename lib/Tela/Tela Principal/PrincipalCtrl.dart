@@ -663,7 +663,7 @@ class PrincipalCtrl with ChangeNotifier{
     try {
       final paad = Provider.of<Paad>(ctx, listen: false);
       paad.click = "";
-      paad.ativaMouse(usarEstado: true, estado: true, enviarAtalho: false);
+      paad.ativaMouse(usarEstado: true, estado: true);
       paad.attTela();
     } catch (_) {}
     final opcao = await Pops.popOpcoesMediaCard(ctx);
@@ -1059,6 +1059,7 @@ class PrincipalCtrl with ChangeNotifier{
 
   escutaPad(String event) async {    
     try{
+      event = MovimentoSistema.normalizaEntrada(event);
       if(!stateTela || event == "") return;
       SonsSistema.clickRetroAtivo =
           selectedIndexAbaGuias == 0 && cardGamesRetro && !cardGamesGrid;

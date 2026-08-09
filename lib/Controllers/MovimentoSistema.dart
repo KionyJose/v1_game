@@ -12,9 +12,10 @@ class MovimentoSistema {
   static DateTime? _ultimoAnalogicoVertical;
 
    static direcaoListView(FocusScopeNode focusScope, String event){
+    // debugPrint("MovimentoSistema.direcaoListView: $event");
     String estilo = "";
     
-    event = _normalizaAnalogico(event);
+    event = normalizaEntrada(event);
     if(event.isEmpty) return estilo;
     if(event == "ESQUERDA" || event == "A"){//ESQUERDA
         focusScope.focusInDirection(TraversalDirection.left);
@@ -37,8 +38,9 @@ class MovimentoSistema {
     return estilo;
   }
 
-  static String _normalizaAnalogico(String event) {
+  static String normalizaEntrada(String event) {
     if(!event.contains("ANALOGICO")) return event;
+    if(!event.contains("ESQUERDO")) return "";
     final partes = event.split(",");
     if(partes.length < 3) return "";
     final eixo = partes[1].trim();

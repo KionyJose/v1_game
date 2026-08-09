@@ -642,7 +642,6 @@ class _NovoMediaCardPopState extends State<_NovoMediaCardPop> {
       _paad?.ativaMouse(
         usarEstado: true,
         estado: true,
-        enviarAtalho: false,
       );
     });
   }
@@ -652,7 +651,6 @@ class _NovoMediaCardPopState extends State<_NovoMediaCardPop> {
     _paad?.ativaMouse(
       usarEstado: true,
       estado: false,
-      enviarAtalho: false,
     );
     _nomeCtrl.dispose();
     _urlCtrl.dispose();
@@ -666,13 +664,11 @@ class _NovoMediaCardPopState extends State<_NovoMediaCardPop> {
     _paad?.ativaMouse(
       usarEstado: true,
       estado: true,
-      enviarAtalho: false,
     );
     final result = await Pops.popTela(context, SeletorImagens(nome: nome));
     _paad?.ativaMouse(
       usarEstado: true,
       estado: true,
-      enviarAtalho: false,
     );
     if (result is String && result.isNotEmpty) {
       final caminho = await WebScrap.downloadImage(result, nome);
@@ -802,7 +798,6 @@ class _OpcoesMediaCardPopState extends State<_OpcoesMediaCardPop> {
       _paad?.ativaMouse(
         usarEstado: true,
         estado: true,
-        enviarAtalho: false,
       );
       if (mounted) _focusNodes[0].requestFocus();
     });
@@ -813,7 +808,6 @@ class _OpcoesMediaCardPopState extends State<_OpcoesMediaCardPop> {
     _paad?.ativaMouse(
       usarEstado: true,
       estado: false,
-      enviarAtalho: false,
     );
     _focusScope.dispose();
     for (final node in _focusNodes) {
