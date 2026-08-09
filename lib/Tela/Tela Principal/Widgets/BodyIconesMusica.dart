@@ -78,32 +78,42 @@ class _BodyIconesMusicaState extends State<BodyIconesMusica> {
         }
       },
       child: FittedBox(
-        child: Container(
-          decoration: BoxDecoration(
-            image: DecorationImage(
-              fit: BoxFit.cover,
-              image: FileImage(File(widget.ctrl.listMusica[i].imgLocal)),
-            ),
-            border: foco
-                ? Border.all(
-                    color: Colors.white,
-                    width: 3,
-                  )
-                : null,
-          ),
-          alignment: Alignment.bottomCenter,
+        child: SizedBox(
           height: 200,
           width: 300,
-          child: foco
-              ? const Padding(
-                  padding: EdgeInsets.all(5),
-                  child: Icon(
-                    Icons.keyboard_double_arrow_up,
-                    shadows: [sdw, sdw],
-                    color: Colors.white,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              Image.file(
+                File(widget.ctrl.listMusica[i].imgLocal),
+                fit: BoxFit.cover,
+                gaplessPlayback: true,
+                errorBuilder: (_, __, ___) => Container(color: Colors.black38),
+              ),
+              DecoratedBox(
+                decoration: BoxDecoration(
+                  border: foco
+                      ? Border.all(
+                          color: Colors.white,
+                          width: 3,
+                        )
+                      : null,
+                ),
+              ),
+              if (foco)
+                const Align(
+                  alignment: Alignment.bottomCenter,
+                  child: Padding(
+                    padding: EdgeInsets.all(5),
+                    child: Icon(
+                      Icons.keyboard_double_arrow_up,
+                      shadows: [sdw, sdw],
+                      color: Colors.white,
+                    ),
                   ),
-                )
-              : Container(),
+                ),
+            ],
+          ),
         ),
       ),
     );

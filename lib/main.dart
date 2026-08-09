@@ -33,7 +33,7 @@ void main() async {
   
   // Inicializa captura do botão Xbox/PlayStation Guide
   await RawInputGamepad.inicializar();
-  // Inicializa o observador do rastro (mouse) do nav_flutuante
+  // Inicializa o observador do rastro (mouse) do nav_flutuante 
   NavMouseWatcher.start();
   // Desabilita Xbox Game Bar e Steam ao iniciar o sistema
   ModificaWind.desabilitarXboxESteam();
