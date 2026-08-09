@@ -37,6 +37,7 @@ class Paad with ChangeNotifier{
   int _analogicoEsqX = 0;
   int _analogicoEsqY = 0;
   DateTime? _ultimaTentativaFoco;
+  DateTime? _ultimoClickAnalogico;
   
   // Throttle para analógicos
   // DateTime? _ultimoMovimentoMouse;
@@ -48,33 +49,40 @@ class Paad with ChangeNotifier{
     RawInputGamepad.escutarBotoesDualSense((botao, press) => press == padPs ? escutaClickPaad(botao) : null);
     RawInputGamepad.escutarAnalogicosDualSense((stick, x, y, valorX, valorY) {
       if(!padPs) return;
-      final absX = x.abs();
-      final absY = y.abs();
-      if(absX < 0.25 && absY < 0.25) return;
-      if(absX >= absY) {
-        escutaClickPaad("$stick,X,${(x * MAX_VALOR_ANALOGICO).round()}");
-      } else {
-        escutaClickPaad("$stick,Y,${(-y * MAX_VALOR_ANALOGICO).round()}");
-      }
+      _escutaAnalogicoEsquerdo(
+        (x * MAX_VALOR_ANALOGICO).round(),
+        (-y * MAX_VALOR_ANALOGICO).round(),
+      );
     });
   }
 
-  String _analogicoXInput(String stick, String eixo, dynamic value) {
-    if (!stick.contains("ESQUERDO")) return "";
+  void _atualizaAnalogicoXInput(String eixo, dynamic value) {
     final num valor = value is num ? value : (num.tryParse(value.toString()) ?? 0);
     final normalizado = valor.abs() <= 1
         ? (valor * MAX_VALOR_ANALOGICO).round()
         : valor.round();
     if (eixo == "X") _analogicoEsqX = normalizado;
     if (eixo == "Y") _analogicoEsqY = normalizado;
+    _escutaAnalogicoEsquerdo(_analogicoEsqX, _analogicoEsqY);
+  }
 
-    final absX = _analogicoEsqX.abs();
-    final absY = _analogicoEsqY.abs();
-    if (absX < 10000 && absY < 10000) return "";
-    final eixoDominante = absX >= absY ? "X" : "Y";
-    if (eixo != eixoDominante) return "";
+  void _escutaAnalogicoEsquerdo(int x, int y) {
+    final absX = x.abs();
+    final absY = y.abs();
+    if (absX < 10000 && absY < 10000) return;
 
-    return "$stick,$eixo,$normalizado";
+    final agora = DateTime.now();
+    if (_ultimoClickAnalogico != null &&
+        agora.difference(_ultimoClickAnalogico!) <
+            const Duration(milliseconds: 200)) {
+      return;
+    }
+
+    final direcao = absX >= absY
+        ? (x > 0 ? "DIREITA" : "ESQUERDA")
+        : (y > 0 ? "CIMA" : "BAIXO");
+    _ultimoClickAnalogico = agora;
+    escutaClickPaad(direcao);
   }
 
 
@@ -113,6 +121,7 @@ class Paad with ChangeNotifier{
     // addSequencia(event);
     if(delay) return;
     // if(isMouse) return MouseCtrl.mouseAdapt(event, teclando);
+    if (event.isEmpty) return;
     click = event;
     if(await naTela() && !delay)notifyListeners();
 
@@ -309,8 +318,8 @@ class Paad with ChangeNotifier{
         VariableControllerKey.RIGHT_TRIGGER: (value) => escutaClickPaad("RT-$value"),
 
 
-        VariableControllerKey.THUMB_LX: (value) => escutaClickPaad(_analogicoXInput("ANALOGICO ESQUERDO", "X", value)),
-        VariableControllerKey.THUMB_LY: (value) => escutaClickPaad(_analogicoXInput("ANALOGICO ESQUERDO", "Y", value)),
+        VariableControllerKey.THUMB_LX: (value) => _atualizaAnalogicoXInput("X", value),
+        VariableControllerKey.THUMB_LY: (value) => _atualizaAnalogicoXInput("Y", value),
       };
       // Detectar soltura de botões
       controller.onReleaseButton = (button) => escutaClickPaad("");

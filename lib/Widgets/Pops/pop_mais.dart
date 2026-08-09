@@ -134,10 +134,15 @@ class PopMais {
         builder: (_) {
           return Selector<Paad, String>(
             selector: (_, paad) => paad.click, // Escuta apenas click     
-            builder: (_, valorAtual, child) {
-              // WidgetsBinding.instance.addPostFrameCallback((_) {
-                escutaPad(valorAtual);  // Isso pode chamar o showDialog
-              // });
+            builder: (context, valorAtual, child) {
+              if (valorAtual.isNotEmpty) {
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  escutaPad(valorAtual);
+                  final paad = Provider.of<Paad>(context, listen: false);
+                  paad.click = "";
+                  paad.attTela();
+                });
+              }
               return KeyboardListener(
                 focusNode: FocusNode(),
                 onKeyEvent: (KeyEvent event) {

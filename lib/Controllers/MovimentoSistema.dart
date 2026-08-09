@@ -39,6 +39,7 @@ class MovimentoSistema {
   }
 
   static String normalizaEntrada(String event) {
+    // debugPrint("MovimentoSistema.normalizaEntrada: $event");
     if(!event.contains("ANALOGICO")) return event;
     if(!event.contains("ESQUERDO")) return "";
     final partes = event.split(",");

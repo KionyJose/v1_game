@@ -37,9 +37,17 @@ class PopConfig {
     void Function(void Function())? setStateDialog;
 
     // Função para fechar o dialog religando comandoAtivo
-    void fecharDialog(BuildContext context, String resultado, Paad paad) {
+    Future<void> fecharDialog(BuildContext context, String resultado, Paad paad,
+        {bool delayClick = false}) async {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        paad.click = "";
+        paad.attTela();
+      });
+      if (delayClick) {
+        await Future.delayed(const Duration(milliseconds: 200));
+      }
       paad.comandoAtivo = true;
-      Navigator.pop(context, resultado);
+      if (context.mounted) Navigator.pop(context, resultado);
     }
 
     comandos(BuildContext context, String event, Paad paad){
@@ -200,7 +208,7 @@ class PopConfig {
           configSistema.noticias = videosCardGameTemp;
           configSistema.sequenciaAtivaMouseCustom = sequenciaCustomTemp;
           configSistema.viewType = interfaceTemp;
-          fecharDialog(context, "salvar", paad);
+          fecharDialog(context, "salvar", paad, delayClick: true);
         }
         
         // Cancelar (focusNodes[7])
@@ -287,7 +295,7 @@ class PopConfig {
                     configSistema.noticias = videosCardGameTemp;
                     configSistema.sequenciaAtivaMouseCustom = sequenciaCustomTemp;
                     configSistema.viewType = interfaceTemp;
-                    fecharDialog(context, "salvar", paad);
+                    fecharDialog(context, "salvar", paad, delayClick: true);
                   } else {
                     fecharDialog(context, "cancelar", paad);
                   }
