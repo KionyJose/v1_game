@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -146,9 +147,9 @@ class DB{
     return listIconsInicial;
   }
 
-  Process? process; // Variável para armazenar o processo
-  int? processoAbertoPid;
-  String? processoAbertoPath;
+  static Process? process; // Variável para armazenar o processo
+  static int? processoAbertoPid;
+  static String? processoAbertoPath;
 
   bool _isExecutavelDireto(String filePath) {
     final lower = filePath.toLowerCase();
@@ -304,6 +305,37 @@ class DB{
       debugPrint('Erro ao fechar processo aberto: $e');
       return false;
     }
+  }
+
+  static void closeOpenedFileFast() {
+    debugPrint('[FECHAR_APP] Limpando processo aberto pelo launcher...');
+    final pid = processoAbertoPid;
+    debugPrint('[FECHAR_APP] PID salvo: ${pid?.toString() ?? "nenhum"}');
+    try {
+      final matou = process?.kill(ProcessSignal.sigkill) ?? false;
+      debugPrint('[FECHAR_APP] kill direto no Process: $matou');
+    } catch (e) {
+      debugPrint('[FECHAR_APP] Erro no kill direto: $e');
+    }
+
+    if (Platform.isWindows && pid != null) {
+      debugPrint('[FECHAR_APP] Disparando taskkill /PID $pid /T /F sem aguardar.');
+      unawaited(Process.start(
+        'taskkill',
+        ['/PID', pid.toString(), '/T', '/F'],
+        runInShell: true,
+        mode: ProcessStartMode.detached,
+      ).then((_) {
+        debugPrint('[FECHAR_APP] taskkill iniciado.');
+      }).catchError((e) {
+        debugPrint('[FECHAR_APP] Erro ao iniciar taskkill: $e');
+      }));
+    }
+
+    process = null;
+    processoAbertoPid = null;
+    processoAbertoPath = null;
+    debugPrint('[FECHAR_APP] Referencias de processo limpas.');
   }
 
   openUrl(String filePath){

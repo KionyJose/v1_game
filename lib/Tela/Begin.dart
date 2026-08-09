@@ -1,9 +1,8 @@
 // ignore_for_file: file_names, deprecated_member_use
 
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:v1_game/Bando%20de%20Dados/db.dart';
 import 'package:v1_game/Controllers/JanelaCtrl.dart';
 import 'package:xinput_gamepad/xinput_gamepad.dart';
 
@@ -89,7 +88,11 @@ class Begin extends StatelessWidget {
     return MaterialButton(
       padding: EdgeInsets.zero,
       minWidth: 10,
-      onPressed: () => exit(0),
+      onPressed: () {
+        debugPrint('[FECHAR_APP] Botao fechar interno clicado.');
+        DB.closeOpenedFileFast();
+        JanelaCtrl.fecharAppForcado(origem: 'botao interno');
+      },
       child: const Icon(Icons.close,color: Colors.white)
     );
   }

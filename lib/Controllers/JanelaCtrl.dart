@@ -1,7 +1,6 @@
 // ignore_for_file: file_names, depend_on_referenced_packages, constant_identifier_names
 
 import 'dart:ffi';
-import 'dart:async'; // Para usar o Future.delayed
 import 'package:ffi/ffi.dart';
 import 'package:flutter/material.dart';
 import 'package:window_manager/window_manager.dart';
@@ -59,6 +58,7 @@ class JanelaCtrl with ChangeNotifier, WindowListener{
   static const int SW_SHOWNORMAL = 1;  
 
   bool ativa = false;
+  bool _fechando = false;
   // deixar ativo depois
   bool telaPresa = true;
   
@@ -90,9 +90,26 @@ class JanelaCtrl with ChangeNotifier, WindowListener{
   void onWindowEvent(String eventName) async {
     debugPrint('============================================================================ $eventName');    
   }
+
+  @override
+  void onWindowClose() async {
+    if (_fechando) return;
+    debugPrint('[FECHAR_APP] X da janela recebido pelo Flutter.');
+    _fechando = true;
+    await windowManager.destroy();
+  }
+
+  static Future<void> fecharAppForcado({String origem = 'desconhecida'}) async {
+    debugPrint('[FECHAR_APP] Fechando janela solicitado por: $origem');
+    await windowManager.destroy();
+  }
   
   @override void onWindowFocus() => ativa = true;
   @override void onWindowBlur() {
+     if (_fechando) {
+       debugPrint('[FECHAR_APP] Blur ignorado porque o app esta fechando.');
+       return;
+     }
      ativa = false;
      if(telaPresa && !ativa) restoreWindow();
   }

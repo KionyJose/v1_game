@@ -181,11 +181,7 @@ class PopConfig {
         
         // Interface (focusNodes[4]) - Toggle com botão 2
         if(focusNodes[4].hasFocus){
-          final opcoes = ['list', 'moderno'];
-          final idx = opcoes.indexOf(interfaceTemp);
-          interfaceTemp = opcoes[(idx + 1) % opcoes.length];
           SonsSistema.click();
-          setStateDialog?.call((){});
           return;
         }
         
