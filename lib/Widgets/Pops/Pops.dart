@@ -56,10 +56,17 @@ class Pops {
   }
 
   static Future<MediaCanal?> popNovoMediaCard(
-      BuildContext ctx, String tipo) async {
+      BuildContext ctx, String tipo, {MediaCanal? inicial}) async {
     return showDialog<MediaCanal>(
       context: ctx,
-      builder: (_) => _NovoMediaCardPop(tipo: tipo),
+      builder: (_) => _NovoMediaCardPop(tipo: tipo, inicial: inicial),
+    );
+  }
+
+  static Future<String?> popOpcoesMediaCard(BuildContext ctx) async {
+    return showDialog<String>(
+      context: ctx,
+      builder: (_) => const _OpcoesMediaCardPop(),
     );
   }
 
@@ -602,8 +609,9 @@ class _CarregandoGamesSheetState extends State<_CarregandoGamesSheet> {
 
 class _NovoMediaCardPop extends StatefulWidget {
   final String tipo;
+  final MediaCanal? inicial;
 
-  const _NovoMediaCardPop({required this.tipo});
+  const _NovoMediaCardPop({required this.tipo, this.inicial});
 
   @override
   State<_NovoMediaCardPop> createState() => _NovoMediaCardPopState();
@@ -624,6 +632,12 @@ class _NovoMediaCardPopState extends State<_NovoMediaCardPop> {
   @override
   void initState() {
     super.initState();
+    final inicial = widget.inicial;
+    if (inicial != null) {
+      _nomeCtrl.text = inicial.nome;
+      _urlCtrl.text = inicial.url;
+      _imgCtrl.text = inicial.imgLocal;
+    }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _paad?.ativaMouse(usarEstado: true, estado: true);
     });
@@ -679,7 +693,9 @@ class _NovoMediaCardPopState extends State<_NovoMediaCardPop> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              'Novo card de ${widget.tipo}',
+              widget.inicial == null
+                  ? 'Novo card de ${widget.tipo}'
+                  : 'Editar card de ${widget.tipo}',
               style: const TextStyle(
                 color: Colors.white,
                 fontSize: 20,
@@ -740,6 +756,125 @@ class _NovoMediaCardPopState extends State<_NovoMediaCardPop> {
           borderRadius: BorderRadius.circular(10),
           borderSide: const BorderSide(color: Colors.white24),
         ),
+      ),
+    );
+  }
+}
+
+class _OpcoesMediaCardPop extends StatefulWidget {
+  const _OpcoesMediaCardPop();
+
+  @override
+  State<_OpcoesMediaCardPop> createState() => _OpcoesMediaCardPopState();
+}
+
+class _OpcoesMediaCardPopState extends State<_OpcoesMediaCardPop> {
+  final _focusScope = FocusScopeNode();
+  final _focusNodes = List.generate(3, (_) => FocusNode());
+  Paad? _paad;
+  bool _ativo = true;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _paad ??= Provider.of<Paad>(context, listen: false);
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _paad?.ativaMouse(usarEstado: true, estado: true);
+      if (mounted) _focusNodes[0].requestFocus();
+    });
+  }
+
+  @override
+  void dispose() {
+    _paad?.ativaMouse(usarEstado: true, estado: false);
+    _focusScope.dispose();
+    for (final node in _focusNodes) {
+      node.dispose();
+    }
+    super.dispose();
+  }
+
+  void _escutaPad(String event) {
+    if (!_ativo || event.isEmpty) return;
+    MovimentoSistema.direcaoListView(_focusScope, event);
+    if (event == '3') {
+      _ativo = false;
+      Navigator.pop(context);
+    }
+    if (event == '2' || event == 'SELECT') {
+      _ativo = false;
+      if (_focusNodes[0].hasFocus) Navigator.pop(context, 'editar');
+      if (_focusNodes[1].hasFocus) Navigator.pop(context, 'remover');
+      if (_focusNodes[2].hasFocus) Navigator.pop(context);
+    }
+  }
+
+  void _acao(String? valor) {
+    _ativo = false;
+    Navigator.pop(context, valor);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Selector<Paad, String>(
+      selector: (_, paad) => paad.click,
+      builder: (_, valorAtual, child) {
+        _escutaPad(valorAtual);
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          child: Container(
+            width: 360,
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: const Color(0xF0131722),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.white12),
+            ),
+            child: FocusScope(
+              node: _focusScope,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const Text(
+                    'Opcoes do card',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  _btn('Editar', Icons.edit, _focusNodes[0], () => _acao('editar')),
+                  const SizedBox(height: 10),
+                  _btn('Remover', Icons.delete_outline, _focusNodes[1],
+                      () => _acao('remover')),
+                  const SizedBox(height: 10),
+                  _btn('Cancelar', Icons.close, _focusNodes[2], () => _acao(null)),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _btn(
+      String texto, IconData icon, FocusNode focusNode, VoidCallback onPressed) {
+    return ElevatedButton.icon(
+      focusNode: focusNode,
+      onPressed: onPressed,
+      icon: Icon(icon),
+      label: Text(texto),
+      style: ElevatedButton.styleFrom(
+        minimumSize: const Size.fromHeight(46),
+        alignment: Alignment.centerLeft,
       ),
     );
   }

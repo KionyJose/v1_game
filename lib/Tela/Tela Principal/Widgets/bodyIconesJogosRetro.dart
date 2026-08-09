@@ -201,7 +201,7 @@ class _BodyIconesJogosRetroState extends State<BodyIconesJogosRetro> {
         _topIcons(sz),
         _titleBar(sz),
         _carrossel(sz),
-        _setaIndicador(sz),
+        // _setaIndicador(sz),
         _thumbStrip(sz),
         _bottomBar(sz),
       ],
@@ -385,10 +385,10 @@ class _BodyIconesJogosRetroState extends State<BodyIconesJogosRetro> {
         ctrl.selectedIndexIcone.clamp(0, itemCount - 1);
 
     return Positioned(
-      top: sz.height * 0.22,
+      top: sz.height * 0.12,
       left: 0,
       right: 0,
-      height: carouselHeight,
+      height: carouselHeight+100,
       child: FocusScope(
         node: ctrl.focusScopeIcones,
         child: CarouselSlider(
@@ -595,14 +595,14 @@ class _BodyIconesJogosRetroState extends State<BodyIconesJogosRetro> {
         child: Icon(Icons.videogame_asset, color: Colors.white24, size: 48),
       );
 
-  Widget _setaIndicador(Size sz) => Positioned(
-        top: sz.height * 0.62,
-        left: 0,
-        right: 0,
-        child: const Center(
-          child: Icon(Icons.arrow_drop_down, color: _cyan, size: 28),
-        ),
-      );
+  // Widget _setaIndicador(Size sz) => Positioned(
+  //       top: sz.height * 0.62,
+  //       left: 0,
+  //       right: 0,
+  //       child: const Center(
+  //         child: Icon(Icons.arrow_drop_down, color: _cyan, size: 28),
+  //       ),
+  //     );
 
   Widget _thumbStrip(Size sz) {
     if (ctrl.listIconsInicial.isEmpty) return const SizedBox();

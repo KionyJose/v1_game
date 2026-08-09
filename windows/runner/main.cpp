@@ -72,6 +72,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
     ::CloseHandle(single_instance_mutex);
     return EXIT_FAILURE;
   }
+  ::ShowWindow(window.GetHandle(), SW_MAXIMIZE);
   window.SetQuitOnClose(true);
 
   ::MSG msg;

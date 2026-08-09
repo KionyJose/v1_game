@@ -381,6 +381,10 @@ class PrincipalCtrl with ChangeNotifier{
 
   void agendarFundoCard(int index) {
     if(index < 0 || index >= listIconsInicial.length) return;
+    if(!cardGamesRetro) {
+      aplicarFundoImagem(index);
+      return;
+    }
 
     final versao = ++_fundoCardVersao;
     timerFundoCard?.cancel();
@@ -437,6 +441,16 @@ class PrincipalCtrl with ChangeNotifier{
     });
   }
 
+  void aplicarFundoImagem(int index) {
+    if(index < 0 || index >= listIconsInicial.length) return;
+    timerFundoCard?.cancel();
+    showBgVideo = false;
+    showNewImage = true;
+    imgFundoStr = listIconsInicial[index].imgStr;
+    try { bgMediaPlayer.stop(); } catch (_) {}
+    attTela();
+  }
+
 
   imersaoVideoRestart() async {
     if(!videoAtivo) return imersaoVideos = false;
@@ -477,7 +491,8 @@ class PrincipalCtrl with ChangeNotifier{
       attTela();
 
       if(!cardGamesModerno && !cardGamesRetro && !cardGamesGrid) {
-        agendarFundoCard(index);
+        aplicarFundoImagem(index);
+        carregaVideosDoGame();
       } else {
         selectedIndexVideo = 0;
         videosYT.clear();
@@ -553,6 +568,115 @@ class PrincipalCtrl with ChangeNotifier{
       debugPrint('ERRO adicionarMediaCard $e');
     } finally {
       stateTela = true;
+      attTela();
+    }
+  }
+
+  Future<void> editarMediaCard(String tipo, int index) async {
+    try {
+      stateTela = false;
+      final lista = tipo == cine ? listCinema : listMusica;
+      if (index < 0 || index >= lista.length) return;
+      final editado = await Pops.popNovoMediaCard(ctx, tipo, inicial: lista[index]);
+      if (editado == null) return;
+
+      lista[index] = editado;
+      await MediaCatalogo.salvarCatalogo(tipo == cine ? 'cinema' : 'musica', lista);
+      if (tipo == cine) {
+        selectedIndexCinema = index.clamp(0, listCinema.length - 1);
+        focusNodeCinema[selectedIndexCinema].requestFocus();
+        focusScopeCinema.requestFocus();
+        focusScope = focusScopeCinema;
+      } else {
+        selectedIndexMusica = index.clamp(0, listMusica.length - 1);
+        focusNodeMusica[selectedIndexMusica].requestFocus();
+        focusScopeMusica.requestFocus();
+        focusScope = focusScopeMusica;
+      }
+    } catch (e) {
+      debugPrint('ERRO editarMediaCard $e');
+    } finally {
+      stateTela = true;
+      attTela();
+    }
+  }
+
+  Future<void> removerMediaCard(String tipo, int index) async {
+    try {
+      stateTela = false;
+      final lista = tipo == cine ? listCinema : listMusica;
+      if (index < 0 || index >= lista.length) return;
+      final nome = lista[index].nome;
+      final ok = await Pops().msgSN(ctx, 'Remover "$nome"?');
+      if (ok != 'Sim') return;
+
+      lista.removeAt(index);
+      await MediaCatalogo.salvarCatalogo(tipo == cine ? 'cinema' : 'musica', lista);
+      if (tipo == cine) {
+        for (final f in focusNodeCinema) {
+          try { f.dispose(); } catch (_) {}
+        }
+        focusNodeCinema = List.generate(listCinema.length, (_) => FocusNode());
+        selectedIndexCinema = listCinema.isEmpty
+            ? 0
+            : index.clamp(0, listCinema.length - 1);
+        focusScopeCinema.requestFocus();
+        focusScope = focusScopeCinema;
+        if (focusNodeCinema.isNotEmpty) {
+          focusNodeCinema[selectedIndexCinema].requestFocus();
+        }
+      } else {
+        for (final f in focusNodeMusica) {
+          try { f.dispose(); } catch (_) {}
+        }
+        focusNodeMusica = List.generate(listMusica.length, (_) => FocusNode());
+        selectedIndexMusica = listMusica.isEmpty
+            ? 0
+            : index.clamp(0, listMusica.length - 1);
+        focusScopeMusica.requestFocus();
+        focusScope = focusScopeMusica;
+        if (focusNodeMusica.isNotEmpty) {
+          focusNodeMusica[selectedIndexMusica].requestFocus();
+        }
+      }
+      try {
+        final paad = Provider.of<Paad>(ctx, listen: false);
+        paad.click = "";
+        paad.attTela();
+      } catch (_) {}
+      await Future.delayed(const Duration(milliseconds: 200));
+    } catch (e) {
+      debugPrint('ERRO removerMediaCard $e');
+    } finally {
+      stateTela = true;
+      attTela();
+    }
+  }
+
+  Future<void> opcoesMediaCard(String tipo) async {
+    final index = tipo == cine ? selectedIndexCinema : selectedIndexMusica;
+    final lista = tipo == cine ? listCinema : listMusica;
+    if (index < 0 || index >= lista.length) return;
+    try {
+      Provider.of<Paad>(ctx, listen: false)
+          .ativaMouse(usarEstado: true, estado: true);
+    } catch (_) {}
+    final opcao = await Pops.popOpcoesMediaCard(ctx);
+    if (opcao == 'editar') {
+      await editarMediaCard(tipo, index);
+    } else if (opcao == 'remover') {
+      await removerMediaCard(tipo, index);
+    } else {
+      if (tipo == cine && focusNodeCinema.isNotEmpty) {
+        focusNodeCinema[selectedIndexCinema].requestFocus();
+        focusScopeCinema.requestFocus();
+        focusScope = focusScopeCinema;
+      }
+      if (tipo == musc && focusNodeMusica.isNotEmpty) {
+        focusNodeMusica[selectedIndexMusica].requestFocus();
+        focusScopeMusica.requestFocus();
+        focusScope = focusScopeMusica;
+      }
       attTela();
     }
   }
@@ -1214,6 +1338,10 @@ class PrincipalCtrl with ChangeNotifier{
       await adicionarMediaCard(musc);
       return;
     }
+    if (event == "SELECT"){
+      await opcoesMediaCard(musc);
+      return;
+    }
     if (event == "2"){
       final indexUsado = selectedIndexMusica;
       final url = listMusica[indexUsado].url;
@@ -1234,6 +1362,10 @@ class PrincipalCtrl with ChangeNotifier{
     }
     if (event == "START") {
       await adicionarMediaCard(cine);
+      return;
+    }
+    if (event == "SELECT"){
+      await opcoesMediaCard(cine);
       return;
     }
     if (event == "2"){

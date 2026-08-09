@@ -499,12 +499,13 @@ class _PrincipalPageState extends State<PrincipalPage> with WindowListener {
   }
 
   floatBtns(){
-    return  Row(
-      mainAxisAlignment: MainAxisAlignment.end,
-      children: [
-        Text("Desenvolvido por: @KionyJose",style: TextStyle(color: Colors.yellowAccent.withOpacity(0.2)),)
-      ],
-    );
+    return const SizedBox.shrink();
+    // return  Row(
+    //   mainAxisAlignment: MainAxisAlignment.end,
+    //   children: [
+    //     Text("Desenvolvido por: @KionyJose",style: TextStyle(color: Colors.yellowAccent.withOpacity(0.2)),)
+    //   ],
+    // );
   }
   
 
