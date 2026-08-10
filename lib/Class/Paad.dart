@@ -238,13 +238,23 @@ class Paad with ChangeNotifier{
       ativaMouse();
     }
   }
-  ativaMouse({
+  Future<void> ativaMouse({
     bool usarEstado = false,
     bool estado = false,
-  }){
-    final novoEstado = usarEstado ? estado : !isMouse;
-    if (novoEstado == isMouse) return;
+  }) async {
+    final estadoAtual = await NavMouseWatcher.refresh();
+    final novoEstado = usarEstado ? estado : !estadoAtual;
+    if (novoEstado == estadoAtual) {
+      isMouse = estadoAtual;
+      return;
+    }
     isMouse = novoEstado;
+    TecladoCtrl.pressWindBar();
+    for (var i = 0; i < 10; i++) {
+      await Future.delayed(const Duration(milliseconds: 100));
+      final estadoConfirmado = await NavMouseWatcher.refresh();
+      if (estadoConfirmado == novoEstado) break;
+    }
     delay = true;
     // // Provider.of<PrincipalCtrl>(ctx, listen: false).focusScope.requestFocus();
     Timer(const Duration(milliseconds: 1245), () => delay = false );   

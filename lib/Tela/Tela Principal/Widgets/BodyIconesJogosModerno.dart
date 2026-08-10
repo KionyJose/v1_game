@@ -274,7 +274,9 @@ class _BodyIconesJogosModernoState extends State<BodyIconesJogosModerno> {
                     ctrl.onFocusChangeIcones(h, i, tamanho: 90);
                   },
                   child: GestureDetector(
-                    onTap: () => ctrl.focusNodeIcones[i].requestFocus(),
+                    onTap: ctrl.mouseBloqueado
+                        ? null
+                        : () => ctrl.focusNodeIcones[i].requestFocus(),
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 180),
                       margin: const EdgeInsets.only(right: 10, bottom: 6, top: 6),
@@ -555,7 +557,7 @@ class _BodyIconesJogosModernoState extends State<BodyIconesJogosModerno> {
         } catch (_) {}
       },
       child: GestureDetector(
-        onTap: () => _abrirNoticia(n),
+        onTap: ctrl.mouseBloqueado ? null : () => _abrirNoticia(n),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 180),
           width: foco ? 250 : 230,

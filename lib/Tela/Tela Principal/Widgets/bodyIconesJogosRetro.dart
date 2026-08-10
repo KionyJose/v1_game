@@ -654,7 +654,7 @@ class _BodyIconesJogosRetroState extends State<BodyIconesJogosRetro> {
           final focused = ctrl.selectedIndexIcone == i;
           final img = ctrl.listIconsInicial[i].imgStr;
           return GestureDetector(
-            onTap: () => _onFoco(i),
+            onTap: ctrl.mouseBloqueado ? null : () => _onFoco(i),
             behavior: HitTestBehavior.opaque,
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 150),

@@ -34,8 +34,12 @@ import '../../Widgets/Pops/Pops.dart';
 class PrincipalCtrl with ChangeNotifier{
   
   DB db = DB();  
+  bool _disposed = false;
   late BuildContext ctx;
-  attTela() => notifyListeners();
+  attTela() {
+    if(_disposed) return;
+    notifyListeners();
+  }
   List<IconInicial> listIconsInicial = [];
   FocusNode keyboradEscutaNode = FocusNode();
 
@@ -106,6 +110,7 @@ class PrincipalCtrl with ChangeNotifier{
   List<VideoYT> videosYT= [];
   List<NoticiaGame> noticias = []; 
   bool loadingNoticias = false;
+  bool get mouseBloqueado => load || gameIniciado || !stateTela;
   
 
   PageController bodyCtrl = PageController();
@@ -169,6 +174,7 @@ class PrincipalCtrl with ChangeNotifier{
   }
 
   iniciaTela() async {
+    if(_disposed) return;
     cardGamesGrid = configSistema.viewType == "grid";
     cardGamesModerno = configSistema.viewType == "moderno";
     cardGamesRetro = configSistema.viewType == "retro";
@@ -225,6 +231,7 @@ class PrincipalCtrl with ChangeNotifier{
     focusNodeMusica = List.generate(listMusica.length, (index) => FocusNode());
 
     await iniciaLitIcones();
+    if(_disposed) return;
 
     telaIniciada = true;
     showNewImage = true;
@@ -266,6 +273,7 @@ class PrincipalCtrl with ChangeNotifier{
 
   @override
   dispose(){
+    _disposed = true;
     timerImersao?.cancel();
     timerImersaoVideos?.cancel();
     timerLoadVideos?.cancel();
@@ -308,6 +316,8 @@ class PrincipalCtrl with ChangeNotifier{
   }
 
   mouseDentro(int index,double tamanho){
+    if(_disposed) return;
+    if(mouseBloqueado) return;
     selectedIndexIcone = index;
     try {
           if (scrolListIcones.hasClients) {
@@ -321,6 +331,7 @@ class PrincipalCtrl with ChangeNotifier{
   }
 
   mouseFora(int index, double tamanho) {
+    if(mouseBloqueado) return;
     // Método vazio - usado por MouseRegion em cardAnimado
   }
 
@@ -339,6 +350,7 @@ class PrincipalCtrl with ChangeNotifier{
     }
   }
   onFocusChangeAbaGuias(bool hasFocus, int index,{ double tamanho = 0}){
+    if(_disposed) return;
     if (!hasFocus ) return;
     selectedIndexAbaGuias = index;    
     // Movimenta Scrol para onde esta selecionado Icone
@@ -372,6 +384,7 @@ class PrincipalCtrl with ChangeNotifier{
     videosCarregados = false;
     timerLoadVideos?.cancel();
     timerLoadVideos = Timer(const Duration(milliseconds: 350), () {
+      if(_disposed) return;
       if(selectedIndexAbaGuias != 0)return;
       showNewImage = true;        
       if(listIconsInicial.isNotEmpty){
@@ -400,6 +413,7 @@ class PrincipalCtrl with ChangeNotifier{
     attTela();
 
     timerFundoCard = Timer(const Duration(milliseconds: 1500), () async {
+      if(_disposed) return;
       if(versao != _fundoCardVersao || selectedIndexIcone != index || selectedIndexAbaGuias != 0) return;
 
       final item = listIconsInicial[index];
@@ -469,6 +483,7 @@ class PrincipalCtrl with ChangeNotifier{
   }
 
   onFocusChangeIcones(bool hasFocus, int index,{ double tamanho = 0}) async{
+    if(_disposed) return;
     if (!hasFocus || selectedIndexIcone == index) return;
     if(cardGamesGrid){
       
@@ -477,6 +492,7 @@ class PrincipalCtrl with ChangeNotifier{
     }
     try{    
       await imersaoRestart();
+      if(_disposed) return;
       showNewImage = false;
       selectedIndexIcone = index;
       
@@ -610,6 +626,13 @@ class PrincipalCtrl with ChangeNotifier{
       if (index < 0 || index >= lista.length) return;
       final nome = lista[index].nome;
       final ok = await Pops().msgSN(ctx, 'Remover "$nome"?');
+      try {
+        final paad = Provider.of<Paad>(ctx, listen: false);
+        paad.click = "";
+        paad.delay = true;
+        paad.attTela();
+        Timer(const Duration(milliseconds: 350), () { if(!_disposed) paad.delay = false; });
+      } catch (_) {}
       if (ok != 'Sim') return;
 
       lista.removeAt(index);
@@ -663,7 +686,7 @@ class PrincipalCtrl with ChangeNotifier{
     try {
       final paad = Provider.of<Paad>(ctx, listen: false);
       paad.click = "";
-      paad.ativaMouse(usarEstado: true, estado: true);
+      await paad.ativaMouse(usarEstado: true, estado: true);
       paad.attTela();
     } catch (_) {}
     final opcao = await Pops.popOpcoesMediaCard(ctx);
@@ -671,6 +694,9 @@ class PrincipalCtrl with ChangeNotifier{
     if (opcao == 'editar') {
       await editarMediaCard(tipo, index);
     } else if (opcao == 'remover') {
+      try {
+        await Provider.of<Paad>(ctx, listen: false).ativaMouse(usarEstado: true, estado: false);
+      } catch (_) {}
       await removerMediaCard(tipo, index);
     } else {
       if (tipo == cine && focusNodeCinema.isNotEmpty) {
@@ -799,6 +825,7 @@ class PrincipalCtrl with ChangeNotifier{
       await db.openFile(listIconsInicial[selectedIndexIcone].local);
       gameIniciado = true;
       stateTela = false; // Desativa eventos durante o processo
+      await Provider.of<Paad>(ctx, listen: false).ativaMouse(usarEstado: true, estado: false);
       videosIndexYT = List.generate(listIconsInicial.length, (index) => []);
       Provider.of<JanelaCtrl>(ctx, listen: false).telaPresaReverse(usarEstado: true, estado: false);
       await moverIcoPosicaoInicial(listIconsInicial[selectedIndexIcone]);
@@ -812,7 +839,7 @@ class PrincipalCtrl with ChangeNotifier{
       gameIniciado = false;
       Provider.of<JanelaCtrl>(ctx, listen: false).telaPresaReverse(estado: true, usarEstado: true);
       // Desativa o uso do mouse;
-      Provider.of<Paad>(ctx, listen: false).ativaMouse( usarEstado: true,  estado: false);
+      await Provider.of<Paad>(ctx, listen: false).ativaMouse( usarEstado: true,  estado: false);
       
       // Garantir que o foco volte para o escopo correto após abrir o arquivo
 
@@ -893,7 +920,7 @@ class PrincipalCtrl with ChangeNotifier{
             await salvaImgDownload();
           }else{
             debugPrint("Sai navPasta");
-            Timer(const Duration(milliseconds: 500), () => iniciaTela());  
+        Timer(const Duration(milliseconds: 500), () => iniciaTela());
           }
           debugPrint("Sai navPasta");
           Timer(const Duration(milliseconds: 500), () => iniciaTela()); 
@@ -904,8 +931,15 @@ class PrincipalCtrl with ChangeNotifier{
         case  "Excluir Card":{
           Timer(const Duration(milliseconds: 500  ),() async {
             var result = await Pops().msgSN(ctx, "Confirmar ação?");
+            try {
+              final paad = Provider.of<Paad>(ctx, listen: false);
+              paad.click = "";
+              paad.delay = true;
+              paad.attTela();
+              Timer(const Duration(milliseconds: 350), () { if(!_disposed) paad.delay = false; });
+            } catch (_) {}
             if(result ==  null || result == "Nao"){ 
-              stateTela = true;
+              Timer(const Duration(milliseconds: 350), () { if(!_disposed) stateTela = true; });
               return;
             }
             if(result == "Sim"){
@@ -1265,14 +1299,16 @@ class PrincipalCtrl with ChangeNotifier{
       // Liberar Tela do sistema
       Provider.of<JanelaCtrl>(ctx, listen: false).telaPresaReverse(usarEstado: true, estado: false);
       // Ativar Mouse
-      Provider.of<Paad>(ctx, listen: false).ativaMouse(usarEstado: true,  estado: true);
+      await Provider.of<Paad>(ctx, listen: false).ativaMouse(usarEstado: true,  estado: true);
       await NavWebCtrl.openLink(url);
       await Pops().carregandoGames(ctx, texto);
       
-      // Desativa o uso do mouse;
-      Provider.of<Paad>(ctx, listen: false).ativaMouse( usarEstado: true,  estado: false);
+      JanelaCtrl.restoreWindow();
+      await Future.delayed(const Duration(milliseconds: 350));
+      await JanelaCtrl.garantirFocoSeNaFrente();
+      await Provider.of<Paad>(ctx, listen: false).ativaMouse(usarEstado: true,  estado: false);
       // Trava na tela novamente
-      // Provider.of<JanelaCtrl>(ctx, listen: false).telaPresaReverse();
+      Provider.of<JanelaCtrl>(ctx, listen: false).telaPresaReverse(usarEstado: true, estado: true);
       gameIniciado = false;
       
       // Delay antes de reativar eventos para evitar cliques duplos
@@ -1401,7 +1437,7 @@ class PrincipalCtrl with ChangeNotifier{
       }
       if(event == "BAIXO"){
         // No modo moderno vai direto se há vídeos; senão usa gate completo
-        final podeIr = cardGamesModerno ? videosYT.isNotEmpty : exibirVideos;
+        final podeIr = exibirVideos;
         if(podeIr){
           focusNodeVideos[selectedIndexVideo].requestFocus();
           focusScopeVideos.requestFocus();
@@ -1444,7 +1480,7 @@ class PrincipalCtrl with ChangeNotifier{
             attTela();
           } else {
             debugPrint("Lista VIDEOS :${videosYT.length}");
-            if(videosYT.isNotEmpty){
+            if(exibirVideos){
               focusNodeVideos[selectedIndexVideo].requestFocus();
               focusScopeVideos.requestFocus();
               focusScope = focusScopeVideos;
@@ -1501,13 +1537,11 @@ class PrincipalCtrl with ChangeNotifier{
       if(result == MovimentoSistema.horizontal || result == MovimentoSistema.vertical  ){
         // desativado temporariamente
         //verificar se a opçao de ver videos esta ativa e se tem videos para mostrar
-        if(event=="BAIXO" && videosYT.isNotEmpty && configSistema.videosTelaPrincipal){
+        if(event=="BAIXO" && exibirVideos){
           debugPrint("Lista VIDEOS :${videosYT.length}");
-          if(videosYT.isNotEmpty){
-            focusNodeVideos[selectedIndexVideo].requestFocus();
-            focusScopeVideos.requestFocus();
-            focusScope = focusScopeVideos;
-          }
+          focusNodeVideos[selectedIndexVideo].requestFocus();
+          focusScopeVideos.requestFocus();
+          focusScope = focusScopeVideos;
         }
       }
       

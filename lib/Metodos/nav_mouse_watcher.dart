@@ -40,6 +40,11 @@ class NavMouseWatcher {
     }
   }
 
+  static Future<bool> refresh() async {
+    await _checkState();
+    return isNavMouseActive;
+  }
+
   static void stop() {
     _timer?.cancel();
     _timer = null;

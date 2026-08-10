@@ -427,9 +427,11 @@ class _PrincipalPageState extends State<PrincipalPage> with WindowListener {
   cardAnimado(PrincipalCtrl ctrl,int index,{double tamanho = 0}){
     return MouseRegion(
       onEnter: (event) {
+        if(ctrl.mouseBloqueado) return;
         ctrl.mouseDentro(index,tamanho);
       },
       onExit: (value) {
+        if(ctrl.mouseBloqueado) return;
         ctrl.mouseFora(index,tamanho);
       },
       child: CardGame(

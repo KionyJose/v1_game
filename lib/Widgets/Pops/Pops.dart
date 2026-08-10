@@ -784,6 +784,7 @@ class _OpcoesMediaCardPopState extends State<_OpcoesMediaCardPop> {
   final _focusScope = FocusScopeNode();
   final _focusNodes = List.generate(3, (_) => FocusNode());
   Paad? _paad;
+  String? _acaoEscolhida;
 
   @override
   void didChangeDependencies() {
@@ -805,10 +806,12 @@ class _OpcoesMediaCardPopState extends State<_OpcoesMediaCardPop> {
 
   @override
   void dispose() {
-    _paad?.ativaMouse(
-      usarEstado: true,
-      estado: false,
-    );
+    if (_acaoEscolhida != 'editar') {
+      _paad?.ativaMouse(
+        usarEstado: true,
+        estado: false,
+      );
+    }
     _focusScope.dispose();
     for (final node in _focusNodes) {
       node.dispose();
@@ -817,6 +820,7 @@ class _OpcoesMediaCardPopState extends State<_OpcoesMediaCardPop> {
   }
 
   void _acao(String? valor) {
+    _acaoEscolhida = valor;
     Navigator.pop(context, valor);
   }
 
