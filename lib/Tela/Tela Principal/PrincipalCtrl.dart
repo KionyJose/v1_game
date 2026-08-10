@@ -1457,7 +1457,9 @@ class PrincipalCtrl with ChangeNotifier{
       }
       if(event == "BAIXO"){
         // No modo moderno vai direto se há vídeos; senão usa gate completo
-        final podeIr = exibirVideos;
+        final podeIr = cardGamesModerno
+            ? videosYT.isNotEmpty && focusNodeVideos.isNotEmpty
+            : exibirVideos;
         if(podeIr){
           focusNodeVideos[selectedIndexVideo].requestFocus();
           focusScopeVideos.requestFocus();

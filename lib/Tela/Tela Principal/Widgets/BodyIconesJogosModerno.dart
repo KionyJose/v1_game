@@ -42,6 +42,7 @@ class _BodyIconesJogosModernoState extends State<BodyIconesJogosModerno> {
   String _lastGame = '';
   String _lastGameHero = '';
   final _newsScroll = ScrollController();
+  Timer? _newsTickerTimer;
 
   // ── Hero background video ───────────────────────────────────────────────────
   late final Player _heroPlayer;
@@ -88,6 +89,7 @@ class _BodyIconesJogosModernoState extends State<BodyIconesJogosModerno> {
     // Busca vídeo diretamente com tag aleatória — não depende de videosYT já carregado
     try {
       final tags = ctrl.tagVideo;
+      if (tags.isEmpty) return;
       final tag = tags[Random().nextInt(tags.length)];
       final query = '$nomeGame $tag';
       final yt = YoutubeExplode();
@@ -136,6 +138,7 @@ class _BodyIconesJogosModernoState extends State<BodyIconesJogosModerno> {
           ctrl.loadingNoticias = false;
           ctrl.selectedIndexNoticia = 0;
         });
+        _reiniciarTickerNoticias();
       }
     } catch (e) {
       debugPrint('_loadNoticias erro: $e');
@@ -146,6 +149,7 @@ class _BodyIconesJogosModernoState extends State<BodyIconesJogosModerno> {
   @override
   void dispose() {
     ctrl.abrirNoticiaCallback = null;
+    _newsTickerTimer?.cancel();
     _newsScroll.dispose();
     try { _heroPlayer.dispose(); } catch (_) {}
     super.dispose();
@@ -499,7 +503,11 @@ class _BodyIconesJogosModernoState extends State<BodyIconesJogosModerno> {
                             children: [_cardNoticiaVazio()],
                           ),
                         )
-                      : FocusScope(
+                      : ctrl.noticias.isEmpty
+                          ? const SizedBox.shrink()
+                          : ctrl.focusScope != ctrl.focusScopeNoticias
+                          ? _noticiaCompacta(size)
+                          : FocusScope(
                           node: ctrl.focusScopeNoticias,
                           child: ListView.builder(
                             controller: _newsScroll,
@@ -513,6 +521,164 @@ class _BodyIconesJogosModernoState extends State<BodyIconesJogosModerno> {
               ),
             ),
           ],
+        ),
+      );
+
+  void _reiniciarTickerNoticias() {
+    _newsTickerTimer?.cancel();
+    if (ctrl.noticias.length < 2) return;
+    _newsTickerTimer = Timer.periodic(const Duration(seconds: 10), (_) {
+      if (!mounted || ctrl.focusScope == ctrl.focusScopeNoticias || ctrl.noticias.isEmpty) return;
+      setState(() {
+        ctrl.selectedIndexNoticia =
+            (ctrl.selectedIndexNoticia + 1) % ctrl.noticias.length;
+      });
+    });
+  }
+
+  Widget _noticiaCompacta(Size size) {
+    final index = ctrl.selectedIndexNoticia.clamp(0, ctrl.noticias.length - 1).toInt();
+    final n = ctrl.noticias[index];
+    final temImg = n.imgUrl.startsWith('http');
+    final emoji = !temImg && n.imgUrl.isNotEmpty ? n.imgUrl : '🎮';
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 36),
+      child: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 650),
+        child: Container(
+          key: ValueKey('${n.titulo}-$index'),
+          width: (size.width * 0.72).clamp(680.0, 1120.0),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(30),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.14)),
+            color: const Color(0xFF090719),
+            boxShadow: [
+              BoxShadow(
+                color: _corP.withValues(alpha: 0.26),
+                blurRadius: 42,
+                spreadRadius: 2,
+              ),
+            ],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(29),
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                if (temImg)
+                  Image.network(
+                    n.imgUrl,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => _noticiaImgFallback(emoji),
+                  )
+                else
+                  _noticiaImgFallback(emoji),
+                Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.centerLeft,
+                      end: Alignment.centerRight,
+                      colors: [
+                        const Color(0xFF06040F).withValues(alpha: 0.96),
+                        const Color(0xFF06040F).withValues(alpha: 0.76),
+                        const Color(0xFF06040F).withValues(alpha: 0.28),
+                      ],
+                    ),
+                  ),
+                ),
+                Positioned(
+                  right: 26,
+                  top: 10,
+                  child: Text(
+                    emoji,
+                    style: TextStyle(
+                      fontSize: 74,
+                      shadows: [
+                        Shadow(color: Colors.black.withValues(alpha: 0.75), blurRadius: 24),
+                      ],
+                    ),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(32, 18, 170, 18),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      if (n.veiculo.isNotEmpty)
+                        Text(
+                          n.veiculo.toUpperCase(),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: Colors.white70,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 1.6,
+                          ),
+                        ),
+                      const SizedBox(height: 8),
+                      Text(
+                        n.titulo,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 24,
+                          height: 1.10,
+                          fontWeight: FontWeight.w800,
+                          shadows: [Shadow(color: Colors.black, blurRadius: 12)],
+                        ),
+                      ),
+                      if (n.descricao.isNotEmpty) ...[
+                        const SizedBox(height: 8),
+                        Text(
+                          n.descricao,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: Colors.white60,
+                            fontSize: 13,
+                            height: 1.2,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _noticiaImgFallback(String emoji) => Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              _corP.withValues(alpha: 0.50),
+              const Color(0xFF121033),
+              const Color(0xFF06040F),
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
+        child: Align(
+          alignment: Alignment.centerRight,
+          child: Padding(
+            padding: const EdgeInsets.only(right: 80),
+            child: Text(
+              emoji,
+              style: TextStyle(
+                fontSize: 104,
+                color: Colors.white.withValues(alpha: 0.92),
+                shadows: [Shadow(color: Colors.black.withValues(alpha: 0.45), blurRadius: 30)],
+              ),
+            ),
+          ),
         ),
       );
 
