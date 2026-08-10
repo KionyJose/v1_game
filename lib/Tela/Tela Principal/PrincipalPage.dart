@@ -43,6 +43,7 @@ class _PrincipalPageState extends State<PrincipalPage> with WindowListener {
 
   late PrincipalCtrl ctrlOff;
   bool naTela = false;
+  bool _maximizeInicialAgendado = false;
   
 
   @override
@@ -64,6 +65,15 @@ class _PrincipalPageState extends State<PrincipalPage> with WindowListener {
           // debugPrint("object =========================");
           ctrl.ctx = context;
           ctrlOff = ctrl;
+          if(ctrl.telaIniciada && !_maximizeInicialAgendado){
+            _maximizeInicialAgendado = true;
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              Future.delayed(const Duration(seconds: 1), () async {
+                if(!mounted) return;
+                await windowManager.maximize();
+              });
+            });
+          }
           return scaffold(ctrl);
           
           
