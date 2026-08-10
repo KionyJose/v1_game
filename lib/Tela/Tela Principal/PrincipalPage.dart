@@ -19,6 +19,7 @@ import 'Widgets/BodyIconesCinema.dart';
 import 'Widgets/BodyIconesMusica.dart';
 import 'Widgets/BodyIconesJogosGrid.dart';
 import 'Widgets/BodyIconesJogosModerno.dart';
+import 'Widgets/BodyIconesLoja.dart';
 import 'Widgets/bodyIconesJogosRetro.dart';
 import 'Widgets/CardInfWidget.dart';
 import 'Widgets/ListVideosWidget.dart';
@@ -322,34 +323,28 @@ class _PrincipalPageState extends State<PrincipalPage> with WindowListener {
 
   bodyPageView(PrincipalCtrl ctrl){
     double tamanhoBloco = 120;
-    return PageView(
-      scrollDirection: Axis.horizontal,
-      controller: ctrl.bodyCtrl,
-      children: [
-        if (ctrl.cardGamesGrid)
-          gridAnimado(ctrl, tamanhoBloco),
-        if(!ctrl.cardGamesGrid && ctrl.cardGamesModerno) BodyIconesJogosModerno(
-          ctrl: ctrl,
-          tamanhoBloco: tamanhoBloco,
-          // cardAnimado: (ctrl, index, tamanho) => cardAnimado(ctrl, index, tamanho: tamanho),
-          // cardAnimadoAdd: (ctrl, index) => cardAnimadoAdd(ctrl, index),
-        ),
-        if(!ctrl.cardGamesGrid && ctrl.cardGamesRetro) BodyIconesJogosRetro(
-          ctrl: ctrl,
-          tamanhoBloco: tamanhoBloco,
-          // cardAnimado: (ctrl, index, tamanho) => cardAnimado(ctrl, index, tamanho: tamanho),
-          // cardAnimadoAdd: (ctrl, index) => cardAnimadoAdd(ctrl, index),
-        ),
-        if(!ctrl.cardGamesGrid && !ctrl.cardGamesModerno && !ctrl.cardGamesRetro) BodyIconesJogos(
-          ctrl: ctrl,
-          tamanhoBloco: tamanhoBloco,
-          cardAnimado: (ctrl, index, tamanho) => cardAnimado(ctrl, index, tamanho: tamanho),
-          cardAnimadoAdd: (ctrl, index) => cardAnimadoAdd(ctrl, index),
-        ),
-        if(ctrl.selectedIndexAbaGuias != 0) BodyIconesCinema(ctrl: ctrl, tamanhoBloco: tamanhoBloco),
-        if(ctrl.selectedIndexAbaGuias != 0) BodyIconesMusica(ctrl: ctrl, tamanhoBloco: tamanhoBloco),
-      ],      
-    ); 
+    final jogosPage = ctrl.cardGamesGrid
+        ? gridAnimado(ctrl, tamanhoBloco)
+        : !ctrl.cardGamesGrid && ctrl.cardGamesModerno
+            ? BodyIconesJogosModerno(
+                ctrl: ctrl,
+                tamanhoBloco: tamanhoBloco,
+              )
+            : !ctrl.cardGamesGrid && ctrl.cardGamesRetro
+                ? BodyIconesJogosRetro(
+                    ctrl: ctrl,
+                    tamanhoBloco: tamanhoBloco,
+                  )
+                : BodyIconesJogos(
+                    ctrl: ctrl,
+                    tamanhoBloco: tamanhoBloco,
+                    cardAnimado: (ctrl, index, tamanho) => cardAnimado(ctrl, index, tamanho: tamanho),
+                    cardAnimadoAdd: (ctrl, index) => cardAnimadoAdd(ctrl, index),
+                  );
+    if(ctrl.selectedIndexAbaGuias == 1) return BodyIconesCinema(ctrl: ctrl, tamanhoBloco: tamanhoBloco);
+    if(ctrl.selectedIndexAbaGuias == 2) return BodyIconesMusica(ctrl: ctrl, tamanhoBloco: tamanhoBloco);
+    if(ctrl.selectedIndexAbaGuias == 3) return BodyIconesLoja(ctrl: ctrl, tamanhoBloco: tamanhoBloco);
+    return jogosPage; 
   }
 
   gridAnimado(PrincipalCtrl ctrl, double tamanhoBloco){

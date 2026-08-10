@@ -47,6 +47,7 @@ class PrincipalCtrl with ChangeNotifier{
   late List<FocusNode> focusNodeIcones; 
   late List<FocusNode> focusNodeMusica; 
   late List<FocusNode> focusNodeCinema; 
+  late List<FocusNode> focusNodeLoja; 
   late List<FocusNode> focusNodeAbaGuias;  
   List<FocusNode> focusNodeVideos = [];
   List<FocusNode> focusNodeNoticias = [];
@@ -63,6 +64,7 @@ class PrincipalCtrl with ChangeNotifier{
   
   FocusScopeNode focusScopeMusica = FocusScopeNode();
   FocusScopeNode focusScopeCinema = FocusScopeNode();
+  FocusScopeNode focusScopeLoja = FocusScopeNode();
   FocusScopeNode focusScopeAbaGuias = FocusScopeNode();
   FocusScopeNode focusScopeIcones = FocusScopeNode();
   FocusScopeNode focusScopeVideos = FocusScopeNode();
@@ -78,6 +80,7 @@ class PrincipalCtrl with ChangeNotifier{
   int selectedIndexCinema = 0;
   int selectedIndexAbaGuias = 0;
   int selectedIndexMusica = 0;
+  int selectedIndexLoja = 0;
   int selectedIndexNoticia = 0;
   int cinemaScrollTopRequest = 0;
   int musicaScrollTopRequest = 0;
@@ -121,9 +124,21 @@ class PrincipalCtrl with ChangeNotifier{
   late VideoController bgMediaController;
   List<String> tagVideo = ["gameplay","montage","funny","clip","dica","tutorial de","Shorts","Engraçado","lool","noticias","Novidades","Update","review","análise","walkthrough","speedrun","highlights","best moments","top plays","epic moments"];
   
-  List<String> listAbaGuias= ["Games","Cinema","Musica"];
+  List<String> listAbaGuias= ["Games","Cinema","Musica","Loja"];
+  List<LojaGame> listLojas = const [
+    LojaGame(nome: 'GOG', subtitulo: 'Clássicos e DRM-free', url: 'https://www.gog.com', cor: Color(0xFF6D42C7), icone: Icons.extension_rounded),
+    LojaGame(nome: 'Steam', subtitulo: 'Biblioteca, ofertas e comunidade', url: 'https://store.steampowered.com', cor: Color(0xFF1B5C8F), icone: Icons.sports_esports_rounded),
+    LojaGame(nome: 'Epic', subtitulo: 'Jogos grátis e lançamentos', url: 'https://store.epicgames.com/pt-BR', cor: Color(0xFF2A2A2A), icone: Icons.bolt_rounded),
+    LojaGame(nome: 'Microsoft', subtitulo: 'Xbox, Game Pass e PC', url: 'https://www.xbox.com/pt-br/games', cor: Color(0xFF107C10), icone: Icons.grid_view_rounded),
+    LojaGame(nome: 'EA', subtitulo: 'EA app e franquias esportivas', url: 'https://www.ea.com/games', cor: Color(0xFFFF3B30), icone: Icons.blur_circular_rounded),
+    LojaGame(nome: 'Ubisoft', subtitulo: 'Ubisoft Store e Connect', url: 'https://store.ubisoft.com', cor: Color(0xFF0078D7), icone: Icons.radar_rounded),
+    LojaGame(nome: 'Blizzard', subtitulo: 'Battle.net e jogos Blizzard', url: 'https://shop.battle.net', cor: Color(0xFF00AEEF), icone: Icons.ac_unit_rounded),
+    LojaGame(nome: 'itch.io', subtitulo: 'Indies, game jams e pague quanto quiser', url: 'https://itch.io', cor: Color(0xFFFA5C5C), icone: Icons.favorite_rounded),
+    LojaGame(nome: 'Mods', subtitulo: 'Mods, patches e conteúdo da comunidade', url: 'https://www.moddb.com', cor: Color(0xFF7A4F22), icone: Icons.construction_rounded),
+  ];
   static String cine = "Cine";
   static String musc = "Musc";
+  static String loja = "Loja";
   static String gridItem = "GridItem";
   
   List<MediaCanal> listCinema = [];
@@ -189,6 +204,7 @@ class PrincipalCtrl with ChangeNotifier{
     selectedIndexCinema = 0;
     selectedIndexAbaGuias = 0;
     selectedIndexMusica = 0;
+    selectedIndexLoja = 0;
     
     // Inicializa media_kit player
     mediaPlayer = Player();
@@ -235,6 +251,7 @@ class PrincipalCtrl with ChangeNotifier{
     listMusica = await MediaCatalogo.catalogoMusc();
     focusNodeCinema = List.generate(listCinema.length, (index) => FocusNode());
     focusNodeMusica = List.generate(listMusica.length, (index) => FocusNode());
+    focusNodeLoja = List.generate(listLojas.length, (index) => FocusNode());
 
     await iniciaLitIcones();
     if(_disposed) return;
@@ -293,12 +310,14 @@ class PrincipalCtrl with ChangeNotifier{
     try { focusScopeAbaGuias.dispose(); } catch (_) {}
     try { focusScopeCinema.dispose(); } catch (_) {}
     try { focusScopeMusica.dispose(); } catch (_) {}
+    try { focusScopeLoja.dispose(); } catch (_) {}
     try { focusScopeVideos.dispose(); } catch (_) {}
     try { focusScope.dispose(); } catch (_) {}
     try { focusScopeCardInf.dispose(); } catch (_) {}
     for (var f in focusNodeIcones) { try { f.dispose(); } catch (_) {} }
     for (var f in focusNodeCinema) { try { f.dispose(); } catch (_) {} }
     for (var f in focusNodeMusica) { try { f.dispose(); } catch (_) {} }
+    for (var f in focusNodeLoja) { try { f.dispose(); } catch (_) {} }
     for (var f in focusNodeAbaGuias) { try { f.dispose(); } catch (_) {} }
     for (var f in focusNodeVideos) { try { f.dispose(); } catch (_) {} }
     debugPrint("SAIU PAGE CTRL");
@@ -344,6 +363,7 @@ class PrincipalCtrl with ChangeNotifier{
   onFocusChangeGrid(int index, String tipo ){
     if(tipo == cine) selectedIndexCinema = index;    
     if(tipo == musc) selectedIndexMusica = index;
+    if(tipo == loja) selectedIndexLoja = index;
     attTela();
     
   }
@@ -1169,7 +1189,9 @@ class PrincipalCtrl with ChangeNotifier{
       else if(focusScope == focusScopeCinema && selectedIndexAbaGuias == 1){
         movFilmes(event);}
       else if(focusScope == focusScopeMusica && selectedIndexAbaGuias == 2){
-        movMusica(event);}      
+        movMusica(event);}
+      else if(focusScope == focusScopeLoja && selectedIndexAbaGuias == 3){
+        movLoja(event);}      
     }catch(erro){
       debugPrint("ERRO ESCUTA PAD CLICK$erro");
     }
@@ -1338,39 +1360,31 @@ class PrincipalCtrl with ChangeNotifier{
 
   movAbaGuias(String event) async {
     if(gameIniciado) return;
-    
-    if(event=="LB"){
-      // focusScope = focusScopeIcones;
-      if(focusScope == focusScopeCinema){
-
-        // MovimentoSistema.direcaoListView(focusScope, "DIREITA");e
-        focusScope = cardGamesGrid && cardInf ? focusScopeCardInf : focusScopeIcones;
-        cardGamesGrid && cardInf ? focusNodeCardInf[selectedIndexCardInfo].requestFocus() : focusNodeIcones[selectedIndexIcone].requestFocus();
-        if(selectedIndexIcone != 0) selectedIndexIcone --;
-        
-      }
-      else if(focusScope == focusScopeMusica){
-        focusScope = focusScopeCinema;
-        focusNodeCinema[selectedIndexCinema].requestFocus();
-      }
-      focusScopeAbaGuias.focusInDirection(TraversalDirection.left);
-      // focusNodeIcones[selectedIndexIcone].requestFocus();
-      bodyCtrl.previousPage(duration: const Duration(milliseconds: 500), curve: Curves.decelerate); 
+    if(event!="LB" && event!="RB") return;
+    final destino = event == "LB"
+        ? (selectedIndexAbaGuias - 1).clamp(0, listAbaGuias.length - 1)
+        : (selectedIndexAbaGuias + 1).clamp(0, listAbaGuias.length - 1);
+    if(destino == selectedIndexAbaGuias) return;
+    selectedIndexAbaGuias = destino.toInt();
+    focusNodeAbaGuias[selectedIndexAbaGuias].requestFocus();
+    if(selectedIndexAbaGuias == 0){
+      focusScope = cardGamesGrid && cardInf ? focusScopeCardInf : focusScopeIcones;
+      cardGamesGrid && cardInf ? focusNodeCardInf[selectedIndexCardInfo].requestFocus() : focusNodeIcones[selectedIndexIcone].requestFocus();
     }
-    if(event=="RB"){      
-      // focusNodeCinema[selectedIndexCinema].requestFocus();
-      if(focusScope == focusScopeIcones){
-        focusScope = focusScopeCinema;
-        focusNodeCinema[selectedIndexCinema].requestFocus();
-      }
-      else if(focusScope == focusScopeCinema){
-        focusScope = focusScopeMusica;
-        focusNodeMusica[selectedIndexMusica].requestFocus();
-      }
-      
-      focusScopeAbaGuias.focusInDirection(TraversalDirection.right);
-      bodyCtrl.nextPage(duration: const Duration(milliseconds: 500), curve: Curves.decelerate);
+    if(selectedIndexAbaGuias == 1){
+      focusScope = focusScopeCinema;
+      if(focusNodeCinema.isNotEmpty) focusNodeCinema[selectedIndexCinema].requestFocus();
     }
+    if(selectedIndexAbaGuias == 2){
+      focusScope = focusScopeMusica;
+      if(focusNodeMusica.isNotEmpty) focusNodeMusica[selectedIndexMusica].requestFocus();
+    }
+    if(selectedIndexAbaGuias == 3){
+      focusScope = focusScopeLoja;
+      if(focusNodeLoja.isNotEmpty) focusNodeLoja[selectedIndexLoja].requestFocus();
+    }
+    if(bodyCtrl.hasClients) bodyCtrl.animateToPage(selectedIndexAbaGuias, duration: const Duration(milliseconds: 500), curve: Curves.decelerate);
+    attTela();
   }
 
   movCardGrid(String event) async {    
@@ -1442,6 +1456,21 @@ class PrincipalCtrl with ChangeNotifier{
       focusNodeCinema[selectedIndexCinema].requestFocus();
       focusScopeCinema.requestFocus();
       focusScope = focusScopeCinema;
+    }
+  }
+
+  movLoja(String event) async {    
+    MovimentoSistema.direcaoListView(focusScope, event);
+    if(gameIniciado) {
+      if(event == "3") Navigator.pop(ctx);
+      return;
+    }
+    if (event == "2"){
+      final lojaAtual = listLojas[selectedIndexLoja];
+      await sairDaTelaMedia(lojaAtual.url, "Abrindo ${lojaAtual.nome}.");
+      focusScopeLoja.requestFocus();
+      focusScope = focusScopeLoja;
+      if(focusNodeLoja.isNotEmpty) focusNodeLoja[selectedIndexLoja].requestFocus();
     }
   }
 
@@ -1624,4 +1653,20 @@ class PrincipalCtrl with ChangeNotifier{
 
 
 
+}
+
+class LojaGame {
+  final String nome;
+  final String subtitulo;
+  final String url;
+  final Color cor;
+  final IconData icone;
+
+  const LojaGame({
+    required this.nome,
+    required this.subtitulo,
+    required this.url,
+    required this.cor,
+    required this.icone,
+  });
 }
