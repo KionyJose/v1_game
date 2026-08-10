@@ -11,7 +11,7 @@ import 'package:v1_game/Widgets/BarraProgressoYT.dart';
 import 'package:v1_game/Widgets/LoadWid.dart';
 import 'package:v1_game/Widgets/TituloGames.dart';
 import 'package:v1_game/Widgets/cardGame.dart';
-import 'package:v1_game/Widgets/videoSliders.dart';
+import 'package:v1_game/Widgets/VideoSliders.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 import 'Widgets/BodyIconesJogos.dart';
@@ -114,8 +114,8 @@ class _PrincipalPageState extends State<PrincipalPage> with WindowListener {
       if (ctrl.videoAtivo)
       videoAtivo(ctrl),// Player de vídeo
       // if (ctrl.videosYT.isNotEmpty && ctrl.telaIniciada && ctrl.videosCarregados && ctrl.selectedIndexAbaGuias == 0 && !ctrl.cardGamesGrid)
-      if(ctrl.exibirVideos)
-      VideoSliders(child: ListVideosWidget(ctrl: ctrl, cardVideo: cardVideo)),// Lista de vídeos
+      if(ctrl.podeMontarVideos)
+      VideoSliders(visible: ctrl.exibirVideos, child: ListVideosWidget(ctrl: ctrl, cardVideo: cardVideo)),// Lista de vídeos
     ],
     );
   } 

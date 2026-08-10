@@ -158,6 +158,12 @@ class PrincipalCtrl with ChangeNotifier{
 
   bool get exibirVideos {
     return 
+    podeMontarVideos &&
+    !imersao;
+  }
+
+  bool get podeMontarVideos {
+    return 
     configSistema.videosTelaPrincipal &&
     videosYT.isNotEmpty &&
     telaIniciada &&

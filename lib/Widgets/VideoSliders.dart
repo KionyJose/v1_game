@@ -3,8 +3,9 @@
 import 'package:flutter/material.dart';
 
 class VideoSliders extends StatefulWidget {
-  VideoSliders({required this.child, super.key});
+  VideoSliders({required this.child, this.visible = true, super.key});
   Widget child;
+  final bool visible;
 
   @override
   State<VideoSliders> createState() => _VideoSlidersState();
@@ -44,6 +45,16 @@ class _VideoSlidersState extends State<VideoSliders> with SingleTickerProviderSt
   }
 
   @override
+  void didUpdateWidget(covariant VideoSliders oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.visible) {
+      _controller.forward();
+    } else {
+      _controller.reverse();
+    }
+  }
+
+  @override
   void dispose() {
     _controller.dispose();
     super.dispose();
@@ -74,7 +85,13 @@ class _VideoSlidersState extends State<VideoSliders> with SingleTickerProviderSt
         builder: (context, child) {
           return SlideTransition(
             position: _animation,
-            child: widget.child,
+            child: FadeTransition(
+              opacity: _controller,
+              child: IgnorePointer(
+                ignoring: !widget.visible,
+                child: widget.child,
+              ),
+            ),
           );
         },
       ),            
