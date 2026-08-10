@@ -917,6 +917,8 @@ class PrincipalCtrl with ChangeNotifier{
           final nome = await Pops().navPasta(ctx, "", retorno, listIconsInicial, selectedIndexIcone);
           if(retorno=="Add" && nome != null && nome != ""){
             selectedIndexIcone = 0;
+            limparClickPad();
+            await Future.delayed(const Duration(milliseconds: 250));
             await salvaImgDownload();
           }else{
             debugPrint("Sai navPasta");
@@ -1030,6 +1032,8 @@ class PrincipalCtrl with ChangeNotifier{
           await db.attDados(listIconsInicial);
 
           selectedIndexIcone = 0;
+          limparClickPad();
+          await Future.delayed(const Duration(milliseconds: 250));
           await salvaImgDownload();
 
           debugPrint("Sai navPasta");
@@ -1053,6 +1057,16 @@ class PrincipalCtrl with ChangeNotifier{
       debugPrint("ERO BTNMAIS === $e");
       // Pops().msgSimples(ctx,"ERRO = 1$e");
     }
+  }
+
+  void limparClickPad({int delayMs = 450}) {
+    try {
+      final paad = Provider.of<Paad>(ctx, listen: false);
+      paad.click = "";
+      paad.delay = true;
+      paad.attTela();
+      Timer(Duration(milliseconds: delayMs), () { if(!_disposed) paad.delay = false; });
+    } catch (_) {}
   }
   
   salvaImgDownload() async {

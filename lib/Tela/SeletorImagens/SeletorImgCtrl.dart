@@ -26,6 +26,7 @@ class SeletorImgCtrl with ChangeNotifier{
   bool load = true;
   bool stateTela = false;
   bool teclando = false;
+  DateTime _bloquearInputAte = DateTime.now().add(const Duration(milliseconds: 650));
 
   List<String> listComandos =[];
   List<ImgWebScrap> listUser = [];
@@ -73,6 +74,8 @@ class SeletorImgCtrl with ChangeNotifier{
     focusNodesGrid.first.requestFocus();
     load = false;
     stateTela =true;
+    _bloquearInputAte = DateTime.now().add(const Duration(milliseconds: 650));
+    _limparClickPad(delayMs: 650);
     attTela();
   }
 
@@ -157,6 +160,7 @@ class SeletorImgCtrl with ChangeNotifier{
     // debugPrint('========================================');
     
     var imgSelect = await Pops.popTela(ctx, VisualizadorImgWeb(list: listImgs));
+    _limparClickPad();
     stateTela = true;
     load = false;
     focusScope.requestFocus();
@@ -196,6 +200,7 @@ class SeletorImgCtrl with ChangeNotifier{
   escutaPad(String event) async {   
     try{      
       if(!stateTela || event == "") return;
+      if(DateTime.now().isBefore(_bloquearInputAte)) return;
       if(teclando){
         if(event == "ENTER") {
           clickBtnBuscar();
@@ -216,6 +221,7 @@ class SeletorImgCtrl with ChangeNotifier{
       
       if(event == "3"){
         stateTela = false;
+        _limparClickPad();
         return Navigator.pop(ctx);}
       else if (event == "2"){
         
@@ -228,6 +234,7 @@ class SeletorImgCtrl with ChangeNotifier{
           Provider.of<JanelaCtrl>(ctx, listen: false).telaPresaReverse(usarEstado: true, estado: false);
           return;
         }
+        _limparClickPad();
         clickPasta(listUser[selectedIndexGrid].title);
       }    
       // debugPrint(" ===== Click Paad: => $event" );
@@ -245,6 +252,16 @@ class SeletorImgCtrl with ChangeNotifier{
     
     Provider.of<Paad>(ctx, listen: false).click = "";
     Provider.of<Paad>(ctx, listen: false).attTela();
+  }
+
+  void _limparClickPad({int delayMs = 350}) {
+    try {
+      final paad = Provider.of<Paad>(ctx, listen: false);
+      paad.click = "";
+      paad.delay = true;
+      paad.attTela();
+      Timer(Duration(milliseconds: delayMs), () => paad.delay = false);
+    } catch (_) {}
   }
 
 
