@@ -30,8 +30,13 @@ dependencies:
   fluent_ui: ^3.9.1
   bitsdojo_window: ^0.1.6 # Tamanho da tela sem barra superior
   scroll_snap_list: ^0.9.1
-  # ===========================================
-  # MEDIA =====================================
+  # =========================================================
+  # Torrent necessarios =====================================
+  dtorrent_parser: ^1.0.9
+  dtorrent_task: ^0.4.1
+  file_picker: ^8.0.0
+  # =========================================================
+  # MEDIA ===================================================
   process_run: ^0.12.0
   cached_network_image: ^3.3.0  
   url_launcher: ^6.2.6

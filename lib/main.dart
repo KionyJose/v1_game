@@ -14,6 +14,7 @@ import 'package:v1_game/Global.dart';
 import 'package:v1_game/Modelos/configs_sistema.dart';
 import 'package:v1_game/Tela/MyApp.dart';
 import 'package:v1_game/Metodos/nav_mouse_watcher.dart';
+import 'package:v1_game/teste/torrent_monitor_screen.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:media_kit/media_kit.dart';
 import 'Metodos/leituraArquivo.dart';
@@ -23,7 +24,28 @@ WindowOptions windowOptions = const WindowOptions(
   skipTaskbar: false,
   titleBarStyle: TitleBarStyle.hidden,
 );
+
+class MyApp2 extends StatelessWidget {
+  const MyApp2({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      title: 'Monitor Torrent',
+      theme: ThemeData(
+        useMaterial3: true,
+        colorSchemeSeed: Colors.blue,
+      ),
+      home: const TorrentMonitorScreen(),
+    );
+  }
+}
 void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  return runApp( const MyApp2());
+
+  
   WidgetsFlutterBinding.ensureInitialized();
   MediaKit.ensureInitialized();
 
