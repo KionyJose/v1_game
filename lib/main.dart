@@ -18,61 +18,60 @@ import 'package:window_manager/window_manager.dart';
 import 'package:media_kit/media_kit.dart';
 import 'Metodos/leituraArquivo.dart';
 
-WindowOptions windowOptions = const WindowOptions(    
-    center: true,
-    skipTaskbar: false,
-    titleBarStyle: TitleBarStyle.hidden,
-  );
+WindowOptions windowOptions = const WindowOptions(
+  center: true,
+  skipTaskbar: false,
+  titleBarStyle: TitleBarStyle.hidden,
+);
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   MediaKit.ensureInitialized();
-  
+
   // Inicializa o sistema de áudio SoLoud
   await SonsSistema.init();
   await SonsSistema.preloadCommonSounds(); // Pré-carrega todos os sons
-  
+
   // Inicializa captura do botão Xbox/PlayStation Guide
   await RawInputGamepad.inicializar();
-  // Inicializa o observador do rastro (mouse) do nav_flutuante 
-  
+  // Inicializa o observador do rastro (mouse) do nav_flutuante
+
   NavMouseWatcher.start();
   // Desabilita Xbox Game Bar e Steam ao iniciar o sistema
   ModificaWind.desabilitarXboxESteam();
   // Must add this line.
   MouseCtrl.primeiroMovimento();
-  await windowManager.ensureInitialized(); 
-  await windowManager.waitUntilReadyToShow(windowOptions, () async {
+  await windowManager.ensureInitialized();
+  await windowManager.waitUntilReadyToShow(
+    windowOptions,
+    () async {
       await windowManager.show();
       await windowManager.focus();
       await windowManager.maximize();
     },
   );
   await configucacoesSistema();
-  if(configSistema.intro) SonsSistema.intro();
+  if (configSistema.intro) SonsSistema.intro();
   localizaCaminhos();
   await registrarAppNoSetupV1();
 
-
-  
-  
   // semBarras();
   await TESTES().testes();
-  
 
   // Solicitar permissão de armazenamento externo
-  var status = await Permission.storage.request();  
+  var status = await Permission.storage.request();
   if (status.isGranted) runApp(const MyApp());
   // Se a permissão não for concedida, exiba uma mensagem ao usuário ou tome outra ação apropriada
   if (!status.isGranted) debugPrint('Permissão de armazenamento não concedida');
-  
-
 }
-configucacoesSistema() async{
+
+configucacoesSistema() async {
   // Carrega configurações do arquivo JSON
   configSistema = await ConfigSistema.load();
-  debugPrint("✓ Configurações carregadas: volume=${configSistema.volume}, intro=${configSistema.intro}, viewType=${configSistema.viewType}");
+  debugPrint(
+      "✓ Configurações carregadas: volume=${configSistema.volume}, intro=${configSistema.intro}, viewType=${configSistema.viewType}");
 }
-localizaCaminhos(){
+
+localizaCaminhos() {
   // Obtém o caminho completo do executável em execução
   String caminhoExecutavel = Platform.resolvedExecutable;
   // Cria um objeto File a partir do caminho do executável
@@ -80,7 +79,7 @@ localizaCaminhos(){
   // Obtém o diretório onde o executável está localizad
   Directory diretorioAtual = arquivoExecutavel.parent;
   // Obtém o diretório pai do diretório atual
-  Directory diretorioPai = diretorioAtual.parent;    
+  Directory diretorioPai = diretorioAtual.parent;
   //C:\_Flutter\Game Interfacie\v1_game\build\windows\x64\runner\Debug\assets\Scripts
   // String? minhaPasta = Platform.environment['SystemRoot'];
   // Caminho do aplicativo que você deseja usar para abrir o arquivo
@@ -90,13 +89,14 @@ localizaCaminhos(){
 
   criaAtalhoTecladoApp();
 }
-  
+
 Future<void> registrarAppNoSetupV1() async {
   if (!Platform.isWindows) return;
 
   final localAppData = Platform.environment['LOCALAPPDATA'];
   if (localAppData == null || localAppData.isEmpty) {
-    debugPrint('LOCALAPPDATA nao encontrado. Configuracao do setupV1 ignorada.');
+    debugPrint(
+        'LOCALAPPDATA nao encontrado. Configuracao do setupV1 ignorada.');
     return;
   }
 
@@ -167,24 +167,23 @@ displayName=$displayName
 iconPath=$iconPath
 ''';
 }
-  
-criaAtalhoTecladoApp() async {
 
+criaAtalhoTecladoApp() async {
   String caminhoDesktop = await LerArquivos().getDesktopPath();
   // Atalho App
   criarAtalho(
-    origem:"$localPath\\v1_game.exe", 
-    destino:"$caminhoDesktop\\V1 Launcher.lnk",
+    origem: "$localPath\\v1_game.exe",
+    destino: "$caminhoDesktop\\V1 Launcher.lnk",
   );
   // Atalho Teclado
   criarAtalho(
-    origem:'$localPai\\TecladoVirtual\\teclado_virtual.exe', 
+    origem: '$localPai\\TecladoVirtual\\teclado_virtual.exe',
     destino: '$localPai\\teclado_virtual.lnk',
   );
-  
 }
+
 void criarAtalho({required String origem, required String destino}) {
- final script = '''
+  final script = '''
   \$WshShell = New-Object -ComObject WScript.Shell
   \$Shortcut = \$WshShell.CreateShortcut('$destino')
   \$Shortcut.TargetPath = '$origem'
@@ -199,8 +198,9 @@ void criarAtalho({required String origem, required String destino}) {
     debugPrint('Erro ao criar atalho: ${processo.stderr}');
   }
 }
-semBarras(){
-   doWhenWindowReady(() {
+
+semBarras() {
+  doWhenWindowReady(() {
     final win = appWindow;
     // win.maximize();
     win.show();
