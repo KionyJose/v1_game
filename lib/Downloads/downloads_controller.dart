@@ -94,6 +94,28 @@ class DownloadsController extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> setLaunchPath(DownloadRecord record, String path) async {
+    await initialize();
+    if (!items.contains(record) || record.state != DownloadState.completed) {
+      throw StateError('O download precisa estar concluído para jogar.');
+    }
+    if (!await File(path).exists()) {
+      throw StateError('Executável não encontrado.');
+    }
+    if (!path.toLowerCase().endsWith('.exe')) {
+      throw StateError('Selecione o executável .exe do jogo.');
+    }
+    final previous = record.launchPath;
+    record.launchPath = path;
+    try {
+      await _store?.save();
+    } catch (_) {
+      record.launchPath = previous;
+      rethrow;
+    }
+    notifyListeners();
+  }
+
   Future<void> _action(
       DownloadRecord record, Future<void> Function() action) async {
     if (record.busy) return;

@@ -30,6 +30,9 @@ import '../../Class/Paad.dart';
 import '../../Modelos/IconeInicial.dart';
 import '../SeletorImagens/SeletorImagens.dart';
 import '../../Widgets/Pops/Pops.dart';
+import '../../Interface/launcher_routes.dart';
+import '../../Downloads/downloads_tela.dart';
+import '../Tela loja/scrap_loja.dart';
 
 class PrincipalCtrl with ChangeNotifier{
   
@@ -126,6 +129,7 @@ class PrincipalCtrl with ChangeNotifier{
   
   List<String> listAbaGuias= ["Games","Cinema","Musica","Loja"];
   List<LojaGame> listLojas = const [
+    LojaGame(nome: 'Loja Interna', subtitulo: 'Catálogo, trailers e downloads no launcher', url: '', interna: true, cor: Color(0xFF8B7CFF), icone: Icons.storefront_rounded),
     LojaGame(nome: 'GOG', subtitulo: 'Clássicos e DRM-free', url: 'https://www.gog.com', cor: Color(0xFF6D42C7), icone: Icons.extension_rounded),
     LojaGame(nome: 'Steam', subtitulo: 'Biblioteca, ofertas e comunidade', url: 'https://store.steampowered.com', cor: Color(0xFF1B5C8F), icone: Icons.sports_esports_rounded),
     LojaGame(nome: 'Epic', subtitulo: 'Jogos grátis e lançamentos', url: 'https://store.epicgames.com/pt-BR', cor: Color(0xFF2A2A2A), icone: Icons.bolt_rounded),
@@ -937,6 +941,10 @@ class PrincipalCtrl with ChangeNotifier{
       }
 
       switch (retorno) {
+        case 'Downloads': {
+          await abrirTelaInterna(const DownloadsTela());
+          return;
+        }
         
         case "Caminho do game" || "Caminho de Imagem" || "Add": {
           debugPrint("Entrei navPasta");
@@ -1135,6 +1143,10 @@ class PrincipalCtrl with ChangeNotifier{
     try{
       event = MovimentoSistema.normalizaEntrada(event);
       if(!stateTela || event == "") return;
+      if (event == 'START' && focusScope != focusScopeVideos) {
+        btnMais();
+        return;
+      }
       SonsSistema.clickRetroAtivo =
           selectedIndexAbaGuias == 0 && cardGamesRetro && !cardGamesGrid;
 
@@ -1459,7 +1471,7 @@ class PrincipalCtrl with ChangeNotifier{
     }
   }
 
-  movLoja(String event) async {    
+  movLoja(String event) async {
     MovimentoSistema.direcaoListView(focusScope, event);
     if(gameIniciado) {
       if(event == "3") Navigator.pop(ctx);
@@ -1467,10 +1479,38 @@ class PrincipalCtrl with ChangeNotifier{
     }
     if (event == "2"){
       final lojaAtual = listLojas[selectedIndexLoja];
-      await sairDaTelaMedia(lojaAtual.url, "Abrindo ${lojaAtual.nome}.");
+      if (lojaAtual.interna) {
+        await abrirTelaInterna(const ScrapLoja());
+      } else {
+        await sairDaTelaMedia(lojaAtual.url, "Abrindo ${lojaAtual.nome}.");
+      }
       focusScopeLoja.requestFocus();
       focusScope = focusScopeLoja;
       if(focusNodeLoja.isNotEmpty) focusNodeLoja[selectedIndexLoja].requestFocus();
+    }
+  }
+
+  Future<void> abrirTelaInterna(Widget tela) async {
+    final oldScope = focusScope;
+    final oldFocus = FocusManager.instance.primaryFocus;
+    final resumeVideo = mediaPlayer.state.playing;
+    final resumeBackground = bgMediaPlayer.state.playing;
+    stateTela = false;
+    Provider.of<Paad>(ctx, listen: false).click = '';
+    await mediaPlayer.pause();
+    await bgMediaPlayer.pause();
+    try {
+      await abrirTelaLauncher<void>(ctx, tela);
+    } finally {
+      if (!_disposed) {
+        stateTela = true;
+        focusScope = oldScope;
+        oldFocus?.requestFocus();
+        if (resumeVideo) await mediaPlayer.play();
+        if (resumeBackground) await bgMediaPlayer.play();
+        limparClickPad();
+        attTela();
+      }
     }
   }
 
@@ -1656,6 +1696,7 @@ class PrincipalCtrl with ChangeNotifier{
 }
 
 class LojaGame {
+  final bool interna;
   final String nome;
   final String subtitulo;
   final String url;
@@ -1663,6 +1704,7 @@ class LojaGame {
   final IconData icone;
 
   const LojaGame({
+    this.interna = false,
     required this.nome,
     required this.subtitulo,
     required this.url,

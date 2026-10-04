@@ -10,6 +10,7 @@ import 'package:v1_game/Global.dart';
 import 'package:v1_game/Tela/Begin.dart';
 
 import '../Controllers/Notificacao.dart';
+import '../Downloads/downloads_lifecycle.dart';
 
 class MyApp extends StatefulWidget {
   const MyApp({super.key});
@@ -64,6 +65,7 @@ class _MyAppState extends State<MyApp> {
       initialRoute: '/',
       title: 'V1_Games',
       navigatorKey: navigatorKey,
+      builder: (_, child) => DownloadsLifecycle(child: child ?? const SizedBox.shrink()),
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,

@@ -9,7 +9,7 @@ class ImagemJogo extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const vazio = ColoredBox(
-        color: Color(0xFF222638),
+        color: Color(0xFF181818),
         child: Center(
             child: Icon(Icons.image_outlined,
                 color: Color(0xFF8B88AD), size: 42)));

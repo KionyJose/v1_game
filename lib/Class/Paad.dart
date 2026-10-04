@@ -11,8 +11,10 @@ import 'package:v1_game/Metodos/nav_mouse_watcher.dart';
 import '../Controllers/JanelaCtrl.dart';
 
 import 'bruta.dart';
+import 'pad_interface_router.dart';
 
 class Paad with ChangeNotifier{
+  final interfaceRouter = PadInterfaceRouter();
   // Constantes de configuração
   static const int ZONA_MORTA_MOUSE = 3000;
   static const int ZONA_MORTA_SCROLL = 4000;
@@ -123,7 +125,13 @@ class Paad with ChangeNotifier{
     // if(isMouse) return MouseCtrl.mouseAdapt(event, teclando);
     if (event.isEmpty) return;
     click = event;
-    if(await naTela() && !delay)notifyListeners();
+    if(await naTela() && !delay) {
+      if (interfaceRouter.dispatch(event)) {
+        click = '';
+        return;
+      }
+      notifyListeners();
+    }
 
     // X  10.000 >>  32.512
     // X -10.000 << -32.768

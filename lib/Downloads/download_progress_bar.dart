@@ -33,7 +33,7 @@ class DownloadProgressBar extends StatelessWidget {
             color: (waiting ? loadingColor : color).withValues(alpha: 0.48),
             backgroundColor: Color.alphaBlend(
                 (waiting ? loadingColor : color).withValues(alpha: 0.10),
-                const Color(0xFF25283B)),
+                const Color(0xFF242424)),
           )),
           Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8),

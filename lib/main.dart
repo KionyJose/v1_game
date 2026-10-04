@@ -14,8 +14,6 @@ import 'package:v1_game/Global.dart';
 import 'package:v1_game/Modelos/configs_sistema.dart';
 import 'package:v1_game/Tela/MyApp.dart';
 import 'package:v1_game/Metodos/nav_mouse_watcher.dart';
-import 'Tela/Tela loja/scrap_loja.dart';
-import 'Downloads/downloads_lifecycle.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:media_kit/media_kit.dart';
 import 'Metodos/leituraArquivo.dart';
@@ -26,35 +24,15 @@ WindowOptions windowOptions = const WindowOptions(
   titleBarStyle: TitleBarStyle.hidden,
 );
 
-class MyApp2 extends StatelessWidget {
-  const MyApp2({Key? key}) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'V1 • Catálogo de jogos',
-      theme: ThemeData.dark(useMaterial3: true).copyWith(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF8B7CFF),
-          brightness: Brightness.dark,
-        ),
-      ),
-      home: const DownloadsLifecycle(child: ScrapLoja()),
-    );
-  }
-}
-
 void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  MediaKit.ensureInitialized();
-  return runApp(const MyApp2());
+  await iniciarLauncherAnterior();
 }
 
-// Fluxo anterior preservado para reutilização pelo launcher.
+// Entrada do launcher com MediaKit, provedores e integração de Pad do sistema.
 Future<void> iniciarLauncherAnterior() async {
   WidgetsFlutterBinding.ensureInitialized();
   MediaKit.ensureInitialized();
+  localizaCaminhos();
 
   // Inicializa o sistema de áudio SoLoud
   await SonsSistema.init();
@@ -80,11 +58,16 @@ Future<void> iniciarLauncherAnterior() async {
   );
   await configucacoesSistema();
   if (configSistema.intro) SonsSistema.intro();
-  localizaCaminhos();
   await registrarAppNoSetupV1();
 
   // semBarras();
   await TESTES().testes();
+
+  // Windows usa pastas do usuário, sem permissão de armazenamento do Android.
+  if (Platform.isWindows) {
+    runApp(const MyApp());
+    return;
+  }
 
   // Solicitar permissão de armazenamento externo
   var status = await Permission.storage.request();

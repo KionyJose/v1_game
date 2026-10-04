@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'download_record.dart';
 import 'downloads_controller.dart';
 import 'download_progress_bar.dart';
+import '../Interface/pad_direction_intent.dart';
 
 String downloadStateLabel(DownloadState state) => const {
       DownloadState.ready: 'Pronto para iniciar',
@@ -30,29 +31,47 @@ class DownloadCard extends StatefulWidget {
   final DownloadRecord item;
   final DownloadsController controller;
   final bool autofocus;
-  final VoidCallback onDelete;
+  final Future<void> Function() onDelete;
+  final Future<void> Function()? onPlay;
+  final FocusNode? focusNode;
+  final bool Function(TraversalDirection)? onVertical;
   const DownloadCard(
       {super.key,
       required this.item,
       required this.controller,
       required this.onDelete,
+      this.onPlay,
+      this.focusNode,
+      this.onVertical,
       this.autofocus = false});
   @override
   State<DownloadCard> createState() => _DownloadCardState();
 }
 
 class _DownloadCardState extends State<DownloadCard> {
-  final _focus = FocusNode();
+  late final FocusNode _focus;
   final _start = FocusNode();
   final _pause = FocusNode();
   final _delete = FocusNode();
+  final _cancel = FocusNode();
+  final _play = FocusNode();
+  bool _playing = false;
   bool _focused = false;
+  bool _confirming = false;
+  @override
+  void initState() {
+    super.initState();
+    _focus = widget.focusNode ?? FocusNode();
+  }
+
   @override
   void dispose() {
-    _focus.dispose();
+    if (widget.focusNode == null) _focus.dispose();
     _start.dispose();
     _pause.dispose();
     _delete.dispose();
+    _cancel.dispose();
+    _play.dispose();
     super.dispose();
   }
 
@@ -63,8 +82,55 @@ class _DownloadCardState extends State<DownloadCard> {
     } else if (widget.item.state != DownloadState.completed) {
       _start.requestFocus();
     } else {
-      _delete.requestFocus();
+      _play.requestFocus();
     }
+  }
+
+  Future<void> _confirmDelete() async {
+    setState(() => _confirming = true);
+    await widget.onDelete();
+    if (!mounted) return;
+    _delete.requestFocus();
+    setState(() => _confirming = false);
+  }
+
+  Future<void> _playGame() async {
+    setState(() => _playing = true);
+    try {
+      await widget.onPlay?.call();
+    } finally {
+      if (mounted) {
+        setState(() => _playing = false);
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _play.requestFocus();
+        });
+      }
+    }
+  }
+
+  bool _moveActions(TraversalDirection direction) {
+    if (direction != TraversalDirection.left &&
+        direction != TraversalDirection.right) {
+      return widget.onVertical?.call(direction) ?? false;
+    }
+    final item = widget.item;
+    if (item.busy) return true;
+    final nodes = [
+      if (item.state == DownloadState.completed) _play,
+      if (!item.running && item.state != DownloadState.completed) _start,
+      if (item.running) _pause,
+      if (item.state != DownloadState.completed &&
+          item.state != DownloadState.canceled)
+        _cancel,
+      _delete,
+    ];
+    final current = nodes.indexWhere((node) => node.hasFocus);
+    final next = current < 0
+        ? 0
+        : (current + (direction == TraversalDirection.right ? 1 : -1)) %
+            nodes.length;
+    nodes[next].requestFocus();
+    return true;
   }
 
   @override
@@ -75,6 +141,8 @@ class _DownloadCardState extends State<DownloadCard> {
         : const Color(0xFFA99AFF);
     return Actions(
         actions: {
+          PadDirectionIntent: CallbackAction<PadDirectionIntent>(
+              onInvoke: (intent) => _moveActions(intent.direction)),
           ActivateIntent: CallbackAction<ActivateIntent>(onInvoke: (_) {
             _openActions();
             return null;
@@ -83,20 +151,31 @@ class _DownloadCardState extends State<DownloadCard> {
         child: Focus(
             key: ValueKey('focus-${item.id}'),
             focusNode: _focus,
+            // Com as ações abertas, o cartão não compete com seus botões pelo direcional.
+            skipTraversal: _focused,
             autofocus: widget.autofocus,
             onFocusChange: (focused) {
               setState(() => _focused = focused);
-              if (focused) {
-                WidgetsBinding.instance.addPostFrameCallback((_) {
-                  if (mounted) {
-                    Scrollable.ensureVisible(context,
-                        duration: const Duration(milliseconds: 180),
-                        alignment: 0.25);
-                  }
-                });
-              }
             },
             onKeyEvent: (_, event) {
+              if (event is KeyDownEvent || event is KeyRepeatEvent) {
+                if (event.logicalKey == LogicalKeyboardKey.arrowUp ||
+                    event.logicalKey == LogicalKeyboardKey.arrowDown) {
+                  if (_moveActions(
+                      event.logicalKey == LogicalKeyboardKey.arrowUp
+                          ? TraversalDirection.up
+                          : TraversalDirection.down)) {
+                    return KeyEventResult.handled;
+                  }
+                }
+                if (event.logicalKey == LogicalKeyboardKey.arrowLeft ||
+                    event.logicalKey == LogicalKeyboardKey.arrowRight) {
+                  _moveActions(event.logicalKey == LogicalKeyboardKey.arrowLeft
+                      ? TraversalDirection.left
+                      : TraversalDirection.right);
+                  return KeyEventResult.handled;
+                }
+              }
               if (_focus.hasPrimaryFocus &&
                   event is KeyDownEvent &&
                   [
@@ -116,11 +195,11 @@ class _DownloadCardState extends State<DownloadCard> {
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
                       color: _focused
-                          ? const Color(0xFF25223C)
-                          : const Color(0xFF191D2A),
+                          ? const Color(0xFF202020)
+                          : const Color(0xFF131313),
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
-                          color: _focused ? color : const Color(0xFF303449),
+                          color: _focused ? color : const Color(0xFF363636),
                           width: _focused ? 2 : 1)),
                   child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -185,7 +264,7 @@ class _DownloadCardState extends State<DownloadCard> {
                         AnimatedSize(
                           duration: const Duration(milliseconds: 180),
                           alignment: Alignment.topCenter,
-                          child: _focused
+                          child: _focused || _confirming || _playing
                               ? Column(
                                   crossAxisAlignment:
                                       CrossAxisAlignment.stretch,
@@ -203,49 +282,70 @@ class _DownloadCardState extends State<DownloadCard> {
                                           spacing: 10,
                                           runSpacing: 10,
                                           children: [
-                                            FilledButton.icon(
-                                                focusNode: _start,
-                                                onPressed: item.busy ||
-                                                        item.running ||
-                                                        item.state ==
-                                                            DownloadState
-                                                                .completed
-                                                    ? null
-                                                    : () => widget.controller
-                                                        .start(item),
-                                                icon: const Icon(
-                                                    Icons.play_arrow),
-                                                label: Text(item.state ==
-                                                        DownloadState.paused
-                                                    ? 'Retomar'
-                                                    : 'Iniciar')),
-                                            OutlinedButton.icon(
-                                                focusNode: _pause,
-                                                onPressed: item.busy ||
-                                                        !item.running
-                                                    ? null
-                                                    : () => widget.controller
-                                                        .pause(item),
-                                                icon: const Icon(Icons.pause),
-                                                label: const Text('Pausar')),
-                                            OutlinedButton.icon(
-                                                onPressed: item.busy ||
-                                                        item.state ==
-                                                            DownloadState
-                                                                .completed ||
-                                                        item.state ==
-                                                            DownloadState
-                                                                .canceled
-                                                    ? null
-                                                    : () => widget.controller
-                                                        .cancel(item),
-                                                icon: const Icon(Icons.stop),
-                                                label: const Text('Cancelar')),
+                                            if (item.state ==
+                                                DownloadState.completed)
+                                              FilledButton.icon(
+                                                  focusNode: _play,
+                                                  onPressed:
+                                                      item.busy || _playing
+                                                          ? null
+                                                          : _playGame,
+                                                  icon: const Icon(
+                                                      Icons.sports_esports),
+                                                  label: Text(_playing
+                                                      ? 'Abrindo…'
+                                                      : 'Jogar')),
+                                            if (item.state !=
+                                                DownloadState.completed)
+                                              FilledButton.icon(
+                                                  focusNode: _start,
+                                                  onPressed: item.busy ||
+                                                          item.running ||
+                                                          item.state ==
+                                                              DownloadState
+                                                                  .completed
+                                                      ? null
+                                                      : () => widget.controller
+                                                          .start(item),
+                                                  icon: const Icon(
+                                                      Icons.play_arrow),
+                                                  label: Text(item.state ==
+                                                          DownloadState.paused
+                                                      ? 'Retomar'
+                                                      : 'Iniciar')),
+                                            if (item.state !=
+                                                DownloadState.completed)
+                                              OutlinedButton.icon(
+                                                  focusNode: _pause,
+                                                  onPressed: item.busy ||
+                                                          !item.running
+                                                      ? null
+                                                      : () => widget.controller
+                                                          .pause(item),
+                                                  icon: const Icon(Icons.pause),
+                                                  label: const Text('Pausar')),
+                                            if (item.state !=
+                                                DownloadState.completed)
+                                              OutlinedButton.icon(
+                                                  focusNode: _cancel,
+                                                  onPressed: item.busy ||
+                                                          item.state ==
+                                                              DownloadState
+                                                                  .completed ||
+                                                          item.state ==
+                                                              DownloadState
+                                                                  .canceled
+                                                      ? null
+                                                      : () => widget.controller
+                                                          .cancel(item),
+                                                  icon: const Icon(Icons.stop),
+                                                  label:
+                                                      const Text('Cancelar')),
                                             OutlinedButton.icon(
                                                 focusNode: _delete,
                                                 onPressed: item.busy
                                                     ? null
-                                                    : widget.onDelete,
+                                                    : _confirmDelete,
                                                 icon: const Icon(
                                                     Icons.delete_outline),
                                                 label: const Text('Excluir')),

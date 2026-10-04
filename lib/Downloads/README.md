@@ -60,9 +60,22 @@ visíveis e impedem uma exclusão que não tenha confirmado a parada do motor.
 
 ## Componentes
 
+Em Downloads, cima/baixo alternam cartões na ordem da fila; esquerda/direita
+alternam apenas ações habilitadas do cartão atual. A rolagem revela o cartão
+inteiro depois de sua expansão, sem reposicioná-lo a cada botão.
+
+Downloads concluídos oferecem **Jogar**. `download_game_launcher.dart` procura
+executáveis na pasta recebida, ignorando instaladores e pré-requisitos. Quando
+há mais de uma opção, ou o jogo precisa ser instalado, um seletor interno
+navegável pelo Pad permite escolher o executável do jogo. `launchPath` é salvo
+no JSON e reutilizado nas próximas aberturas. A abertura usa o backend `DB`
+do launcher com a pasta do executável como diretório de trabalho; a retenção
+de foco da janela é suspensa enquanto o jogo assume a frente e restaurada ao
+retornar ao aplicativo. Nenhum instalador é executado automaticamente.
+
 `download_store.dart` cuida da importação e do JSON; `aria2_engine.dart`, do RPC;
 `downloads_controller.dart`, dos estados e ações; `download_card.dart`, de cada
-cartão; `downloads_tela.dart`, da fila; `pad_navigation.dart`, do controle;
+cartão; `downloads_tela.dart`, da fila; `Paad` e `Interface/launcher_pad_scope.dart`, do controle;
 `downloads_lifecycle.dart`, da pausa e persistência ao sair do aplicativo.
 
 Os testes usam diretórios temporários, motor injetado e servidor RPC local.

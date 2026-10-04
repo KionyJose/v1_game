@@ -1,91 +1,159 @@
+import '../Interface/launcher_header.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'download_card.dart';
 import 'download_record.dart';
 import 'downloads_controller.dart';
-import 'pad_navigation.dart';
+import '../Interface/launcher_pad_scope.dart';
+import '../Interface/pad_scroll_target.dart';
+import '../Bando de Dados/db.dart';
+import 'dart:io';
+import 'package:path/path.dart' as p;
+import 'download_game_launcher.dart';
+import 'package:provider/provider.dart';
+import 'package:window_manager/window_manager.dart';
+import '../Controllers/JanelaCtrl.dart';
 
 class DownloadsTela extends StatefulWidget {
   final DownloadsController? controller;
   final bool enablePad;
-  const DownloadsTela({super.key, this.controller, this.enablePad = true});
+  final Future<void> Function(String)? onLaunchGame;
+  const DownloadsTela(
+      {super.key, this.controller, this.enablePad = true, this.onLaunchGame});
   @override
   State<DownloadsTela> createState() => _DownloadsTelaState();
 }
 
-class _DownloadsTelaState extends State<DownloadsTela> {
+class _DownloadsTelaState extends State<DownloadsTela> with WindowListener {
   late final DownloadsController _controller;
-  PadNavigation? _pad;
-  @override
-  void initState() {
-    super.initState();
-    _controller = widget.controller ?? DownloadsController.instance;
-    _controller.initialize().catchError((_) {});
-    if (widget.enablePad) {
-      _pad = PadNavigation(_padCommand)..start();
-    }
+  final _itemFocus = <String, FocusNode>{};
+  JanelaCtrl? _gameWindow;
+  bool _wasPinned = false;
+
+  void _restoreWindowPin() {
+    _gameWindow?.telaPresaReverse(usarEstado: true, estado: _wasPinned);
+    _gameWindow = null;
   }
+
+  @override
+  void onWindowFocus() => _restoreWindowPin();
 
   @override
   void dispose() {
-    _pad?.dispose();
+    windowManager.removeListener(this);
+    _restoreWindowPin();
+    for (final node in _itemFocus.values) {
+      node.dispose();
+    }
     super.dispose();
   }
 
-  void _padCommand(PadCommand command) {
-    if (!mounted) return;
-    final focusContext = FocusManager.instance.primaryFocus?.context;
-    if (command == PadCommand.back) {
-      Navigator.of(context).maybePop();
-      return;
+  bool _moveItem(String id, TraversalDirection direction) {
+    if (direction != TraversalDirection.up &&
+        direction != TraversalDirection.down) {
+      return false;
     }
-    if (focusContext == null) return;
-    if (command == PadCommand.select) {
-      Actions.maybeInvoke(focusContext, const ActivateIntent());
-      return;
+    final items = _controller.items;
+    final index = items.indexWhere((item) => item.id == id);
+    if (index < 0) return true;
+    final next = index + (direction == TraversalDirection.down ? 1 : -1);
+    if (next >= 0 && next < items.length) {
+      _itemFocus[items[next].id]?.requestFocus();
     }
-    FocusScope.of(focusContext).focusInDirection({
-      PadCommand.up: TraversalDirection.up,
-      PadCommand.down: TraversalDirection.down,
-      PadCommand.left: TraversalDirection.left,
-      PadCommand.right: TraversalDirection.right
-    }[command]!);
+    return true;
+  }
+
+  Future<void> _play(DownloadRecord item) async {
+    try {
+      if (item.state != DownloadState.completed) return;
+      var path = item.launchPath;
+      if (path == null || !await File(path).exists()) {
+        final candidates = await findDownloadedGames(item.destination);
+        if (!mounted) return;
+        path = candidates.length == 1
+            ? candidates.single
+            : await selectDownloadedGame(context, item.destination);
+        if (path == null || !mounted) return;
+        await _controller.setLaunchPath(item, path);
+      }
+      if (!mounted) return;
+      if (widget.onLaunchGame != null) {
+        await widget.onLaunchGame!(path);
+      } else {
+        _gameWindow = Provider.of<JanelaCtrl?>(context, listen: false);
+        _wasPinned = _gameWindow?.telaPresa ?? false;
+        _gameWindow?.telaPresaReverse(usarEstado: true, estado: false);
+        await DB().openFile(path,
+            workingDirectory: p.dirname(path), throwOnError: true);
+      }
+    } catch (_) {
+      _restoreWindowPin();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text(
+                'Não foi possível abrir o jogo. Verifique o executável e a instalação.')));
+      }
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    windowManager.addListener(this);
+    _controller = widget.controller ?? DownloadsController.instance;
+    _controller.initialize().catchError((_) {});
   }
 
   Future<void> _delete(DownloadRecord item) async {
     bool removePayload = false;
     final confirm = await showDialog<bool>(
         context: context,
-        builder: (context) => StatefulBuilder(
-            builder: (context, setDialogState) => AlertDialog(
-                  title: Text('Excluir ${item.name}?'),
-                  content: Column(mainAxisSize: MainAxisSize.min, children: [
-                    const Text(
-                        'Remove o registro e os arquivos .torrent da pasta de compras.'),
-                    CheckboxListTile(
-                        value: removePayload,
-                        onChanged: (value) =>
-                            setDialogState(() => removePayload = value!),
-                        title: const Text('Excluir também os arquivos do jogo'),
-                        controlAffinity: ListTileControlAffinity.leading),
-                  ]),
-                  actions: [
-                    TextButton(
-                        autofocus: true,
-                        onPressed: () => Navigator.pop(context, false),
-                        child: const Text('Voltar')),
-                    FilledButton(
-                        onPressed: () => Navigator.pop(context, true),
-                        child: const Text('Excluir'))
-                  ],
-                )));
+        builder: (context) => LauncherPadScope(
+            menu: false,
+            enabled: widget.enablePad,
+            child: StatefulBuilder(
+                builder: (context, setDialogState) => AlertDialog(
+                      title: Text('Excluir ${item.name}?'),
+                      content:
+                          Column(mainAxisSize: MainAxisSize.min, children: [
+                        const Text(
+                            'Remove o registro e os arquivos .torrent da pasta de compras.'),
+                        CheckboxListTile(
+                            value: removePayload,
+                            onChanged: (value) =>
+                                setDialogState(() => removePayload = value!),
+                            title: const Text(
+                                'Excluir também os arquivos do jogo'),
+                            controlAffinity: ListTileControlAffinity.leading),
+                      ]),
+                      actions: [
+                        TextButton(
+                            autofocus: true,
+                            onPressed: () => Navigator.pop(context, false),
+                            child: const Text('Voltar')),
+                        FilledButton(
+                            onPressed: () => Navigator.pop(context, true),
+                            child: const Text('Excluir'))
+                      ],
+                    ))));
     if (confirm == true) {
+      final before = _controller.items;
+      final index = before.indexOf(item);
       await _controller.delete(item, deletePayload: removePayload);
+      if (mounted &&
+          !_controller.items.contains(item) &&
+          _controller.items.isNotEmpty) {
+        final remaining = _controller.items;
+        _itemFocus[remaining[index.clamp(0, remaining.length - 1)].id]
+            ?.requestFocus();
+      }
     }
   }
 
   @override
-  Widget build(BuildContext context) => Shortcuts(
+  Widget build(BuildContext context) => LauncherPadScope(
+      enabled: widget.enablePad,
+      child: Shortcuts(
           shortcuts: const {
             SingleActivator(LogicalKeyboardKey.gameButtonA): ActivateIntent(),
             SingleActivator(LogicalKeyboardKey.gameButtonB): DismissIntent(),
@@ -99,18 +167,16 @@ class _DownloadsTelaState extends State<DownloadsTela> {
                 })
               },
               child: Scaffold(
-                backgroundColor: const Color(0xFF10121B),
-                appBar: AppBar(title: const Text('Downloads'), actions: [
-                  IconButton(
-                      tooltip: 'Atualizar Downloads',
-                      onPressed: _controller.refresh,
-                      icon: const Icon(Icons.refresh))
-                ]),
+                backgroundColor: const Color(0xFF000000),
+                appBar: const LauncherHeader(title: Text('Downloads')),
                 body: SafeArea(
                     child: AnimatedBuilder(
                         animation: _controller,
                         builder: (context, _) {
                           final items = _controller.items;
+                          for (final item in items) {
+                            _itemFocus.putIfAbsent(item.id, () => FocusNode());
+                          }
                           return Column(children: [
                             Padding(
                                 padding:
@@ -163,14 +229,30 @@ class _DownloadsTelaState extends State<DownloadsTela> {
                                                     index++) ...[
                                                   if (index > 0)
                                                     const SizedBox(height: 14),
-                                                  DownloadCard(
-                                                      key: ValueKey(
-                                                          items[index].id),
-                                                      item: items[index],
-                                                      controller: _controller,
-                                                      autofocus: index == 0,
-                                                      onDelete: () => _delete(
-                                                          items[index])),
+                                                  PadScrollTarget(
+                                                      settleDelay:
+                                                          const Duration(
+                                                              milliseconds:
+                                                                  200),
+                                                      child: DownloadCard(
+                                                          key: ValueKey(
+                                                              items[index].id),
+                                                          item: items[index],
+                                                          controller:
+                                                              _controller,
+                                                          focusNode: _itemFocus[
+                                                              items[index].id],
+                                                          onVertical:
+                                                              (direction) =>
+                                                                  _moveItem(
+                                                                      items[index]
+                                                                          .id,
+                                                                      direction),
+                                                          onPlay: () => _play(
+                                                              items[index]),
+                                                          autofocus: index == 0,
+                                                          onDelete: () => _delete(
+                                                              items[index]))),
                                                 ]
                                               ]),
                                             ))),
@@ -183,5 +265,5 @@ class _DownloadsTelaState extends State<DownloadsTela> {
                                         TextStyle(color: Color(0xFFACA8C7)))),
                           ]);
                         })),
-              )));
+              ))));
 }

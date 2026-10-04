@@ -90,6 +90,24 @@ void main() {
     return controller.items.last;
   }
 
+  test('Executável escolhido para Jogar persiste junto ao download concluído',
+      () async {
+    final record = await add('play');
+    final exe = File(p.join(record.destination, 'Game.exe'));
+    await exe.parent.create(recursive: true);
+    await exe.writeAsString('fixture, nunca executada');
+    await expectLater(
+        controller.setLaunchPath(record, exe.path), throwsStateError);
+    record.state = DownloadState.completed;
+    await controller.setLaunchPath(record, exe.path);
+    final saved = jsonDecode(await store.indexFile.readAsString())
+        as Map<String, dynamic>;
+    final restored = DownloadRecord.fromJson(
+        (saved['downloads'] as List).single as Map<String, dynamic>);
+    expect(restored.launchPath, exe.path);
+    expect(restored.state, DownloadState.completed);
+  });
+
   test(
       'Source tipado e dados persistidos ao receber torrent; duplicatas usam infoHash',
       () async {

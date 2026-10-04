@@ -32,7 +32,7 @@ void main() {
         .pumpWidget(MaterialApp(home: ScrapLoja(scraper: FonteTeste())));
     await tester.pumpAndSettle();
     expect(find.text('Jogo de aventura'), findsOneWidget);
-    expect(find.text('Ver detalhes'), findsOneWidget);
+    expect(find.text('Ver detalhes'), findsNothing);
     expect(tester.takeException(), isNull);
     await tester.enterText(find.byType(TextField), 'inexistente');
     await tester.pumpAndSettle();

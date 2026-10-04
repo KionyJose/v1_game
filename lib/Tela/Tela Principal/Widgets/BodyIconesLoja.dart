@@ -41,7 +41,11 @@ class BodyIconesLoja extends StatelessWidget {
                       if (hasFocus) ctrl.onFocusChangeGrid(index, PrincipalCtrl.loja);
                     },
                     child: GestureDetector(
-                      onTap: ctrl.mouseBloqueado ? null : () => ctrl.movLoja("2"),
+                      onTap: ctrl.mouseBloqueado ? null : () {
+                        ctrl.selectedIndexLoja = index;
+                        ctrl.focusNodeLoja[index].requestFocus();
+                        ctrl.movLoja('2');
+                      },
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 180),
                         curve: Curves.easeOut,

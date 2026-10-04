@@ -181,7 +181,7 @@ class DB{
     }
   }
 
-  openFile(String filePath) async {
+  openFile(String filePath, {String? workingDirectory, bool throwOnError = false}) async {
     try {
       final pidsAntes = await _pidsPorCaminhoExecutavel(filePath);
       debugPrint('========================================');
@@ -213,7 +213,7 @@ class DB{
       }
       
       // Verifica se é um arquivo .exe ou .lnk
-      if (filePath.endsWith('.exe') || filePath.endsWith('.lnk')) {
+      if (filePath.toLowerCase().endsWith('.exe') || filePath.toLowerCase().endsWith('.lnk')) {
         debugPrint('Executável detectado: ${filePath.split('\\').last}');
         
         // Para .exe, executa sem bloquear a aplicação (modo detached).
@@ -221,6 +221,7 @@ class DB{
           filePath,
           [],
           mode: ProcessStartMode.normal,
+          workingDirectory: workingDirectory,
         );
         processoAbertoPid = process?.pid;
         processoAbertoPath = filePath;
@@ -244,6 +245,7 @@ class DB{
       debugPrint('========================================');
 
     } on ProcessException catch (e) {
+      if (throwOnError) rethrow;
       debugPrint('========================================');
       debugPrint('ERRO ProcessException ao abrir arquivo');
       debugPrint('Mensagem: ${e.message}');
@@ -253,6 +255,7 @@ class DB{
     } catch (e) {
       debugPrint('========================================');
       debugPrint('ERRO desconhecido: $e');
+      if (throwOnError) rethrow;
       debugPrint('========================================');
     }
   }

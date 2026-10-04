@@ -124,7 +124,7 @@ void main() {
     fonte.falhar = false;
     await tester.tap(find.text('Tentar novamente'));
     await tester.pumpAndSettle();
-    expect(find.text('Imagens'), findsOneWidget);
+    expect(find.text('Versão do jogo'), findsOneWidget);
     await tester.pumpWidget(const SizedBox());
     expect(fonte.disposed, isTrue);
   });
