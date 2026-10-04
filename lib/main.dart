@@ -14,7 +14,8 @@ import 'package:v1_game/Global.dart';
 import 'package:v1_game/Modelos/configs_sistema.dart';
 import 'package:v1_game/Tela/MyApp.dart';
 import 'package:v1_game/Metodos/nav_mouse_watcher.dart';
-import 'package:v1_game/teste/torrent_monitor_screen.dart';
+import 'Tela/Tela loja/scrap_loja.dart';
+import 'Downloads/downloads_lifecycle.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:media_kit/media_kit.dart';
 import 'Metodos/leituraArquivo.dart';
@@ -32,20 +33,26 @@ class MyApp2 extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'Monitor Torrent',
-      theme: ThemeData(
-        useMaterial3: true,
-        colorSchemeSeed: Colors.blue,
+      title: 'V1 • Catálogo de jogos',
+      theme: ThemeData.dark(useMaterial3: true).copyWith(
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color(0xFF8B7CFF),
+          brightness: Brightness.dark,
+        ),
       ),
-      home: const TorrentMonitorScreen(),
+      home: const DownloadsLifecycle(child: ScrapLoja()),
     );
   }
 }
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  return runApp( const MyApp2());
+  MediaKit.ensureInitialized();
+  return runApp(const MyApp2());
+}
 
-  
+// Fluxo anterior preservado para reutilização pelo launcher.
+Future<void> iniciarLauncherAnterior() async {
   WidgetsFlutterBinding.ensureInitialized();
   MediaKit.ensureInitialized();
 

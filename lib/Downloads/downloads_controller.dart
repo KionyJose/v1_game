@@ -1,0 +1,247 @@
+import 'dart:async';
+import 'dart:io';
+import 'package:flutter/foundation.dart';
+import 'aria2_engine.dart';
+import 'download_record.dart';
+import 'download_store.dart';
+
+class DownloadsController extends ChangeNotifier {
+  static final instance = DownloadsController();
+  final Future<DownloadStore> Function() _openStore;
+  final TorrentEngine engine;
+  DownloadStore? _store;
+  Future<void>? _initializing;
+  Timer? _timer;
+  Timer? _watchDebounce;
+  StreamSubscription<FileSystemEvent>? _watch;
+  bool _polling = false;
+  bool _scanning = false;
+  bool _closed = false;
+  bool loading = false;
+  String? error;
+  DownloadsController(
+      {Future<DownloadStore> Function()? openStore, TorrentEngine? engine})
+      : _openStore = openStore ?? DownloadStore.openDefault,
+        engine = engine ?? Aria2Engine();
+
+  List<DownloadRecord> get items =>
+      List.unmodifiable(_store?.records.values ?? <DownloadRecord>[]);
+  String get purchaseDirectory => _store?.purchases.path ?? '';
+
+  Future<void> initialize() => _initializing ??= _initialize();
+  Future<void> _initialize() async {
+    loading = true;
+    error = null;
+    notifyListeners();
+    try {
+      final store = await _openStore();
+      await store.load();
+      _store = store;
+      await store.save();
+      _watch = store.purchases.watch().listen((event) {
+        if (!event.path.toLowerCase().endsWith('.torrent')) return;
+        _watchDebounce?.cancel();
+        _watchDebounce = Timer(const Duration(seconds: 1), () => refresh());
+      }, onError: (Object e) {
+        error = 'Não foi possível monitorar a pasta: $e';
+        notifyListeners();
+      });
+      _timer = Timer.periodic(const Duration(seconds: 2), (_) => poll());
+    } catch (e) {
+      _initializing = null;
+      error = 'Não foi possível carregar Downloads: $e';
+      rethrow;
+    } finally {
+      loading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> refresh() async {
+    try {
+      await initialize();
+      if (_scanning || _closed) return;
+      _scanning = true;
+      await _store!.scan();
+      await _store!.save();
+      error = null;
+    } catch (e) {
+      error = e.toString();
+    } finally {
+      _scanning = false;
+      if (!_closed) notifyListeners();
+    }
+  }
+
+  Future<void> registerPurchase(String path,
+      {required String sourceName,
+      required String edition,
+      required String pageUrl,
+      required String downloadUrl,
+      required Map<String, String> releaseInfo}) async {
+    await initialize();
+    await _store!.importTorrent(path,
+        sourceName: sourceName,
+        edition: edition,
+        pageUrl: pageUrl,
+        downloadUrl: downloadUrl,
+        releaseInfo: releaseInfo);
+    await _store!.save();
+    notifyListeners();
+  }
+
+  Future<void> _action(
+      DownloadRecord record, Future<void> Function() action) async {
+    if (record.busy) return;
+    record.busy = true;
+    record.error = null;
+    notifyListeners();
+    try {
+      await action();
+    } catch (e) {
+      record.error = e.toString();
+      // Falha ao pausar/cancelar não deve fingir que o download parou.
+      if (record.state == DownloadState.preparing) {
+        record.state = DownloadState.error;
+      }
+    } finally {
+      record.busy = false;
+      try {
+        await _store!.save();
+      } catch (e) {
+        error = 'Falha ao salvar o estado: $e';
+      }
+      if (!_closed) notifyListeners();
+    }
+  }
+
+  Future<void> start(DownloadRecord record) => _action(record, () async {
+        if (record.running || record.state == DownloadState.completed) return;
+        if (record.gid != null && record.state == DownloadState.paused) {
+          await engine.resume(record.gid!);
+        } else {
+          if (record.gid != null) {
+            await engine.cancel(record.gid!);
+            record.gid = null;
+          }
+          record.state = DownloadState.preparing;
+          notifyListeners();
+          final path = record.torrentFiles.firstWhere(
+              (path) => File(path).existsSync(),
+              orElse: () =>
+                  throw StateError('Arquivo .torrent não encontrado.'));
+          record.gid = await engine.start(path, record.destination);
+          record.startedAt ??= DateTime.now();
+        }
+        record.state = DownloadState.downloading;
+      });
+
+  Future<void> pause(DownloadRecord record) => _action(record, () async {
+        if (record.gid == null || !record.running) return;
+        await engine.pause(record.gid!);
+        record.state = DownloadState.paused;
+        record.speedBytes = 0;
+      });
+
+  Future<void> cancel(DownloadRecord record) => _action(record, () async {
+        if (record.gid != null && record.state != DownloadState.completed) {
+          await engine.cancel(record.gid!);
+        }
+        record.gid = null;
+        record.state = DownloadState.canceled;
+        record.speedBytes = 0;
+        record.peers = 0;
+      });
+
+  Future<void> delete(DownloadRecord record, {bool deletePayload = false}) =>
+      _action(record, () async {
+        if (record.gid != null && record.state != DownloadState.completed) {
+          await engine.cancel(record.gid!);
+        }
+        record.gid = null;
+        await _store!.delete(record, deletePayload: deletePayload);
+      });
+
+  Future<void> poll() async {
+    if (_polling || _store == null || _closed) return;
+    if (!items.any((r) => r.gid != null && !r.busy)) return;
+    _polling = true;
+    try {
+      await Future.wait(
+          items.where((r) => r.gid != null && !r.busy).map((record) async {
+        final gid = record.gid!;
+        try {
+          final status = await engine.status(gid);
+          if (record.busy ||
+              record.gid != gid ||
+              !_store!.records.containsKey(record.id)) {
+            return;
+          }
+          int number(String key) => int.tryParse('${status[key] ?? 0}') ?? 0;
+          record.totalBytes = number('totalLength');
+          record.downloadedBytes = number('completedLength');
+          record.speedBytes = number('downloadSpeed');
+          record.peers = number('connections');
+          switch (status['status']) {
+            case 'active':
+              record.state = DownloadState.downloading;
+              break;
+            case 'waiting':
+              record.state = DownloadState.queued;
+              break;
+            case 'paused':
+              record.state = DownloadState.paused;
+              record.speedBytes = 0;
+              break;
+            case 'complete':
+              record.state = DownloadState.completed;
+              record.downloadedBytes = record.totalBytes;
+              record.completedAt ??= DateTime.now();
+              record.speedBytes = 0;
+              record.gid = null;
+              break;
+            case 'removed':
+              record.state = DownloadState.canceled;
+              record.gid = null;
+              break;
+            case 'error':
+              record.state = DownloadState.error;
+              record.error =
+                  status['errorMessage'] as String? ?? 'Falha no download.';
+              record.speedBytes = 0;
+              break;
+          }
+        } catch (e) {
+          record.error = 'Não foi possível consultar o download: $e';
+        }
+      }));
+      await _store!.save();
+    } catch (e) {
+      error = 'Falha ao salvar Downloads: $e';
+    } finally {
+      _polling = false;
+      if (!_closed) notifyListeners();
+    }
+  }
+
+  Future<void> shutdown() async {
+    _closed = true;
+    _timer?.cancel();
+    _watchDebounce?.cancel();
+    await _watch?.cancel();
+    for (final record in items.where((r) => r.running)) {
+      if (record.gid != null) {
+        try {
+          await engine.pause(record.gid!);
+        } catch (_) {}
+      }
+      record.state = DownloadState.paused;
+      record.speedBytes = 0;
+    }
+    try {
+      await _store?.save();
+    } finally {
+      await engine.close();
+    }
+  }
+}
