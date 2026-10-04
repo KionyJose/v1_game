@@ -43,6 +43,21 @@ Somente o cartão com foco expande suas ações. Teclado: setas, Enter e Escape.
 Controle XInput: direcional/analógico esquerdo, A para selecionar e B para voltar.
 A leitura do controle é local à tela e não movimenta o cursor do Windows.
 
+A barra tem 52 pixels de altura e texto interno. Sem dados recebidos, exibe
+**Analisando torrent** por 5 minutos ativos, depois **Verificando dados finais**
+por mais 3. Nessas etapas, um indicador indeterminado percorre a barra atrás
+do texto e da contagem regressiva, em violeta na análise e ciano na verificação.
+Bytes recebidos ou velocidade positiva encerram a espera
+e a barra passa a usar o progresso real. Pausa e fila não consomem esse prazo.
+Se os 8 minutos terminarem sem dados, a transferência é cancelada, o item recebe
+um erro explicativo e pode ser iniciado novamente. Seus arquivos são preservados.
+
+Cancelar é idempotente: GID já removido não é erro. Respostas HTTP 400 com erro
+JSON-RPC são interpretadas antes de classificar falhas de transporte; a limpeza
+do resultado aguarda a remoção assíncrona. Excluir um ativo cancela primeiro e
+somente depois remove seus arquivos. Falhas de autenticação ou conexão continuam
+visíveis e impedem uma exclusão que não tenha confirmado a parada do motor.
+
 ## Componentes
 
 `download_store.dart` cuida da importação e do JSON; `aria2_engine.dart`, do RPC;

@@ -13,6 +13,19 @@ abstract class TorrentEngine {
   Future<void> close();
 }
 
+class Aria2RpcException implements Exception {
+  final int? code;
+  final String message;
+  const Aria2RpcException(this.code, this.message);
+  bool get missingGid => RegExp(r'GID[#\s]+.+\s+is not found|No such download',
+          caseSensitive: false)
+      .hasMatch(message);
+  bool get removalPending =>
+      message.toLowerCase().contains('cannot be removed');
+  @override
+  String toString() => 'aria2: $message';
+}
+
 /// Um único processo aria2, vários GIDs independentes e RPC restrito a loopback.
 class Aria2Engine implements TorrentEngine {
   Process? _process;
@@ -152,18 +165,25 @@ class Aria2Engine implements TorrentEngine {
 
   @override
   Future<void> cancel(String gid) async {
-    final initial = await status(gid);
-    if (['removed', 'complete', 'error'].contains(initial['status'])) {
-      await _rpc('aria2.removeDownloadResult', [gid]);
-      return;
-    }
-    await _rpc('aria2.forceRemove', [gid]);
-    // A remoção é assíncrona: aguardar antes de excluir arquivos ou reiniciar.
-    for (var attempt = 0; attempt < 40; attempt++) {
-      final current = await status(gid);
-      if (['removed', 'complete', 'error'].contains(current['status'])) {
-        await _rpc('aria2.removeDownloadResult', [gid]);
-        return;
+    // Um processo próprio encerrado já não possui transferências ativas.
+    if (_uri == null && _process == null && _boot == null) return;
+    bool removalRequested = false;
+    for (var attempt = 0; attempt < 120; attempt++) {
+      try {
+        final current = await status(gid);
+        if (['removed', 'complete', 'error'].contains(current['status'])) {
+          // O estado pode mudar antes de o resultado entrar na lista de parados.
+          await _rpc('aria2.removeDownloadResult', [gid]);
+          return;
+        }
+        if (!removalRequested) {
+          await _rpc('aria2.forceRemove', [gid]);
+          removalRequested = true;
+        }
+      } on Aria2RpcException catch (error) {
+        // Cancelar duas vezes e excluir após cancelar são operações válidas.
+        if (error.missingGid) return;
+        if (!error.removalPending) rethrow;
       }
       await Future<void>.delayed(const Duration(milliseconds: 100));
     }
@@ -207,13 +227,20 @@ class Aria2Engine implements TorrentEngine {
         .transform(utf8.decoder)
         .join()
         .timeout(const Duration(seconds: 8));
-    if (response.statusCode != HttpStatus.ok || responseBody.trim().isEmpty) {
+    dynamic data;
+    try {
+      data = jsonDecode(responseBody);
+    } on FormatException {
+      // Uma falha HTTP sem envelope RPC continua sendo uma falha de transporte.
+    }
+    // aria2 também entrega erros JSON-RPC válidos com HTTP 400.
+    if (data is Map && data['error'] is Map) {
+      final error = data['error'] as Map;
+      throw Aria2RpcException(error['code'] as int?, '${error['message']}');
+    }
+    if (response.statusCode != HttpStatus.ok || data is! Map) {
       throw StateError('RPC $method: HTTP ${response.statusCode}'
           '${responseBody.isEmpty ? ', resposta vazia.' : ': $responseBody'}');
-    }
-    final data = jsonDecode(responseBody) as Map;
-    if (data['error'] != null) {
-      throw StateError('aria2: ${data['error']['message']}');
     }
     return data['result'];
   }

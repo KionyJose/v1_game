@@ -5,6 +5,7 @@ import 'package:v1_game/Downloads/download_card.dart';
 import 'package:v1_game/Downloads/download_record.dart';
 import 'package:v1_game/Downloads/downloads_controller.dart';
 import 'package:v1_game/Downloads/downloads_tela.dart';
+import 'package:v1_game/Downloads/download_progress_bar.dart';
 
 class TelaController extends DownloadsController {
   final records = List.generate(
@@ -52,6 +53,52 @@ class TelaController extends DownloadsController {
 }
 
 void main() {
+  testWidgets('Barra grossa contém as duas etapas e depois o progresso real',
+      (tester) async {
+    final item = DownloadRecord(
+        id: '1' * 40,
+        name: 'Teste',
+        torrentFiles: [],
+        destination: '',
+        acquiredAt: DateTime(2026),
+        state: DownloadState.downloading,
+        totalBytes: 100);
+    Future<void> render() => tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+            body: SizedBox(
+                width: 280,
+                child:
+                    DownloadProgressBar(item: item, color: Colors.purple)))));
+    await render();
+    expect(find.text('Analisando torrent • 05:00'), findsOneWidget);
+    expect(
+        tester
+            .widget<LinearProgressIndicator>(
+                find.byType(LinearProgressIndicator))
+            .value,
+        isNull);
+    expect(tester.getSize(find.byType(LinearProgressIndicator)).height, 52);
+    item.analysisElapsed = const Duration(minutes: 5);
+    await render();
+    expect(find.text('Verificando dados finais • 03:00'), findsOneWidget);
+    expect(
+        tester
+            .widget<LinearProgressIndicator>(
+                find.byType(LinearProgressIndicator))
+            .value,
+        isNull);
+    item.receivedData = true;
+    item.downloadedBytes = 25;
+    await render();
+    expect(find.text('25.0%'), findsOneWidget);
+    expect(
+        tester
+            .widget<LinearProgressIndicator>(
+                find.byType(LinearProgressIndicator))
+            .value,
+        .25);
+    expect(tester.takeException(), isNull);
+  });
   testWidgets(
       'Apenas cartão em foco expande ações; Enter inicia e mantém os demais itens',
       (tester) async {
@@ -78,7 +125,7 @@ void main() {
     await tester.sendKeyEvent(LogicalKeyboardKey.enter);
     await tester.pumpAndSettle();
     await tester.sendKeyEvent(LogicalKeyboardKey.enter);
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 250));
     expect(controller.starts, 1);
     expect(controller.records.first.state, DownloadState.ready);
     expect(controller.records.last.state, DownloadState.downloading);

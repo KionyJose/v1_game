@@ -32,6 +32,7 @@ void main() {
     expect((await engine.status(gids.first))['status'], 'paused');
     await engine.resume(gids.first);
     await engine.cancel(gids.first);
+    await engine.cancel(gids.first); // Já removido: não deve gerar Bad state.
     expect((await engine.status(gids.last))['gid'], gids.last);
     await engine.cancel(gids.last);
   }, skip: skipNative);

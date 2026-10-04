@@ -183,15 +183,31 @@ class DownloadStore {
       if (!p.isWithin(root, resolved)) {
         throw StateError('O destino aponta para fora da pasta gerenciada.');
       }
-      await directory.delete(recursive: true);
+      await _deleteWithRetry(directory, recursive: true);
     }
     for (final path in record.torrentFiles) {
       if (!p.isWithin(p.absolute(purchases.path), p.absolute(path))) continue;
       for (final file in [File(path), File('$path.json')]) {
-        if (await file.exists()) await file.delete();
+        if (await file.exists()) await _deleteWithRetry(file);
       }
     }
     records.remove(record.id);
     await _persist();
+  }
+
+  Future<void> _deleteWithRetry(FileSystemEntity entity,
+      {bool recursive = false}) async {
+    for (var attempt = 0; attempt < 10; attempt++) {
+      try {
+        if (await entity.exists()) await entity.delete(recursive: recursive);
+        return;
+      } on FileSystemException catch (error) {
+        // O Windows pode manter handles por instantes após a parada do aria2.
+        if (attempt == 9 || ![32, 33].contains(error.osError?.errorCode)) {
+          rethrow;
+        }
+        await Future<void>.delayed(const Duration(milliseconds: 200));
+      }
+    }
   }
 }

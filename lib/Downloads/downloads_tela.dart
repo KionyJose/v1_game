@@ -152,15 +152,17 @@ class _DownloadsTelaState extends State<DownloadsTela> {
                                         : FocusTraversalGroup(
                                             policy:
                                                 ReadingOrderTraversalPolicy(),
-                                            child: ListView.separated(
+                                            child: SingleChildScrollView(
                                               padding:
                                                   const EdgeInsets.symmetric(
                                                       horizontal: 24,
                                                       vertical: 8),
-                                              itemCount: items.length,
-                                              separatorBuilder: (_, __) =>
-                                                  const SizedBox(height: 14),
-                                              itemBuilder: (_, index) =>
+                                              child: Column(children: [
+                                                for (var index = 0;
+                                                    index < items.length;
+                                                    index++) ...[
+                                                  if (index > 0)
+                                                    const SizedBox(height: 14),
                                                   DownloadCard(
                                                       key: ValueKey(
                                                           items[index].id),
@@ -169,6 +171,8 @@ class _DownloadsTelaState extends State<DownloadsTela> {
                                                       autofocus: index == 0,
                                                       onDelete: () => _delete(
                                                           items[index])),
+                                                ]
+                                              ]),
                                             ))),
                             const Padding(
                                 padding: EdgeInsets.all(16),

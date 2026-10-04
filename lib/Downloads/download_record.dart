@@ -41,6 +41,30 @@ class DownloadRecord {
   DateTime? startedAt;
   DateTime? completedAt;
   bool busy = false;
+  // Tempo ativo da tentativa atual; pausa e fila não consomem esse prazo.
+  Duration analysisElapsed = Duration.zero;
+  DateTime? analysisUpdatedAt;
+  bool receivedData = false;
+  static const analysisDuration = Duration(minutes: 5);
+  static const finalCheckDuration = Duration(minutes: 3);
+  bool get waitingForData => running && !receivedData && downloadedBytes == 0;
+  bool get checkingFinalData => analysisElapsed >= analysisDuration;
+  Duration get analysisRemaining {
+    final limit = checkingFinalData
+        ? analysisDuration + finalCheckDuration
+        : analysisDuration;
+    final remaining = limit - analysisElapsed;
+    return remaining.isNegative ? Duration.zero : remaining;
+  }
+
+  double get analysisProgress {
+    final elapsed = checkingFinalData
+        ? analysisElapsed - analysisDuration
+        : analysisElapsed;
+    final duration = checkingFinalData ? finalCheckDuration : analysisDuration;
+    return (elapsed.inMilliseconds / duration.inMilliseconds).clamp(0, 1);
+  }
+
   double get progress =>
       totalBytes > 0 ? (downloadedBytes / totalBytes).clamp(0, 1) : 0;
   bool get running => [

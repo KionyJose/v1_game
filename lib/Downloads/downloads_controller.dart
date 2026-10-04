@@ -9,6 +9,7 @@ class DownloadsController extends ChangeNotifier {
   static final instance = DownloadsController();
   final Future<DownloadStore> Function() _openStore;
   final TorrentEngine engine;
+  final DateTime Function() _now;
   DownloadStore? _store;
   Future<void>? _initializing;
   Timer? _timer;
@@ -20,8 +21,11 @@ class DownloadsController extends ChangeNotifier {
   bool loading = false;
   String? error;
   DownloadsController(
-      {Future<DownloadStore> Function()? openStore, TorrentEngine? engine})
+      {Future<DownloadStore> Function()? openStore,
+      TorrentEngine? engine,
+      DateTime Function()? now})
       : _openStore = openStore ?? DownloadStore.openDefault,
+        _now = now ?? DateTime.now,
         engine = engine ?? Aria2Engine();
 
   List<DownloadRecord> get items =>
@@ -117,6 +121,11 @@ class DownloadsController extends ChangeNotifier {
 
   Future<void> start(DownloadRecord record) => _action(record, () async {
         if (record.running || record.state == DownloadState.completed) return;
+        if (record.state != DownloadState.paused) {
+          record.analysisElapsed = Duration.zero;
+        }
+        record.analysisUpdatedAt = _now();
+        record.receivedData = record.downloadedBytes > 0;
         if (record.gid != null && record.state == DownloadState.paused) {
           await engine.resume(record.gid!);
         } else {
@@ -140,6 +149,7 @@ class DownloadsController extends ChangeNotifier {
         if (record.gid == null || !record.running) return;
         await engine.pause(record.gid!);
         record.state = DownloadState.paused;
+        record.analysisUpdatedAt = null;
         record.speedBytes = 0;
       });
 
@@ -149,6 +159,7 @@ class DownloadsController extends ChangeNotifier {
         }
         record.gid = null;
         record.state = DownloadState.canceled;
+        record.analysisUpdatedAt = null;
         record.speedBytes = 0;
         record.peers = 0;
       });
@@ -159,6 +170,10 @@ class DownloadsController extends ChangeNotifier {
           await engine.cancel(record.gid!);
         }
         record.gid = null;
+        record.state = DownloadState.canceled;
+        record.analysisUpdatedAt = null;
+        record.speedBytes = 0;
+        record.peers = 0;
         await _store!.delete(record, deletePayload: deletePayload);
       });
 
@@ -182,6 +197,10 @@ class DownloadsController extends ChangeNotifier {
           record.downloadedBytes = number('completedLength');
           record.speedBytes = number('downloadSpeed');
           record.peers = number('connections');
+          if (record.downloadedBytes > 0 || record.speedBytes > 0) {
+            record.receivedData = true;
+            record.analysisUpdatedAt = null;
+          }
           switch (status['status']) {
             case 'active':
               record.state = DownloadState.downloading;
@@ -211,8 +230,36 @@ class DownloadsController extends ChangeNotifier {
               record.speedBytes = 0;
               break;
           }
+          if (status['status'] == 'active' && record.waitingForData) {
+            final now = _now();
+            final previous = record.analysisUpdatedAt;
+            if (previous != null && now.isAfter(previous)) {
+              record.analysisElapsed += now.difference(previous);
+            }
+            record.analysisUpdatedAt = now;
+            if (record.analysisElapsed >=
+                DownloadRecord.analysisDuration +
+                    DownloadRecord.finalCheckDuration) {
+              await _action(record, () async {
+                await engine.cancel(gid);
+                record.gid = null;
+                record.analysisUpdatedAt = null;
+                record.state = DownloadState.error;
+                record.speedBytes = 0;
+                record.peers = 0;
+                record.error = 'Nenhum dado recebido após 5 minutos de análise '
+                    'e 3 minutos de verificação final. Tente iniciar novamente.';
+              });
+            }
+          } else if (status['status'] != 'active') {
+            record.analysisUpdatedAt = null;
+          }
         } catch (e) {
-          record.error = 'Não foi possível consultar o download: $e';
+          if (!record.busy &&
+              record.gid == gid &&
+              _store!.records.containsKey(record.id)) {
+            record.error = 'Não foi possível consultar o download: $e';
+          }
         }
       }));
       await _store!.save();

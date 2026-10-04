@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'download_record.dart';
 import 'downloads_controller.dart';
+import 'download_progress_bar.dart';
 
 String downloadStateLabel(DownloadState state) => const {
       DownloadState.ready: 'Pronto para iniciar',
@@ -155,19 +156,17 @@ class _DownloadCardState extends State<DownloadCard> {
                                         color: Color(0xFFB9B5D2))),
                               ])),
                           const SizedBox(width: 12),
-                          Text('${(item.progress * 100).toStringAsFixed(0)}%',
+                          Text(
+                              item.waitingForData
+                                  ? '…'
+                                  : '${(item.progress * 100).toStringAsFixed(0)}%',
                               style: TextStyle(
                                   fontSize: 20,
                                   color: color,
                                   fontWeight: FontWeight.bold)),
                         ]),
                         const SizedBox(height: 18),
-                        LinearProgressIndicator(
-                            value: item.progress,
-                            minHeight: 7,
-                            borderRadius: BorderRadius.circular(8),
-                            color: color,
-                            backgroundColor: const Color(0xFF34384A)),
+                        DownloadProgressBar(item: item, color: color),
                         const SizedBox(height: 12),
                         Wrap(spacing: 20, runSpacing: 8, children: [
                           Text(downloadStateLabel(item.state),
