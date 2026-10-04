@@ -33,6 +33,14 @@ class DownloadRecord {
   String destination;
   bool destinationChosen;
   String? launchPath;
+  String installationState = 'idle';
+  String installationStatus = '';
+  String? installationError;
+  String? installationDirectory;
+  String? installationProtocol;
+  Map<String, dynamic> installationMetrics = {};
+  double? installationProgress;
+  bool get installing => installationState == 'extracting';
   DownloadState state;
   int totalBytes;
   int downloadedBytes;
@@ -114,6 +122,14 @@ class DownloadRecord {
           'destination': destination,
           'destinationChosen': destinationChosen,
           'launchPath': launchPath,
+          'installation': {
+            'state': installationState,
+            'status': installationStatus,
+            'error': installationError,
+            'directory': installationDirectory,
+            'protocol': installationProtocol,
+            'metrics': installationMetrics,
+          },
           'totalBytes': totalBytes,
           'downloadedBytes': downloadedBytes,
           'speedBytes': speedBytes,
@@ -135,7 +151,7 @@ class DownloadRecord {
     if (!RegExp(r'^[a-fA-F0-9]{40}$').hasMatch(id)) {
       throw const FormatException('ID de torrent inválido');
     }
-    return DownloadRecord(
+    final record = DownloadRecord(
         id: id,
         name: json['name'] as String,
         torrentFiles: (json['torrentFiles'] as List).cast<String>().toList(),
@@ -156,5 +172,19 @@ class DownloadRecord {
         completedAt:
             DateTime.tryParse(download['completedAt'] as String? ?? ''),
         error: download['error'] as String?);
+    final installation = (download['installation'] as Map?) ?? {};
+    record.installationState = installation['state'] as String? ?? 'idle';
+    record.installationStatus = installation['status'] as String? ?? '';
+    record.installationError = installation['error'] as String?;
+    record.installationDirectory = installation['directory'] as String?;
+    record.installationProtocol = installation['protocol'] as String?;
+    record.installationMetrics =
+        (installation['metrics'] as Map?)?.cast<String, dynamic>() ?? {};
+    if (record.installing) {
+      record.installationState = 'failed';
+      record.installationError =
+          'A preparação foi interrompida. Clique em Jogar para tentar novamente.';
+    }
+    return record;
   }
 }

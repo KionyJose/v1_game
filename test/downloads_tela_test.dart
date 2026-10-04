@@ -6,8 +6,39 @@ import 'package:v1_game/Downloads/download_record.dart';
 import 'package:v1_game/Downloads/downloads_controller.dart';
 import 'package:v1_game/Downloads/downloads_tela.dart';
 import 'package:v1_game/Downloads/download_progress_bar.dart';
+import 'package:v1_game/Downloads/game_preparation.dart';
+import 'dart:async';
+
+class ControlledPreparation extends GamePreparation {
+  final result = Completer<String?>();
+  PreparationTask? task;
+  @override
+  Future<String?> prepare(
+      DownloadRecord record, PreparationTask task, PreparationStatus status,
+      {bool allowExisting = true}) async {
+    this.task = task;
+    status('Extraindo arquivos do jogo…', .42);
+    final path = await result.future;
+    task.check();
+    return path;
+  }
+}
 
 class TelaController extends DownloadsController {
+  TelaController(
+      {GamePreparation? preparation, GamePreparation? silentPreparation})
+      : super(preparation: preparation, silentPreparation: silentPreparation);
+  final registered = <String>[];
+  @override
+  Future<void> registerInstalledGame(DownloadRecord record, String path) async {
+    record.launchPath = path;
+    record.installationState = 'ready';
+    record.installationStatus = 'Pronto para jogar';
+    record.installationError = null;
+    registered.add(path);
+    notifyListeners();
+  }
+
   final records = List.generate(
       2,
       (i) => DownloadRecord(
@@ -54,6 +85,38 @@ class TelaController extends DownloadsController {
 }
 
 void main() {
+  for (final source in ['DODI Repacks', 'ElAmigos', 'Outro release', '']) {
+    testWidgets('Release "$source" avisa e abre só a pasta', (tester) async {
+      final controller = TelaController();
+      addTearDown(() async {
+        await controller.engine.close();
+        controller.dispose();
+      });
+      final item = controller.records.first
+        ..sourceName = source
+        ..state = DownloadState.completed
+        ..launchPath = 'executavel-salvo.exe';
+      String? opened;
+      var launched = false;
+      await tester.pumpWidget(MaterialApp(
+          home: DownloadsTela(
+              controller: controller,
+              enablePad: false,
+              onOpenFolder: (path) async => opened = path,
+              onLaunchGame: (_) async => launched = true)));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Abrir pasta'));
+      await tester.pumpAndSettle();
+      expect(opened, item.destination);
+      expect(launched, isFalse);
+      expect(item.launchPath, 'executavel-salvo.exe');
+      expect(find.textContaining('ainda não tem protocolo automático'),
+          findsOneWidget);
+      expect(find.text('Selecionar executável do jogo'), findsNothing);
+      expect(tester.takeException(), isNull);
+    });
+  }
+
   testWidgets('Barra grossa contém as duas etapas e depois o progresso real',
       (tester) async {
     final item = DownloadRecord(

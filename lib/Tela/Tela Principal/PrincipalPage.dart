@@ -113,12 +113,14 @@ class _PrincipalPageState extends State<PrincipalPage> with WindowListener {
   }
 
   body(PrincipalCtrl ctrl){
-    bool filmes = ctrl.focusScope == ctrl.focusScopeCinema || ctrl.focusScope == ctrl.focusScopeMusica;
+    bool desfocarFundo = ctrl.focusScope == ctrl.focusScopeCinema ||
+        ctrl.focusScope == ctrl.focusScopeMusica ||
+        ctrl.focusScope == ctrl.focusScopeLoja;
     return Stack(
       children: [
       backGroundAnimado(ctrl), // Fundo animado
       cabeca(ctrl),
-      desfoqueTela(filmes),
+      desfoqueTela(desfocarFundo),
       if (ctrl.telaIniciada) bodyPageView(ctrl),// Ícones horizontais
       abaGuias(ctrl),
       escurecerTela(ctrl),// Escurecer tela      

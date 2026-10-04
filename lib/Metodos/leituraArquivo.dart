@@ -107,10 +107,7 @@ class LerArquivos{
           Item it = Item();
           String nomeItem = entrada.path.split(Platform.pathSeparator).last;
           
-          // Ignorar arquivos/pastas do sistema ocultas
-          if (nomeItem.startsWith('.') || nomeItem.startsWith('\$')) {
-            continue;
-          }
+          // O navegador também exibe entradas ocultas, incluindo nomes com . e $.
           
           // Verificando se é um arquivo
           if (entrada is File) {

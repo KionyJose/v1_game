@@ -33,6 +33,7 @@ class DownloadCard extends StatefulWidget {
   final bool autofocus;
   final Future<void> Function() onDelete;
   final Future<void> Function()? onPlay;
+  final Future<void> Function()? onSilentInstall;
   final Future<void> Function()? onStart;
   final FocusNode? focusNode;
   final bool Function(TraversalDirection)? onVertical;
@@ -42,6 +43,7 @@ class DownloadCard extends StatefulWidget {
       required this.controller,
       required this.onDelete,
       this.onPlay,
+      this.onSilentInstall,
       this.onStart,
       this.focusNode,
       this.onVertical,
@@ -57,6 +59,8 @@ class _DownloadCardState extends State<DownloadCard> {
   final _delete = FocusNode();
   final _cancel = FocusNode();
   final _play = FocusNode();
+  final _silent = FocusNode();
+  final _cancelInstallation = FocusNode();
   bool _playing = false;
   bool _starting = false;
   bool _focused = false;
@@ -75,10 +79,16 @@ class _DownloadCardState extends State<DownloadCard> {
     _delete.dispose();
     _cancel.dispose();
     _play.dispose();
+    _silent.dispose();
+    _cancelInstallation.dispose();
     super.dispose();
   }
 
   void _openActions() {
+    if (widget.item.installing) {
+      _cancelInstallation.requestFocus();
+      return;
+    }
     if (widget.item.busy) return;
     if (widget.item.running) {
       _pause.requestFocus();
@@ -106,6 +116,20 @@ class _DownloadCardState extends State<DownloadCard> {
         setState(() => _playing = false);
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) _play.requestFocus();
+        });
+      }
+    }
+  }
+
+  Future<void> _installSilently() async {
+    setState(() => _playing = true);
+    try {
+      await widget.onSilentInstall?.call();
+    } finally {
+      if (mounted) {
+        setState(() => _playing = false);
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _silent.requestFocus();
         });
       }
     }
@@ -161,9 +185,17 @@ class _DownloadCardState extends State<DownloadCard> {
       return widget.onVertical?.call(direction) ?? false;
     }
     final item = widget.item;
+    if (item.installing) {
+      _cancelInstallation.requestFocus();
+      return true;
+    }
     if (item.busy) return true;
     final nodes = [
       if (item.state == DownloadState.completed) _play,
+      if (item.state == DownloadState.completed &&
+          item.sourceType == ReleaseSource.fitGirl &&
+          widget.onSilentInstall != null)
+        _silent,
       if (!item.running && item.state != DownloadState.completed) _start,
       if (item.running) _pause,
       if (item.state != DownloadState.completed &&
@@ -328,10 +360,75 @@ class _DownloadCardState extends State<DownloadCard> {
                                               .textTheme
                                               .bodySmall),
                                       const SizedBox(height: 16),
+                                      if (widget.onSilentInstall != null &&
+                                          item.state ==
+                                              DownloadState.completed &&
+                                          item.sourceType ==
+                                              ReleaseSource.fitGirl)
+                                        const Padding(
+                                          padding: EdgeInsets.only(bottom: 12),
+                                          child: Text(
+                                            'Instalar silent testa o instalador original em outra pasta. '
+                                            'Ele pode solicitar autorização do Windows e executar ações adicionais do repack.',
+                                            style: TextStyle(
+                                                color: Color(0xFFB9B5D2)),
+                                          ),
+                                        ),
+                                      if (item.installationMetrics['elapsedMs']
+                                          is num)
+                                        Padding(
+                                          padding:
+                                              const EdgeInsets.only(bottom: 12),
+                                          child: Text(
+                                            'Última preparação: '
+                                            '${item.installationMetrics['method'] == 'silent' ? 'silent' : 'extração direta'} · '
+                                            '${Duration(milliseconds: (item.installationMetrics['elapsedMs'] as num).toInt()).inMinutes}min '
+                                            '${Duration(milliseconds: (item.installationMetrics['elapsedMs'] as num).toInt()).inSeconds % 60}s',
+                                            style: const TextStyle(
+                                                color: Color(0xFFB9B5D2)),
+                                          ),
+                                        ),
+                                      if (item
+                                          .installationStatus.isNotEmpty) ...[
+                                        if (item.installing)
+                                          ClipRRect(
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
+                                              child: LinearProgressIndicator(
+                                                  value:
+                                                      item.installationProgress,
+                                                  minHeight: 8,
+                                                  color:
+                                                      const Color(0xFFB6A8FF),
+                                                  backgroundColor:
+                                                      const Color(0xFF302940))),
+                                        const SizedBox(height: 8),
+                                        Text(item.installationStatus,
+                                            style: const TextStyle(
+                                                color: Color(0xFFCBC1FF))),
+                                        if (item.installationError != null)
+                                          Text(item.installationError!,
+                                              style: const TextStyle(
+                                                  color: Colors.orangeAccent)),
+                                        const SizedBox(height: 12),
+                                      ],
                                       Wrap(
                                           spacing: 10,
                                           runSpacing: 10,
                                           children: [
+                                            if (item.installing)
+                                              FilledButton.icon(
+                                                  style: _actionStyle,
+                                                  focusNode:
+                                                      _cancelInstallation,
+                                                  autofocus: true,
+                                                  onPressed: () => widget
+                                                      .controller
+                                                      .cancelInstallation(item),
+                                                  icon: const Icon(Icons
+                                                      .stop_circle_outlined),
+                                                  label: const Text(
+                                                      'Cancelar preparo')),
                                             if (item.state ==
                                                 DownloadState.completed)
                                               FilledButton.icon(
@@ -341,11 +438,35 @@ class _DownloadCardState extends State<DownloadCard> {
                                                       item.busy || _playing
                                                           ? null
                                                           : _playGame,
-                                                  icon: const Icon(
-                                                      Icons.sports_esports),
+                                                  icon: Icon(item.sourceType ==
+                                                          ReleaseSource.fitGirl
+                                                      ? Icons.sports_esports
+                                                      : Icons.folder_open),
                                                   label: Text(_playing
-                                                      ? 'Abrindo…'
-                                                      : 'Jogar')),
+                                                      ? item.installing
+                                                          ? 'Preparando…'
+                                                          : 'Abrindo…'
+                                                      : item.sourceType ==
+                                                              ReleaseSource
+                                                                  .fitGirl
+                                                          ? 'Jogar'
+                                                          : 'Abrir pasta')),
+                                            if (item.state ==
+                                                    DownloadState.completed &&
+                                                item.sourceType ==
+                                                    ReleaseSource.fitGirl &&
+                                                widget.onSilentInstall != null)
+                                              FilledButton.icon(
+                                                style: _actionStyle,
+                                                focusNode: _silent,
+                                                onPressed: item.busy || _playing
+                                                    ? null
+                                                    : _installSilently,
+                                                icon: const Icon(
+                                                    Icons.install_desktop),
+                                                label: const Text(
+                                                    'Instalar silent'),
+                                              ),
                                             if (item.state !=
                                                 DownloadState.completed)
                                               FilledButton.icon(

@@ -5,12 +5,20 @@ import 'aria2_engine.dart';
 import 'download_record.dart';
 import 'download_store.dart';
 import 'download_destination.dart';
+import 'download_game_launcher.dart';
+import 'game_preparation.dart';
+import 'installed_game_library.dart';
 
 class DownloadsController extends ChangeNotifier {
   static final instance = DownloadsController();
   final Future<DownloadStore> Function() _openStore;
   final TorrentEngine engine;
   final DateTime Function() _now;
+  final GamePreparation _preparation;
+  final GamePreparation _silentPreparation;
+  final InstalledGameLibrary _library;
+  final _preparationTasks = <String, PreparationTask>{};
+  final _preparationJobs = <String, Future<String?>>{};
   DownloadStore? _store;
   Future<void>? _initializing;
   Timer? _timer;
@@ -24,9 +32,16 @@ class DownloadsController extends ChangeNotifier {
   DownloadsController(
       {Future<DownloadStore> Function()? openStore,
       TorrentEngine? engine,
+      GamePreparation? preparation,
+      GamePreparation? silentPreparation,
+      InstalledGameLibrary? library,
       DateTime Function()? now})
       : _openStore = openStore ?? DownloadStore.openDefault,
         _now = now ?? DateTime.now,
+        _preparation = preparation ?? GamePreparation(),
+        _silentPreparation = silentPreparation ??
+            GamePreparation(method: GamePreparationMethod.silent),
+        _library = library ?? InstalledGameLibrary(),
         engine = engine ?? Aria2Engine();
 
   List<DownloadRecord> get items =>
@@ -132,7 +147,7 @@ class DownloadsController extends ChangeNotifier {
     if (!await File(path).exists()) {
       throw StateError('Executável não encontrado.');
     }
-    if (!path.toLowerCase().endsWith('.exe')) {
+    if (!isGameExecutable(path)) {
       throw StateError('Selecione o executável .exe do jogo.');
     }
     final previous = record.launchPath;
@@ -145,6 +160,107 @@ class DownloadsController extends ChangeNotifier {
     }
     notifyListeners();
   }
+
+  Future<void> registerInstalledGame(DownloadRecord record, String path) async {
+    final previous = record.launchPath;
+    await setLaunchPath(record, path);
+    await _library.register(record.name, path, previousExecutable: previous);
+    record.installationState = 'ready';
+    record.installationStatus =
+        'Pronto para jogar · cadastrado no início da biblioteca';
+    record.installationError = null;
+    await _store?.save();
+    if (!_closed) notifyListeners();
+  }
+
+  Future<String?> prepareForPlay(DownloadRecord record) {
+    return _startPreparation(record, silent: false);
+  }
+
+  Future<String?> installSilently(DownloadRecord record) {
+    return _startPreparation(record, silent: true);
+  }
+
+  Future<String?> _startPreparation(DownloadRecord record,
+      {required bool silent}) {
+    final existing = _preparationJobs[record.id];
+    if (existing != null) return existing;
+    if (_closed ||
+        record.busy ||
+        record.state != DownloadState.completed ||
+        record.sourceType != ReleaseSource.fitGirl) {
+      return Future.error(StateError(
+          'O download precisa estar concluído, disponível e usar o protocolo FitGirl.'));
+    }
+    final task = PreparationTask();
+    _preparationTasks[record.id] = task;
+    final job = _prepareForPlay(record, task, silent: silent);
+    _preparationJobs[record.id] = job;
+    return job;
+  }
+
+  Future<String?> _prepareForPlay(DownloadRecord record, PreparationTask task,
+      {required bool silent}) async {
+    final previous = DownloadRecord.fromJson(record.toJson());
+    try {
+      if (_closed || record.busy || record.state != DownloadState.completed) {
+        throw StateError('O download precisa estar concluído e disponível.');
+      }
+      if (record.sourceType != ReleaseSource.fitGirl) {
+        throw StateError('Este release ainda não tem protocolo automático.');
+      }
+      final retry = record.installationState == 'failed';
+      record.busy = true;
+      record.installationState = 'extracting';
+      record.installationError = null;
+      record.installationStatus = 'Analisando os arquivos do jogo…';
+      record.installationProgress = null;
+      if (!_closed) notifyListeners();
+      await _store?.save();
+      final path = await (silent ? _silentPreparation : _preparation)
+          .prepare(record, task, (message, progress) {
+        record.installationStatus = message;
+        record.installationProgress = progress;
+        if (!_closed) notifyListeners();
+      }, allowExisting: !retry && !silent);
+      task.check();
+      if (path != null) {
+        record.installationStatus = 'Cadastrando o jogo na biblioteca…';
+        if (!_closed) notifyListeners();
+        await registerInstalledGame(record, path);
+      } else {
+        record.installationState = 'chooseExecutable';
+        record.installationStatus = 'Selecione o executável do jogo';
+      }
+      return path;
+    } catch (error) {
+      record.installationState = 'failed';
+      record.installationError =
+          error is StateError ? error.message.toString() : error.toString();
+      record.installationStatus =
+          task.canceled ? 'Preparação cancelada' : 'Instalação não concluída';
+      if (silent && previous.installationState == 'ready') {
+        record.launchPath = previous.launchPath;
+        record.installationState = previous.installationState;
+        record.installationProtocol = previous.installationProtocol;
+        record.installationDirectory = previous.installationDirectory;
+        record.installationMetrics = previous.installationMetrics;
+        record.installationStatus =
+            'Instalação atual preservada · teste silent não concluído';
+      }
+      rethrow;
+    } finally {
+      record.busy = false;
+      record.installationProgress = null;
+      _preparationTasks.remove(record.id);
+      _preparationJobs.remove(record.id);
+      await _store?.save();
+      if (!_closed) notifyListeners();
+    }
+  }
+
+  void cancelInstallation(DownloadRecord record) =>
+      _preparationTasks[record.id]?.cancel();
 
   Future<void> _action(
       DownloadRecord record, Future<void> Function() action) async {
@@ -328,6 +444,14 @@ class DownloadsController extends ChangeNotifier {
     _timer?.cancel();
     _watchDebounce?.cancel();
     await _watch?.cancel();
+    for (final task in _preparationTasks.values.toList()) {
+      task.cancel();
+    }
+    for (final job in _preparationJobs.values.toList()) {
+      try {
+        await job;
+      } catch (_) {}
+    }
     // Finaliza consultas/gravações já iniciadas antes do último salvamento.
     while (_polling || _scanning) {
       await Future<void>.delayed(const Duration(milliseconds: 10));

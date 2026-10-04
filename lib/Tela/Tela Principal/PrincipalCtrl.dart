@@ -32,6 +32,7 @@ import '../SeletorImagens/SeletorImagens.dart';
 import '../../Widgets/Pops/Pops.dart';
 import '../../Interface/launcher_routes.dart';
 import '../../Downloads/downloads_tela.dart';
+import '../../Downloads/installed_game_library.dart';
 import '../Tela loja/scrap_loja.dart';
 
 class PrincipalCtrl with ChangeNotifier{
@@ -156,7 +157,33 @@ class PrincipalCtrl with ChangeNotifier{
   // late Notificacao notf;
 
   PrincipalCtrl(this.ctx,){
+    InstalledGameLibrary.changes.addListener(_onInstalledGamesChanged);
     iniciaTela();
+  }
+
+  bool _reloadingInstalledGames = false;
+  void _onInstalledGamesChanged() {
+    if (_disposed || !telaIniciada || !stateTela || _reloadingInstalledGames) return;
+    _reloadInstalledGames();
+  }
+
+  Future<void> _reloadInstalledGames() async {
+    _reloadingInstalledGames = true;
+    final revision = InstalledGameLibrary.revision;
+    final restoreGameFocus = focusScopeIcones.hasFocus;
+    try {
+      selectedIndexIcone = 0;
+      await iniciaLitIcones();
+      if (!_disposed) {
+        if (restoreGameFocus && stateTela) focusNodeIcones.first.requestFocus();
+        attTela();
+      }
+    } catch (error) {
+      debugPrint('Não foi possível atualizar a biblioteca de jogos: $error');
+    } finally {
+      _reloadingInstalledGames = false;
+      if (revision != InstalledGameLibrary.revision) _onInstalledGamesChanged();
+    }
   }
 
   String _prettifyName(String raw) {
@@ -273,7 +300,9 @@ class PrincipalCtrl with ChangeNotifier{
   }
 
   iniciaLitIcones()async{
-    listIconsInicial = await db.leituraDeDados();
+    final icons = await db.leituraDeDados();
+    if (_disposed) return;
+    listIconsInicial = icons;
     if(listIconsInicial.isNotEmpty){
       try {
         for (final f in focusNodeIcones) {
@@ -301,6 +330,7 @@ class PrincipalCtrl with ChangeNotifier{
   @override
   dispose(){
     _disposed = true;
+    InstalledGameLibrary.changes.removeListener(_onInstalledGamesChanged);
     timerImersao?.cancel();
     timerImersaoVideos?.cancel();
     timerLoadVideos?.cancel();
@@ -1491,6 +1521,7 @@ class PrincipalCtrl with ChangeNotifier{
   }
 
   Future<void> abrirTelaInterna(Widget tela) async {
+    final libraryRevision = InstalledGameLibrary.revision;
     final oldScope = focusScope;
     final oldFocus = FocusManager.instance.primaryFocus;
     final resumeVideo = mediaPlayer.state.playing;
@@ -1503,13 +1534,23 @@ class PrincipalCtrl with ChangeNotifier{
       await abrirTelaLauncher<void>(ctx, tela);
     } finally {
       if (!_disposed) {
-        stateTela = true;
-        focusScope = oldScope;
-        oldFocus?.requestFocus();
-        if (resumeVideo) await mediaPlayer.play();
-        if (resumeBackground) await bgMediaPlayer.play();
-        limparClickPad();
-        attTela();
+        if (libraryRevision != InstalledGameLibrary.revision) {
+          selectedIndexIcone = 0;
+          await iniciaLitIcones();
+        }
+        if (!_disposed) {
+          stateTela = true;
+          focusScope = oldScope;
+          if (oldFocus?.context != null) {
+            oldFocus?.requestFocus();
+          } else {
+            focusNodeIcones.first.requestFocus();
+          }
+          if (resumeVideo) await mediaPlayer.play();
+          if (resumeBackground) await bgMediaPlayer.play();
+          limparClickPad();
+          attTela();
+        }
       }
     }
   }
@@ -1680,6 +1721,17 @@ class PrincipalCtrl with ChangeNotifier{
 
   
   keyPress(KeyEvent key) async {
+    final abrirMais = key.character == '+' ||
+        key.logicalKey == LogicalKeyboardKey.numpadAdd ||
+        (key.logicalKey == LogicalKeyboardKey.equal &&
+            HardwareKeyboard.instance.isShiftPressed);
+    if (abrirMais) {
+      if (key is KeyDownEvent && stateTela && telaIniciada &&
+          noticiaPopupAberta == null) {
+        btnMais();
+      }
+      return;
+    }
     if (key is KeyDownEvent || key is KeyRepeatEvent) {
       debugPrint("Teclado Press: ${key.logicalKey.debugName}");
       String event = MovimentoSistema.convertKeyBoard(key.logicalKey.keyLabel);

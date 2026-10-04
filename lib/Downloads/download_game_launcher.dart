@@ -3,12 +3,31 @@ import 'package:flutter/material.dart';
 import 'package:path/path.dart' as p;
 import '../Interface/launcher_pad_scope.dart';
 
+Future<void> openDownloadedFolder(String directory) async {
+  if (directory.isEmpty || !await Directory(directory).exists()) {
+    throw const FileSystemException('Pasta do download não encontrada');
+  }
+  await Process.start(
+      'explorer.exe', [p.normalize(Directory(directory).absolute.path)],
+      mode: ProcessStartMode.detached);
+}
+
 bool isGameExecutable(String path) {
   if (p.extension(path).toLowerCase() != '.exe') return false;
   final name = p.basenameWithoutExtension(path).toLowerCase();
   return !RegExp(
-          r'^(setup|install|unins|uninstall|vcredist|vc_redist|dxsetup|directx|crashreport|crashhandler|crashpad|unitycrash|ue[45]prereq)')
+          r'^(setup|install|unins|uninstall|quicksfv|verify|unarc|v1unarc|cls-|precomp|rzw|rz-|flushfilecache|hosts|vcredist|vc_redist|dxsetup|dxwebsetup|directx|crashreport|crashhandler|crashpad|unitycrash|gamelaunchhelper|gamingrepair|ue[45]prereq)')
       .hasMatch(name);
+}
+
+/// Prefer a unique root launcher over engine binaries. Ambiguous collections
+/// still use the Pad file picker rather than guessing an executable.
+String? chooseInstalledExecutable(List<String> candidates, String root) {
+  final games = candidates.where(isGameExecutable).toList();
+  final launchers =
+      games.where((path) => p.equals(p.dirname(path), root)).toList();
+  if (launchers.length == 1) return launchers.single;
+  return games.length == 1 ? games.single : null;
 }
 
 /// Busca somente na pasta do download, sem seguir links de diretórios.
@@ -24,7 +43,7 @@ Future<List<String>> findDownloadedGames(String directory) async {
           results.add(entry.path);
         }
         if (entry is Directory &&
-            !RegExp(r'^(redist|_commonredist|support|directx)$',
+            !RegExp(r'^(md5|_?redist|_commonredist|support|directx|\.v1-tools)$',
                     caseSensitive: false)
                 .hasMatch(p.basename(entry.path))) {
           await scan(entry, depth + 1);
@@ -40,15 +59,19 @@ Future<List<String>> findDownloadedGames(String directory) async {
   return results;
 }
 
-Future<String?> selectDownloadedGame(BuildContext context, String directory) =>
+Future<String?> selectDownloadedGame(BuildContext context, String directory,
+        {bool enablePad = true}) =>
     showDialog<String>(
         context: context,
-        builder: (_) => _GameExecutablePicker(directory: directory));
+        builder: (_) =>
+            _GameExecutablePicker(directory: directory, enablePad: enablePad));
 
 /// Seletor interno, navegável pelo mesmo Pad, para jogos portáteis ou instalados.
 class _GameExecutablePicker extends StatefulWidget {
   final String directory;
-  const _GameExecutablePicker({required this.directory});
+  final bool enablePad;
+  const _GameExecutablePicker(
+      {required this.directory, required this.enablePad});
   @override
   State<_GameExecutablePicker> createState() => _GameExecutablePickerState();
 }
@@ -72,11 +95,8 @@ class _GameExecutablePickerState extends State<_GameExecutablePicker> {
       }
       return drives;
     }
-    final entries = await Directory(_directory!)
-        .list(followLinks: false)
-        .where((entry) =>
-            entry is Directory || entry is File && isGameExecutable(entry.path))
-        .toList();
+    final entries =
+        await Directory(_directory!).list(followLinks: false).toList();
     entries.sort((a, b) {
       if ((a is Directory) != (b is Directory)) return a is Directory ? -1 : 1;
       return p
@@ -95,6 +115,7 @@ class _GameExecutablePickerState extends State<_GameExecutablePicker> {
   @override
   Widget build(BuildContext context) => LauncherPadScope(
       menu: false,
+      enabled: widget.enablePad,
       child: AlertDialog(
         title: const Text('Selecionar executável do jogo'),
         content: SizedBox(
@@ -104,7 +125,7 @@ class _GameExecutablePickerState extends State<_GameExecutablePicker> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   const Text(
-                      'Se o download contém um instalador, instale o jogo e selecione aqui o seu executável. A escolha será salva para Jogar novamente.'),
+                      'Navegue pela pasta do jogo e selecione seu executável .exe. A escolha será salva e o jogo será cadastrado na biblioteca.'),
                   const SizedBox(height: 12),
                   Text(_directory ?? 'Unidades do computador',
                       maxLines: 2, overflow: TextOverflow.ellipsis),
@@ -157,11 +178,22 @@ class _GameExecutablePickerState extends State<_GameExecutablePicker> {
                                           onPressed: () => entries[index]
                                                   is Directory
                                               ? _navigate(entries[index].path)
-                                              : Navigator.pop(
-                                                  context, entries[index].path),
+                                              : isGameExecutable(
+                                                      entries[index].path)
+                                                  ? Navigator.pop(context,
+                                                      entries[index].path)
+                                                  : ScaffoldMessenger.of(
+                                                          context)
+                                                      .showSnackBar(const SnackBar(
+                                                          content: Text(
+                                                              'Este arquivo não é um executável do jogo. Selecione o arquivo .exe correto.'))),
                                           icon: Icon(entries[index] is Directory
                                               ? Icons.folder_outlined
-                                              : Icons.sports_esports),
+                                              : isGameExecutable(
+                                                      entries[index].path)
+                                                  ? Icons.sports_esports
+                                                  : Icons
+                                                      .insert_drive_file_outlined),
                                           label: SizedBox(
                                               width: double.infinity,
                                               child: Text(

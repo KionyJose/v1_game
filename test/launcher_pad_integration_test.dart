@@ -13,7 +13,7 @@ import 'package:v1_game/Interface/pad_keyboard.dart';
 import 'package:v1_game/Widgets/Pops/pop_mais.dart';
 import 'package:v1_game/Tela/Tela loja/scrap_loja.dart';
 import 'scrap_loja_test.dart' show FonteTeste;
-import 'downloads_tela_test.dart' show TelaController;
+import 'downloads_tela_test.dart' show TelaController, ControlledPreparation;
 import 'package:v1_game/Downloads/download_record.dart';
 import 'package:v1_game/Downloads/downloads_tela.dart';
 import 'package:v1_game/Downloads/download_destination.dart';
@@ -231,12 +231,17 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('Seletor de executável funciona pelo Pad e omite instaladores',
+  testWidgets('Navegador pelo Pad lista todos os arquivos e seleciona o jogo',
       (tester) async {
     late Directory root;
     await tester.runAsync(() async {
       root = await Directory('test').createTemp('download-picker-');
-      for (final name in ['Game1.exe', 'Game2.exe', 'setup.exe']) {
+      for (final name in [
+        'Game1.exe',
+        'Game2.exe',
+        'setup.exe',
+        'readme.txt'
+      ]) {
         await File(p.join(root.path, name))
             .writeAsString('fixture, nunca executada');
       }
@@ -263,10 +268,133 @@ void main() {
     }
     await tester.pumpAndSettle();
     expect(find.text('Game1.exe'), findsOneWidget);
-    expect(find.text('setup.exe'), findsNothing);
+    expect(find.text('setup.exe'), findsOneWidget);
+    expect(find.text('readme.txt'), findsOneWidget);
+    await tester.tap(find.text('setup.exe'));
+    await tester.pumpAndSettle();
+    expect(selected, isNull);
+    expect(find.textContaining('não é um executável do jogo'), findsOneWidget);
+    Focus.of(tester.element(find.text('Game1.exe'))).requestFocus();
     pad.interfaceRouter.dispatch('2');
     await tester.pumpAndSettle();
     expect(selected, p.join(root.path, 'Game1.exe'));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Pad seleciona silent e registra somente após concluir',
+      (tester) async {
+    final preparation = ControlledPreparation();
+    final controller = TelaController(silentPreparation: preparation);
+    addTearDown(() async {
+      await controller.engine.close();
+      controller.dispose();
+    });
+    final item = controller.records.first..state = DownloadState.completed;
+    await tester.pumpWidget(app(DownloadsTela(controller: controller)));
+    await tester.pumpAndSettle();
+    pad.interfaceRouter.dispatch('2');
+    await tester.pumpAndSettle();
+    pad.interfaceRouter.dispatch('DIREITA');
+    await tester.pump();
+    expect(Focus.of(tester.element(find.text('Instalar silent'))).hasFocus,
+        isTrue);
+    pad.interfaceRouter.dispatch('2');
+    await tester.pump();
+    expect(item.installing, isTrue);
+    expect(controller.registered, isEmpty);
+    preparation.result.complete('Jogo-Silent/Game.exe');
+    await tester.pumpAndSettle();
+    expect(controller.registered, ['Jogo-Silent/Game.exe']);
+    expect(item.installationState, 'ready');
+    expect(find.textContaining('Instalação silenciosa verificada'),
+        findsOneWidget);
+  });
+
+  testWidgets('Falha no teste silent preserva o jogo pronto', (tester) async {
+    final preparation = ControlledPreparation();
+    final controller = TelaController(silentPreparation: preparation);
+    addTearDown(() async {
+      await controller.engine.close();
+      controller.dispose();
+    });
+    final item = controller.records.first
+      ..state = DownloadState.completed
+      ..installationState = 'ready'
+      ..installationProtocol = 'fitgirl-inno-freearc-v2'
+      ..installationDirectory = 'Jogo'
+      ..launchPath = 'Jogo/Game.exe';
+    await tester.pumpWidget(app(DownloadsTela(controller: controller)));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Instalar silent'));
+    await tester.pump();
+    preparation.result.completeError(StateError('Teste falhou'));
+    await tester.pumpAndSettle();
+    expect(item.launchPath, 'Jogo/Game.exe');
+    expect(item.installationState, 'ready');
+    expect(item.installationProtocol, 'fitgirl-inno-freearc-v2');
+    expect(item.installationDirectory, 'Jogo');
+    expect(controller.registered, isEmpty);
+    expect(find.textContaining('Instalação atual preservada'), findsOneWidget);
+  });
+
+  testWidgets('Jogar exibe progresso e o Pad cancela a preparação',
+      (tester) async {
+    final preparation = ControlledPreparation();
+    final controller = TelaController(preparation: preparation);
+    addTearDown(() async {
+      await controller.engine.close();
+      controller.dispose();
+    });
+    controller.records.first.state = DownloadState.completed;
+    var launched = false;
+    await tester.pumpWidget(app(DownloadsTela(
+        controller: controller, onLaunchGame: (_) async => launched = true)));
+    await tester.pumpAndSettle();
+    pad.interfaceRouter.dispatch('2');
+    await tester.pumpAndSettle();
+    pad.interfaceRouter.dispatch('2');
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.text('Extraindo arquivos do jogo…'), findsOneWidget);
+    expect(find.text('Cancelar preparo'), findsOneWidget);
+    expect(controller.records.first.busy, isTrue);
+    Focus.of(tester.element(find.text('Cancelar preparo'))).requestFocus();
+    await tester.pump();
+    pad.interfaceRouter.dispatch('2');
+    expect(preparation.task!.canceled, isTrue);
+    preparation.result.complete(null);
+    await tester.pumpAndSettle();
+    expect(controller.records.first.busy, isFalse);
+    expect(find.text('Preparação cancelada'), findsOneWidget);
+    expect(find.text('Selecionar executável do jogo'), findsNothing);
+    expect(launched, isFalse);
+    expect(controller.registered, isEmpty);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Preparação concluída cadastra antes de abrir o jogo',
+      (tester) async {
+    final preparation = ControlledPreparation();
+    final controller = TelaController(preparation: preparation);
+    addTearDown(() async {
+      await controller.engine.close();
+      controller.dispose();
+    });
+    controller.records.first.state = DownloadState.completed;
+    String? launched;
+    await tester.pumpWidget(app(DownloadsTela(
+        controller: controller,
+        onLaunchGame: (path) async {
+          expect(controller.registered, [path]);
+          launched = path;
+        })));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Jogar'));
+    await tester.pump();
+    preparation.result.complete('D:\\V1 Jogos\\Teste\\Jogo\\Game.exe');
+    await tester.pumpAndSettle();
+    expect(launched, 'D:\\V1 Jogos\\Teste\\Jogo\\Game.exe');
+    expect(controller.records.first.installationState, 'ready');
     expect(tester.takeException(), isNull);
   });
 

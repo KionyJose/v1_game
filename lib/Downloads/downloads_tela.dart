@@ -7,10 +7,10 @@ import 'downloads_controller.dart';
 import '../Interface/launcher_pad_scope.dart';
 import '../Interface/pad_scroll_target.dart';
 import '../Bando de Dados/db.dart';
-import 'dart:io';
 import 'package:path/path.dart' as p;
 import 'download_game_launcher.dart';
 import 'download_destination.dart';
+import 'game_preparation.dart';
 import 'package:provider/provider.dart';
 import 'package:window_manager/window_manager.dart';
 import '../Controllers/JanelaCtrl.dart';
@@ -19,12 +19,14 @@ class DownloadsTela extends StatefulWidget {
   final DownloadsController? controller;
   final bool enablePad;
   final Future<void> Function(String)? onLaunchGame;
+  final Future<void> Function(String)? onOpenFolder;
   final Future<List<String>> Function()? loadDrives;
   const DownloadsTela(
       {super.key,
       this.controller,
       this.enablePad = true,
       this.onLaunchGame,
+      this.onOpenFolder,
       this.loadDrives});
   @override
   State<DownloadsTela> createState() => _DownloadsTelaState();
@@ -99,15 +101,34 @@ class _DownloadsTelaState extends State<DownloadsTela> with WindowListener {
   Future<void> _play(DownloadRecord item) async {
     try {
       if (item.state != DownloadState.completed) return;
-      var path = item.launchPath;
-      if (path == null || !await File(path).exists()) {
-        final candidates = await findDownloadedGames(item.destination);
+      if (item.sourceType != ReleaseSource.fitGirl) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text(
+                'Este release ainda não tem protocolo automático de instalação. Abrindo a pasta do download.')));
+        if (widget.onOpenFolder != null) {
+          await widget.onOpenFolder!(item.destination);
+        } else {
+          await openDownloadedFolder(item.destination);
+        }
+        return;
+      }
+      String? path;
+      try {
+        path = await _controller.prepareForPlay(item);
+      } on PreparationCanceled {
+        return;
+      } catch (_) {
         if (!mounted) return;
-        path = candidates.length == 1
-            ? candidates.single
-            : await selectDownloadedGame(context, item.destination);
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(item.installationError ??
+                'Não foi possível concluir a instalação automática. Selecione um executável já instalado.')));
+      }
+      if (path == null) {
+        if (!mounted) return;
+        path = await selectDownloadedGame(context, item.destination,
+            enablePad: widget.enablePad);
         if (path == null || !mounted) return;
-        await _controller.setLaunchPath(item, path);
+        await _controller.registerInstalledGame(item, path);
       }
       if (!mounted) return;
       if (widget.onLaunchGame != null) {
@@ -122,9 +143,36 @@ class _DownloadsTelaState extends State<DownloadsTela> with WindowListener {
     } catch (_) {
       _restoreWindowPin();
       if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(item.sourceType != ReleaseSource.fitGirl
+                ? 'Não foi possível abrir a pasta do download. Verifique se ela existe e está acessível.'
+                : 'Não foi possível abrir o jogo. Verifique o executável e a instalação.')));
+      }
+    }
+  }
+
+  Future<void> _installSilently(DownloadRecord item) async {
+    try {
+      final path = await _controller.installSilently(item);
+      if (!mounted) return;
+      if (path == null) {
+        final selected = await selectDownloadedGame(
+            context, item.installationDirectory ?? item.destination,
+            enablePad: widget.enablePad);
+        if (selected == null || !mounted) return;
+        await _controller.registerInstalledGame(item, selected);
+      }
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
             content: Text(
-                'Não foi possível abrir o jogo. Verifique o executável e a instalação.')));
+                'Instalação silenciosa verificada e cadastrada. Use Jogar para abrir.')));
+      }
+    } on PreparationCanceled {
+      return;
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(item.installationError ?? error.toString())));
       }
     }
   }
@@ -273,18 +321,19 @@ class _DownloadsTelaState extends State<DownloadsTela> with WindowListener {
                                                               _controller,
                                                           focusNode: _itemFocus[
                                                               items[index].id],
-                                                          onVertical: (direction) =>
-                                                              _moveItem(
-                                                                  items[index]
-                                                                      .id,
-                                                                  direction),
+                                                          onVertical: (direction) => _moveItem(
+                                                              items[index].id,
+                                                              direction),
                                                           onPlay: () => _play(
                                                               items[index]),
+                                                          onSilentInstall: () =>
+                                                              _installSilently(
+                                                                  items[index]),
                                                           onStart: () => _start(
                                                               items[index]),
                                                           autofocus: index == 0,
-                                                          onDelete: () => _delete(
-                                                              items[index]))),
+                                                          onDelete: () =>
+                                                              _delete(items[index]))),
                                                 ]
                                               ]),
                                             ))),
