@@ -2,6 +2,7 @@
 
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:flutter/material.dart';
+import '../../../Interface/lifecycle_carousel.dart';
 import 'package:v1_game/Tela/Tela%20Principal/PrincipalCtrl.dart';
 
 class ListVideosWidget extends StatelessWidget {
@@ -16,6 +17,7 @@ class ListVideosWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (ctrl.videosYT.isEmpty) return const SizedBox.shrink();
     double tamanho = 0.2;
     const sdw = Shadow(color: Colors.black, blurRadius: 10);
     bool focoScop = false;
@@ -44,7 +46,7 @@ class ListVideosWidget extends StatelessWidget {
                   height: MediaQuery.of(context).size.height * 0.03,
                   child: FittedBox(
                     child: Text(
-                      ctrl.videosYT[ctrl.selectedIndexVideo].titulo,
+                      ctrl.videosYT[ctrl.selectedIndexVideo.clamp(0, ctrl.videosYT.length - 1)].titulo,
                       style: const TextStyle(
                         color: Colors.white,
                         shadows: [sdw, sdw],
@@ -60,8 +62,8 @@ class ListVideosWidget extends StatelessWidget {
                   duration: const Duration(milliseconds: 100),
                   height: MediaQuery.of(context).size.height * tamanho,
                   width: double.infinity,
-                  child: CarouselSlider(
-                    carouselController: ctrl.carouselVideosCtrl,
+                  child: LifecycleCarousel(
+                    controller: ctrl.carouselVideosCtrl,
                     options: CarouselOptions(
                       pageSnapping: true,
                       height: MediaQuery.of(context).size.height * tamanho,

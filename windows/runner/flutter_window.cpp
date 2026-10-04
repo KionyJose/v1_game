@@ -1,4 +1,5 @@
 #include "flutter_window.h"
+#include "keyboard_event_guard.h"
 
 #include <optional>
 #include <string>
@@ -120,6 +121,10 @@ void FlutterWindow::RegistrarEntradaBrutaGamepad() {
 LRESULT FlutterWindow::MessageHandler(HWND hwnd, UINT const mensagem,
                                        WPARAM const wparam,
                                        LPARAM const lparam) noexcept {
+  if (IsStaleAltRepeat(mensagem, wparam, lparam,
+                       GetKeyState(VK_LMENU), GetKeyState(VK_RMENU))) {
+    return 0;
+  }
   if (flutter_controller_) {
     std::optional<LRESULT> resultado =
         flutter_controller_->HandleTopLevelWindowProc(hwnd, mensagem, wparam, lparam);

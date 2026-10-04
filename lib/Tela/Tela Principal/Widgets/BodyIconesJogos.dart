@@ -1,7 +1,7 @@
 // ignore_for_file: file_names
 
 import 'package:flutter/material.dart';
-import 'package:scroll_snap_list/scroll_snap_list.dart';
+import '../../../Interface/launcher_horizontal_list.dart';
 import 'package:v1_game/Tela/Tela%20Principal/PrincipalCtrl.dart';
 
 class BodyIconesJogos extends StatefulWidget {
@@ -34,20 +34,10 @@ class _BodyIconesJogosState extends State<BodyIconesJogos> {
   
   @override
   void dispose() {
-    // Cancela qualquer animação pendente antes de descartar
-    try {
-      if (_localScrollController.hasClients) {
-        _localScrollController.jumpTo(_localScrollController.offset);
-      }
-    } catch (_) {}
-    
-    // Garante que o controller local seja descartado corretamente
-    try {
-      _localScrollController.dispose();
-    } catch (_) {}
+    _localScrollController.dispose();
     super.dispose();
   }
-  
+
   @override
   Widget build(BuildContext context) {
     double telaWidth = MediaQuery.of(context).size.width;
@@ -62,12 +52,9 @@ class _BodyIconesJogosState extends State<BodyIconesJogos> {
             width: (telaWidth * 2) + widget.tamanhoBloco * 1.5,
             child: FocusScope(
               node: widget.ctrl.focusScopeIcones,
-              child: ScrollSnapList(
-                initialIndex: 0,
-                padding: EdgeInsets.zero,
-                listController: _localScrollController,
+              child: LauncherHorizontalList(
+                controller: _localScrollController,
                 itemCount: widget.ctrl.focusNodeIcones.length,
-                onItemFocus: (i) {}, // Controle feito no onFocusChange de cada item
                 itemSize: widget.tamanhoBloco, // Tamanho horizontal
                 itemBuilder: (context, i) {
                   bool isFoco = widget.ctrl.selectedIndexIcone == i;

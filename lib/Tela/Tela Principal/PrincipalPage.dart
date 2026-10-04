@@ -3,7 +3,8 @@ import 'dart:io';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:scroll_snap_list/scroll_snap_list.dart';
+import '../../Interface/launcher_horizontal_list.dart';
+import '../../Interface/contained_focus_policy.dart';
 import 'package:v1_game/Class/Paad.dart';
 import 'package:v1_game/Tela/Tela%20Principal/PrincipalCtrl.dart';
 import 'package:v1_game/Global.dart';
@@ -181,12 +182,9 @@ class _PrincipalPageState extends State<PrincipalPage> with WindowListener {
         width: (telaWidth * 2) + tamanhoBloco * 1.5,
         child: FocusScope(
           node: ctrl.focusScopeAbaGuias,
-          child: ScrollSnapList(
-            background: Colors.red,
-            padding: EdgeInsets.zero,
-            listController: ctrl.scrolListAbaGuias, 
+          child: LauncherHorizontalList(
+            controller: ctrl.scrolListAbaGuias,
             itemCount: ctrl.listAbaGuias.length,
-            onItemFocus: (i) { }, // Atualiza o índice do item em foco,
             itemSize: tamanhoBloco, // Tamanho horizontal
             itemBuilder: (context, i) {
               bool isFoco = ctrl.selectedIndexAbaGuias == i;
@@ -343,10 +341,19 @@ class _PrincipalPageState extends State<PrincipalPage> with WindowListener {
                     cardAnimado: (ctrl, index, tamanho) => cardAnimado(ctrl, index, tamanho: tamanho),
                     cardAnimadoAdd: (ctrl, index) => cardAnimadoAdd(ctrl, index),
                   );
-    if(ctrl.selectedIndexAbaGuias == 1) return BodyIconesCinema(ctrl: ctrl, tamanhoBloco: tamanhoBloco);
-    if(ctrl.selectedIndexAbaGuias == 2) return BodyIconesMusica(ctrl: ctrl, tamanhoBloco: tamanhoBloco);
-    if(ctrl.selectedIndexAbaGuias == 3) return BodyIconesLoja(ctrl: ctrl, tamanhoBloco: tamanhoBloco);
-    return jogosPage; 
+    return FocusTraversalGroup(
+      policy: ContainedFocusPolicy(),
+      child: PageView(
+        controller: ctrl.bodyCtrl,
+        physics: const NeverScrollableScrollPhysics(),
+        children: [
+          jogosPage,
+          BodyIconesCinema(ctrl: ctrl, tamanhoBloco: tamanhoBloco),
+          BodyIconesMusica(ctrl: ctrl, tamanhoBloco: tamanhoBloco),
+          BodyIconesLoja(ctrl: ctrl, tamanhoBloco: tamanhoBloco),
+        ],
+      ),
+    );
   }
 
   gridAnimado(PrincipalCtrl ctrl, double tamanhoBloco){
@@ -399,7 +406,7 @@ class _PrincipalPageState extends State<PrincipalPage> with WindowListener {
   
 
   Widget cardVideo(PrincipalCtrl ctrl, int i){
-    if(i < 0 || i > ctrl.videosYT.length) return Container();
+    if(i < 0 || i >= ctrl.videosYT.length || i >= ctrl.focusNodeVideos.length) return Container();
     return Focus(
       focusNode: ctrl.focusNodeVideos[i],
       onFocusChange: (hasFocus) => ctrl.onFocusChangeVideos(hasFocus, i),              

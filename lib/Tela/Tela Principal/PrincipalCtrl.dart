@@ -340,6 +340,7 @@ class PrincipalCtrl with ChangeNotifier{
     try { ctrlAnimeBgFundo.dispose(); } catch (_) {}
     try { scrolListIcones.dispose(); } catch (_) {}
     try { scrolListAbaGuias.dispose(); } catch (_) {}
+    try { bodyCtrl.dispose(); } catch (_) {}
     try { focusScopeIcones.dispose(); } catch (_) {}
     try { focusScopeAbaGuias.dispose(); } catch (_) {}
     try { focusScopeCinema.dispose(); } catch (_) {}
@@ -403,9 +404,10 @@ class PrincipalCtrl with ChangeNotifier{
   }
 
   onFocusChangeVideos(bool hasFocus, int index){ 
+    if (_disposed || !podeMontarVideos || index < 0 || index >= videosYT.length) return;
     if (hasFocus) {
       selectedIndexVideo = index;
-      carouselVideosCtrl.animateToPage(index);
+      if (carouselVideosCtrl.ready) carouselVideosCtrl.animateToPage(index);
       attTela();
     }
   }
@@ -413,6 +415,11 @@ class PrincipalCtrl with ChangeNotifier{
     if(_disposed) return;
     if (!hasFocus ) return;
     selectedIndexAbaGuias = index;    
+    if (bodyCtrl.hasClients) {
+      bodyCtrl.animateToPage(index,
+          duration: const Duration(milliseconds: 500), curve: Curves.decelerate);
+    }
+    attTela();
     // Movimenta Scrol para onde esta selecionado Icone
       try {
         if (scrolListAbaGuias.hasClients) {

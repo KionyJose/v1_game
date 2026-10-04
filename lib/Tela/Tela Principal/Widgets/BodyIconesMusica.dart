@@ -42,15 +42,7 @@ class _BodyIconesMusicaState extends State<BodyIconesMusica> {
 
   @override
   void dispose() {
-    try {
-      if (_localScrollController.hasClients) {
-        _localScrollController.jumpTo(_localScrollController.offset);
-      }
-    } catch (_) {}
-    
-    try {
-      _localScrollController.dispose();
-    } catch (_) {}
+    _localScrollController.dispose();
     super.dispose();
   }
 
