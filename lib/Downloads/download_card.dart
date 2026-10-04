@@ -33,6 +33,7 @@ class DownloadCard extends StatefulWidget {
   final bool autofocus;
   final Future<void> Function() onDelete;
   final Future<void> Function()? onPlay;
+  final Future<void> Function()? onStart;
   final FocusNode? focusNode;
   final bool Function(TraversalDirection)? onVertical;
   const DownloadCard(
@@ -41,6 +42,7 @@ class DownloadCard extends StatefulWidget {
       required this.controller,
       required this.onDelete,
       this.onPlay,
+      this.onStart,
       this.focusNode,
       this.onVertical,
       this.autofocus = false});
@@ -56,6 +58,7 @@ class _DownloadCardState extends State<DownloadCard> {
   final _cancel = FocusNode();
   final _play = FocusNode();
   bool _playing = false;
+  bool _starting = false;
   bool _focused = false;
   bool _confirming = false;
   @override
@@ -107,6 +110,50 @@ class _DownloadCardState extends State<DownloadCard> {
       }
     }
   }
+
+  Future<void> _startDownload() async {
+    if (_starting) return;
+    setState(() => _starting = true);
+    try {
+      if (widget.onStart != null) {
+        await widget.onStart!();
+      } else {
+        await widget.controller.start(widget.item);
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _starting = false);
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            if (widget.item.running) {
+              _focus.requestFocus();
+            } else {
+              _start.requestFocus();
+            }
+          }
+        });
+      }
+    }
+  }
+
+  ButtonStyle get _actionStyle => ButtonStyle(
+        fixedSize: const WidgetStatePropertyAll(Size(160, 48)),
+        backgroundColor: WidgetStateProperty.resolveWith((states) =>
+            states.contains(WidgetState.focused) &&
+                    !states.contains(WidgetState.disabled)
+                ? const Color(0xFF7C4DFF)
+                : Colors.transparent),
+        foregroundColor: WidgetStateProperty.resolveWith((states) =>
+            states.contains(WidgetState.disabled)
+                ? const Color(0xFF777777)
+                : Colors.white),
+        side: WidgetStateProperty.resolveWith((states) => BorderSide(
+            color: states.contains(WidgetState.focused)
+                ? const Color(0xFFB6A8FF)
+                : const Color(0xFF444444))),
+        shape: WidgetStatePropertyAll(
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+      );
 
   bool _moveActions(TraversalDirection direction) {
     if (direction != TraversalDirection.left &&
@@ -264,7 +311,10 @@ class _DownloadCardState extends State<DownloadCard> {
                         AnimatedSize(
                           duration: const Duration(milliseconds: 180),
                           alignment: Alignment.topCenter,
-                          child: _focused || _confirming || _playing
+                          child: _focused ||
+                                  _confirming ||
+                                  _playing ||
+                                  _starting
                               ? Column(
                                   crossAxisAlignment:
                                       CrossAxisAlignment.stretch,
@@ -285,6 +335,7 @@ class _DownloadCardState extends State<DownloadCard> {
                                             if (item.state ==
                                                 DownloadState.completed)
                                               FilledButton.icon(
+                                                  style: _actionStyle,
                                                   focusNode: _play,
                                                   onPressed:
                                                       item.busy || _playing
@@ -298,15 +349,16 @@ class _DownloadCardState extends State<DownloadCard> {
                                             if (item.state !=
                                                 DownloadState.completed)
                                               FilledButton.icon(
+                                                  style: _actionStyle,
                                                   focusNode: _start,
                                                   onPressed: item.busy ||
+                                                          _starting ||
                                                           item.running ||
                                                           item.state ==
                                                               DownloadState
                                                                   .completed
                                                       ? null
-                                                      : () => widget.controller
-                                                          .start(item),
+                                                      : _startDownload,
                                                   icon: const Icon(
                                                       Icons.play_arrow),
                                                   label: Text(item.state ==
@@ -315,7 +367,8 @@ class _DownloadCardState extends State<DownloadCard> {
                                                       : 'Iniciar')),
                                             if (item.state !=
                                                 DownloadState.completed)
-                                              OutlinedButton.icon(
+                                              FilledButton.icon(
+                                                  style: _actionStyle,
                                                   focusNode: _pause,
                                                   onPressed: item.busy ||
                                                           !item.running
@@ -326,7 +379,8 @@ class _DownloadCardState extends State<DownloadCard> {
                                                   label: const Text('Pausar')),
                                             if (item.state !=
                                                 DownloadState.completed)
-                                              OutlinedButton.icon(
+                                              FilledButton.icon(
+                                                  style: _actionStyle,
                                                   focusNode: _cancel,
                                                   onPressed: item.busy ||
                                                           item.state ==
@@ -341,7 +395,8 @@ class _DownloadCardState extends State<DownloadCard> {
                                                   icon: const Icon(Icons.stop),
                                                   label:
                                                       const Text('Cancelar')),
-                                            OutlinedButton.icon(
+                                            FilledButton.icon(
+                                                style: _actionStyle,
                                                 focusNode: _delete,
                                                 onPressed: item.busy
                                                     ? null

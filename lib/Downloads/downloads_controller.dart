@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'aria2_engine.dart';
 import 'download_record.dart';
 import 'download_store.dart';
+import 'download_destination.dart';
 
 class DownloadsController extends ChangeNotifier {
   static final instance = DownloadsController();
@@ -91,6 +92,35 @@ class DownloadsController extends ChangeNotifier {
         downloadUrl: downloadUrl,
         releaseInfo: releaseInfo);
     await _store!.save();
+    notifyListeners();
+  }
+
+  Future<void> setDownloadDrive(DownloadRecord record, String drive) async {
+    await initialize();
+    if (!items.contains(record) ||
+        record.busy ||
+        record.running ||
+        record.startedAt != null ||
+        record.downloadedBytes > 0 ||
+        record.state == DownloadState.completed) {
+      throw StateError('Escolha o disco antes de iniciar o download.');
+    }
+    final destination = gameDownloadDirectory(drive, record.name, record.id);
+    if (!await Directory(drive).exists()) {
+      throw StateError('Este disco não está disponível. Escolha outro disco.');
+    }
+    await Directory(destination).create(recursive: true);
+    final previous = record.destination;
+    final chosen = record.destinationChosen;
+    record.destination = destination;
+    record.destinationChosen = true;
+    try {
+      await _store!.save();
+    } catch (_) {
+      record.destination = previous;
+      record.destinationChosen = chosen;
+      rethrow;
+    }
     notifyListeners();
   }
 
@@ -298,6 +328,10 @@ class DownloadsController extends ChangeNotifier {
     _timer?.cancel();
     _watchDebounce?.cancel();
     await _watch?.cancel();
+    // Finaliza consultas/gravações já iniciadas antes do último salvamento.
+    while (_polling || _scanning) {
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+    }
     for (final record in items.where((r) => r.running)) {
       if (record.gid != null) {
         try {

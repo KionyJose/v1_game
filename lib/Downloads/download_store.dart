@@ -6,6 +6,7 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import '../Tela/Tela loja/downloads/arquivo_torrent.dart';
 import 'download_record.dart';
+import 'download_destination.dart';
 
 class DownloadStore {
   final Directory purchases;
@@ -52,7 +53,9 @@ class DownloadStore {
       for (final item in json['downloads'] as List) {
         final record =
             DownloadRecord.fromJson((item as Map).cast<String, dynamic>());
-        record.destination = p.join(payloads.path, record.id);
+        if (!record.destinationChosen) {
+          record.destination = p.join(payloads.path, record.id);
+        }
         if (record.running) record.state = DownloadState.paused;
         records[record.id] = record;
       }
@@ -106,7 +109,9 @@ class DownloadStore {
           final saved = DownloadRecord.fromJson(
               jsonDecode(await sidecar.readAsString()) as Map<String, dynamic>);
           if (saved.id == id) {
-            saved.destination = p.join(payloads.path, id);
+            if (!saved.destinationChosen) {
+              saved.destination = p.join(payloads.path, id);
+            }
             if (saved.running) saved.state = DownloadState.paused;
             record = saved;
           }
@@ -175,12 +180,28 @@ class DownloadStore {
 
   Future<void> _delete(DownloadRecord record,
       {bool deletePayload = false}) async {
-    // Destino calculado pelo sistema; nunca excluir recursivamente um caminho vindo do JSON/RPC.
-    final directory = Directory(p.join(payloads.path, record.id));
+    // Recalcula e valida o destino antes de qualquer exclusão recursiva.
+    var managedRoot = payloads;
+    var destination = p.join(payloads.path, record.id);
+    if (record.destinationChosen) {
+      final drive = p.windows.rootPrefix(record.destination);
+      destination = gameDownloadDirectory(drive, record.name, record.id);
+      if (!p.windows.equals(destination, record.destination)) {
+        throw StateError(
+            'O destino não corresponde à pasta gerenciada do jogo.');
+      }
+      managedRoot = Directory(p.windows.join(drive, 'V1 Jogos'));
+    }
+    final directory = Directory(destination);
     if (deletePayload && await directory.exists()) {
-      final root = await payloads.resolveSymbolicLinks();
+      final root = await managedRoot.resolveSymbolicLinks();
+      final expectedRoot = p.normalize(p.absolute(managedRoot.path));
+      if (!p.equals(root, expectedRoot)) {
+        throw StateError('A pasta gerenciada aponta para outro local.');
+      }
       final resolved = await directory.resolveSymbolicLinks();
-      if (!p.isWithin(root, resolved)) {
+      if (!p.isWithin(root, resolved) ||
+          !p.equals(resolved, p.normalize(p.absolute(directory.path)))) {
         throw StateError('O destino aponta para fora da pasta gerenciada.');
       }
       await _deleteWithRetry(directory, recursive: true);

@@ -10,6 +10,7 @@ import '../Bando de Dados/db.dart';
 import 'dart:io';
 import 'package:path/path.dart' as p;
 import 'download_game_launcher.dart';
+import 'download_destination.dart';
 import 'package:provider/provider.dart';
 import 'package:window_manager/window_manager.dart';
 import '../Controllers/JanelaCtrl.dart';
@@ -18,8 +19,13 @@ class DownloadsTela extends StatefulWidget {
   final DownloadsController? controller;
   final bool enablePad;
   final Future<void> Function(String)? onLaunchGame;
+  final Future<List<String>> Function()? loadDrives;
   const DownloadsTela(
-      {super.key, this.controller, this.enablePad = true, this.onLaunchGame});
+      {super.key,
+      this.controller,
+      this.enablePad = true,
+      this.onLaunchGame,
+      this.loadDrives});
   @override
   State<DownloadsTela> createState() => _DownloadsTelaState();
 }
@@ -61,6 +67,33 @@ class _DownloadsTelaState extends State<DownloadsTela> with WindowListener {
       _itemFocus[items[next].id]?.requestFocus();
     }
     return true;
+  }
+
+  Future<void> _start(DownloadRecord item) async {
+    if (item.busy || item.running || item.state == DownloadState.completed) {
+      return;
+    }
+    try {
+      if (!item.destinationChosen &&
+          item.startedAt == null &&
+          item.downloadedBytes == 0 &&
+          item.state != DownloadState.paused) {
+        final drive = await selectDownloadDrive(context, item.name,
+            loadDrives: widget.loadDrives, enablePad: widget.enablePad);
+        if (!mounted || drive == null) return;
+        await _controller.setDownloadDrive(item, drive);
+      }
+      if (mounted && _controller.items.contains(item)) {
+        await _controller.start(item);
+      }
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(error is StateError
+                ? error.message.toString()
+                : 'Não foi possível preparar a pasta nesse disco. Escolha um disco com permissão de gravação.')));
+      }
+    }
   }
 
   Future<void> _play(DownloadRecord item) async {
@@ -230,10 +263,8 @@ class _DownloadsTelaState extends State<DownloadsTela> with WindowListener {
                                                   if (index > 0)
                                                     const SizedBox(height: 14),
                                                   PadScrollTarget(
-                                                      settleDelay:
-                                                          const Duration(
-                                                              milliseconds:
-                                                                  200),
+                                                      settleDelay: const Duration(
+                                                          milliseconds: 200),
                                                       child: DownloadCard(
                                                           key: ValueKey(
                                                               items[index].id),
@@ -242,13 +273,14 @@ class _DownloadsTelaState extends State<DownloadsTela> with WindowListener {
                                                               _controller,
                                                           focusNode: _itemFocus[
                                                               items[index].id],
-                                                          onVertical:
-                                                              (direction) =>
-                                                                  _moveItem(
-                                                                      items[index]
-                                                                          .id,
-                                                                      direction),
+                                                          onVertical: (direction) =>
+                                                              _moveItem(
+                                                                  items[index]
+                                                                      .id,
+                                                                  direction),
                                                           onPlay: () => _play(
+                                                              items[index]),
+                                                          onStart: () => _start(
                                                               items[index]),
                                                           autofocus: index == 0,
                                                           onDelete: () => _delete(

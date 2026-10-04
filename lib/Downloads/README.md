@@ -10,13 +10,15 @@ com o aplicativo; sua localização é resolvida em `aria2_engine.dart`.
 
 - Entrada automática: `Downloads/games torrent compra/*.torrent`.
 - Metadados individuais: `<arquivo>.torrent.json`, ao lado do torrent.
-- Conteúdo dos jogos: `Downloads/games torrent downloads/<infoHash>/`.
+- Conteúdo dos novos jogos: `<disco>:\V1 Jogos\<nome do jogo> - <infoHash curto>\`.
+  Downloads já iniciados mantêm o destino anterior.
 - Índice: `<getApplicationSupportDirectory()>/downloads/downloads.json`.
 
 O JSON individual contém `schemaVersion`, `id` (infoHash), `name`,
 `releaseSource: {type, name}`, `edition`, `releaseInfo`, `pageUrl`, `downloadUrl`,
 `torrentFiles`, `acquiredAt` e `download`. Este último armazena estado, destino,
-bytes totais/recebidos, velocidade, peers, GID, erro e datas de início/conclusão.
+`destinationChosen`, bytes totais/recebidos, velocidade, peers, GID, erro e datas
+de início/conclusão. O destino escolhido é preservado no índice e no sidecar.
 Os arquivos são atualizados com o progresso e escritos com arquivo temporário.
 Torrents com o mesmo infoHash representam um único download.
 
@@ -28,7 +30,11 @@ automaticamente: os metadados ficam disponíveis para tratamento posterior.
 
 ## Ações e navegação
 
-- Iniciar/Retomar: inicia um novo GID ou retoma o GID pausado.
+- Iniciar: antes da primeira transferência, `download_destination.dart` lista
+  as unidades acessíveis e oferece um seletor interno pelo Pad. A escolha cria
+  `V1 Jogos` na raiz e a subpasta do jogo; nomes são normalizados e o identificador
+  distingue edições. Voltar cancela a escolha sem iniciar o download.
+- Retomar: usa o mesmo destino e retoma o GID pausado.
 - Pausar: mantém o item e seus arquivos parciais.
 - Cancelar: remove a transferência do motor e mantém os arquivos parciais;
   Iniciar permite recuperá-los, verificando sua integridade.
@@ -39,7 +45,8 @@ Ao reabrir o aplicativo, downloads em andamento ficam pausados; o usuário
 seleciona Retomar. A pasta de compras é examinada na abertura e monitorada para
 novos torrents. Arquivos inválidos ou ainda incompletos não entram na fila.
 
-Somente o cartão com foco expande suas ações. Teclado: setas, Enter e Escape.
+Somente o cartão com foco expande suas ações. Os botões compartilham tamanho
+e estilo; o fundo fica roxo apenas no botão em foco. Teclado: setas, Enter e Escape.
 Controle XInput: direcional/analógico esquerdo, A para selecionar e B para voltar.
 A leitura do controle é local à tela e não movimenta o cursor do Windows.
 

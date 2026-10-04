@@ -16,6 +16,7 @@ class TelaController extends DownloadsController {
           torrentFiles: ['teste.torrent'],
           sourceName: 'FitGirl Repacks',
           destination: 'Downloads/games torrent downloads/jogo${i + 1}',
+          destinationChosen: true,
           acquiredAt: DateTime(2026),
           totalBytes: 100));
   int starts = 0;

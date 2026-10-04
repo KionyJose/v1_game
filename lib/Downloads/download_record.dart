@@ -31,6 +31,7 @@ class DownloadRecord {
   Map<String, String> releaseInfo;
   final DateTime acquiredAt;
   String destination;
+  bool destinationChosen;
   String? launchPath;
   DownloadState state;
   int totalBytes;
@@ -80,6 +81,7 @@ class DownloadRecord {
       required this.torrentFiles,
       required this.destination,
       required this.acquiredAt,
+      this.destinationChosen = false,
       this.sourceName = '',
       this.edition = '',
       this.pageUrl = '',
@@ -110,6 +112,7 @@ class DownloadRecord {
         'download': {
           'state': state.name,
           'destination': destination,
+          'destinationChosen': destinationChosen,
           'launchPath': launchPath,
           'totalBytes': totalBytes,
           'downloadedBytes': downloadedBytes,
@@ -137,6 +140,7 @@ class DownloadRecord {
         name: json['name'] as String,
         torrentFiles: (json['torrentFiles'] as List).cast<String>().toList(),
         destination: download['destination'] as String? ?? '',
+        destinationChosen: download['destinationChosen'] == true,
         launchPath: download['launchPath'] as String?,
         acquiredAt: DateTime.parse(json['acquiredAt'] as String),
         sourceName: source['name'] as String? ?? '',

@@ -6,6 +6,7 @@ import 'package:v1_game/Downloads/aria2_engine.dart';
 import 'package:v1_game/Downloads/download_record.dart';
 import 'package:v1_game/Downloads/download_store.dart';
 import 'package:v1_game/Downloads/downloads_controller.dart';
+import 'package:v1_game/Downloads/download_destination.dart';
 
 const smallTorrent =
     'd4:infod6:lengthi1e4:name4:test12:piece lengthi16384e6:pieces20:12345678901234567890ee';
@@ -89,6 +90,38 @@ void main() {
         releaseInfo: {'Build': '123'});
     return controller.items.last;
   }
+
+  test(
+      'Destino escolhido permanece no índice e no torrent após reabrir Downloads',
+      () async {
+    final record = await add('test');
+    record.destination = gameDownloadDirectory('D:\\', 'Meu/Jogo?', record.id);
+    record.destinationChosen = true;
+    await store.save();
+    final reopened = DownloadStore(
+        purchases: store.purchases,
+        payloads: store.payloads,
+        indexFile: store.indexFile);
+    await reopened.load();
+    expect(reopened.records[record.id]!.destination, record.destination);
+    expect(reopened.records[record.id]!.destinationChosen, isTrue);
+    expect(record.destination, contains('V1 Jogos\\Meu_Jogo_ - '));
+    await expectLater(
+        controller.setDownloadDrive(record, '..'), throwsStateError);
+    final metadata = jsonDecode(
+        await File('${record.torrentFiles.first}.json').readAsString()) as Map;
+    expect(metadata['download']['destination'], record.destination);
+  });
+
+  test('Destino escolhido não permite excluir caminhos fora da pasta do jogo',
+      () async {
+    final record = await add('test');
+    record.destinationChosen = true;
+    record.destination = 'C:\\';
+    await expectLater(
+        store.delete(record, deletePayload: true), throwsStateError);
+    expect(store.records[record.id], same(record));
+  });
 
   test('Executável escolhido para Jogar persiste junto ao download concluído',
       () async {

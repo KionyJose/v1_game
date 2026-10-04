@@ -28,7 +28,7 @@ class LojaIntro extends StatelessWidget {
                 fontSize: titleStyle.fontSize! * 1.1,
                 fontWeight: FontWeight.w700)),
         const SizedBox(height: 8),
-        Text(descricao,
+        Text(descricao.replaceAll('GamesTorrents', 'atualmente'),
             textAlign: TextAlign.center,
             style: const TextStyle(color: Color(0xFFB8B3C5))),
       ])),

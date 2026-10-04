@@ -16,6 +16,7 @@ import 'scrap_loja_test.dart' show FonteTeste;
 import 'downloads_tela_test.dart' show TelaController;
 import 'package:v1_game/Downloads/download_record.dart';
 import 'package:v1_game/Downloads/downloads_tela.dart';
+import 'package:v1_game/Downloads/download_destination.dart';
 import 'package:v1_game/Tela/Tela loja/detalhes_jogo_tela.dart';
 import 'package:v1_game/Tela/Tela loja/scraps/catalogo_scraper.dart';
 import 'package:v1_game/Tela/Tela loja/scraps/jogo_detalhes.dart';
@@ -54,6 +55,15 @@ class FonteMidiaTeste extends FonteDetalhesTeste {
       );
 }
 
+class DriveController extends TelaController {
+  @override
+  Future<void> setDownloadDrive(DownloadRecord record, String drive) async {
+    record.destination = gameDownloadDirectory(drive, record.name, record.id);
+    record.destinationChosen = true;
+    notifyListeners();
+  }
+}
+
 void main() {
   test('Pad roteia somente à interface superior e aceita comandos repetidos',
       () {
@@ -77,6 +87,60 @@ void main() {
   tearDown(() => pad.dispose());
   Widget app(Widget home) => ChangeNotifierProvider<Paad>.value(
       value: pad, child: MaterialApp(home: home));
+
+  testWidgets(
+      'Pad escolhe disco antes de iniciar, cancela escolha e retoma no mesmo destino',
+      (tester) async {
+    final controller = DriveController();
+    controller.records.first.destinationChosen = false;
+    addTearDown(() async {
+      await controller.engine.close();
+      controller.dispose();
+    });
+    await tester.pumpWidget(app(DownloadsTela(
+        controller: controller, loadDrives: () async => ['C:\\', 'D:\\'])));
+    await tester.pumpAndSettle();
+    pad.interfaceRouter.dispatch('2');
+    await tester.pumpAndSettle();
+    pad.interfaceRouter.dispatch('2');
+    await tester.pumpAndSettle();
+    expect(find.text('Onde baixar o jogo?'), findsOneWidget);
+    expect(controller.starts, 0);
+    pad.interfaceRouter.dispatch('3');
+    await tester.pumpAndSettle();
+    expect(controller.starts, 0);
+    expect(controller.records.first.destinationChosen, isFalse);
+    pad.interfaceRouter.dispatch('2');
+    await tester.pumpAndSettle();
+    pad.interfaceRouter.dispatch('BAIXO');
+    await tester.pumpAndSettle();
+    expect(
+        Focus.of(tester.element(find.text('Disco D:  •  V1 Jogos'))).hasFocus,
+        isTrue);
+    pad.interfaceRouter.dispatch('2');
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(controller.starts, 1);
+    expect(controller.records.first.destination,
+        'D:\\V1 Jogos\\Jogo 1 - 11111111');
+    final destination = controller.records.first.destination;
+    await controller.pause(controller.records.first);
+    await tester.pumpAndSettle();
+    pad.interfaceRouter.dispatch('2');
+    await tester.pumpAndSettle();
+    pad.interfaceRouter.dispatch('2');
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(find.text('Onde baixar o jogo?'), findsNothing);
+    expect(controller.starts, 2);
+    expect(controller.records.first.destination, destination);
+    pad.interfaceRouter.dispatch('2');
+    await tester.pump(const Duration(milliseconds: 500));
+    final pause = tester.widget<FilledButton>(
+        find.widgetWithText(FilledButton, 'Pausar').first);
+    expect(pause.style!.backgroundColor!.resolve({WidgetState.focused}),
+        const Color(0xFF7C4DFF));
+    expect(pause.style!.backgroundColor!.resolve({}), Colors.transparent);
+    expect(tester.takeException(), isNull);
+  });
 
   testWidgets(
       'Downloads troca cartões verticalmente e mantém a rolagem nas ações horizontais',
