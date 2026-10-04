@@ -6,6 +6,7 @@ import 'package:v1_game/Class/Paad.dart';
 import 'package:v1_game/Class/WebScrap.dart';
 import 'package:v1_game/Widgets/LoadWid.dart';
 
+import '../../Interface/pad_confirmation.dart';
 import '../../Bando de Dados/db.dart';
 import '../../Controllers/MovimentoSistema.dart';
 import '../../Modelos/IconeInicial.dart';
@@ -312,150 +313,8 @@ class Pops {
 
 
   
-  msgSN(BuildContext context, String str) async { 
-    try{
-      String retorno = "";  
-      bool statePop = true; 
-      List<FocusNode> focusNodes = [
-        FocusNode(),
-        FocusNode(),
-      ];
-
-      FocusScopeNode focusScope = FocusScopeNode();
-      String str1 = "Sim";
-      String str0 = "Nao";
-      //teste1
-      btn(String str, FocusNode focus) {
-        return Padding(
-          padding: const EdgeInsets.all(8.0),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(30),
-            child: Container(
-              color: Colors.white70,
-              height: 60,
-              child: MaterialButton(
-                  focusNode: focus,
-                  autofocus: str == str0 ? true : focus.hasFocus,
-                  focusColor: Colors.black45,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [ 
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 30),
-                        child: Text(str,
-                        style:  const TextStyle(
-                          fontSize: 25,
-                          color: Colors.black ,
-                        )),
-                      ),
-                    ],
-                  ),
-                  onPressed: () {                  
-                      if (focusNodes[0].hasFocus) Navigator.pop(context, str0);
-                      if (focusNodes[1].hasFocus) Navigator.pop(context, str1);
-                  } ),
-            ),
-          ),
-        );
-      }
-
-    
-      escutaPad(String event) {
-        if(!statePop || event =="") return;
-        debugPrint("=======   Escuta Pop S/N   =======");
-        debugPrint("Click ==>>  $event");
-        MovimentoSistema.direcaoListView(focusScope, event);
-        if(event == "3"){//START
-          statePop = false;
-          Navigator.pop(context, "");
-        }
-        if(event == "2"){//Entrar
-          statePop = false;
-          if (focusNodes[0].hasFocus) Navigator.pop(context, str0);
-          if (focusNodes[1].hasFocus) Navigator.pop(context, str1);
-        }
-      }
-
-      await showDialog(
-        context: context,
-        builder: (_) => Selector<Paad, String>(
-          selector: (_, paad) => paad.click, // Escuta apenas click      
-          builder: (_, valorAtual, child) {
-            escutaPad(valorAtual);         
-            return KeyboardListener(
-              //KeyboardListener
-              focusNode: FocusNode(),
-              onKeyEvent: (KeyEvent event) {
-                if (event is KeyDownEvent) {
-                  // Verifica a tecla pressionada
-                  if (event.logicalKey == LogicalKeyboardKey.keyA) {
-                    focusScope.focusInDirection(TraversalDirection.left);
-                    debugPrint(event.logicalKey.toString());
-                  } else if (event.logicalKey == LogicalKeyboardKey.keyD) {
-                    focusScope.focusInDirection(TraversalDirection.right);
-                    debugPrint(event.logicalKey.toString());
-                  } else if (event.logicalKey == LogicalKeyboardKey.digit3) {
-                    statePop = false;
-                    Navigator.pop(context, "");
-                  } else if (event.logicalKey == LogicalKeyboardKey.digit2) {
-                    statePop = false;
-                    if (focusNodes[0].hasFocus) Navigator.pop(context, str0);
-                    if (focusNodes[1].hasFocus) Navigator.pop(context, str1);
-                  }
-                }
-              },
-              child: AlertDialog(
-              backgroundColor: Colors.transparent,
-              contentPadding: const EdgeInsets.all(0),
-              content: ClipRRect(
-                borderRadius: BorderRadius.circular(20),  
-                child: Container(
-                height: 250,
-                width: 380,
-                // decoration: decorationBOX,
-                color: Colors.grey[300],
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const SizedBox(height: 15),
-                    Flexible(
-                      flex: 1,
-                      child: Text(
-                        str,
-                        style: const TextStyle(fontSize: 25, color: Colors.black),
-                        softWrap: true,
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-                    const Spacer(),
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 10),
-                      child: FocusScope(
-                      // autofocus: true,
-                      node: focusScope,
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                          children: [
-                            btn(str0,focusNodes[0]),
-                            btn(str1, focusNodes[1])
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                )),
-              ),
-            ));
-          }
-        ),
-      ).then((value) => retorno = value.toString());
-      return retorno;
-    }catch(e){
-      debugPrint(e.toString());
-      debugPrint(e.toString());
-    }
-  }
+  Future<String?> msgSN(BuildContext context, String str) =>
+      confirmarPad(context, str);
 
   navPasta(BuildContext context,  String caminho, String tarefa, List<IconInicial> listiconIni, int index) async {    
     DB db = DB();

@@ -19,7 +19,7 @@ class WebScrap{
     String content = '';
     List<ImgWebScrap> list = [];
     // Cria a URL de busca dinâmica para Wallpapercave
-    final url = Uri.parse('https://wallpapercave.com/search?q=$gameName');
+    final url = Uri.https('wallpapercave.com', '/search', {'q': gameName.trim()});
     final response = await http.get(url);
     if (response.statusCode == 200) {
       final bodyStr = utf8.decode(response.bodyBytes, allowMalformed: true);

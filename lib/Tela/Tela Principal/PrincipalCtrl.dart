@@ -958,6 +958,66 @@ class PrincipalCtrl with ChangeNotifier{
       } catch (_) {}
   }
 
+  bool _excluindoCard = false;
+
+  Future<void> excluirCardSelecionado() async {
+    if (_excluindoCard || _disposed || !ctx.mounted) return;
+    if (listIconsInicial.isEmpty) {
+      stateTela = true;
+      attTela();
+      return;
+    }
+    _excluindoCard = true;
+    stateTela = false;
+    final card = listIconsInicial[
+        selectedIndexIcone.clamp(0, listIconsInicial.length - 1)];
+    try {
+      limparClickPad(delayMs: 0);
+      final result = await Pops().msgSN(ctx, 'Excluir "${card.nome}" da biblioteca?');
+      if (_disposed || !ctx.mounted || result != 'Sim') return;
+      final index = listIconsInicial.indexOf(card);
+      if (index < 0) return;
+      final updated = List<IconInicial>.of(listIconsInicial)..removeAt(index);
+      await db.attDados(updated);
+      if (_disposed || !ctx.mounted) return;
+      listIconsInicial = updated;
+      final removedFocus = focusNodeIcones.removeAt(index);
+      if (videosIndexYT.length > index) videosIndexYT.removeAt(index);
+      selectedIndexIcone = updated.isEmpty ? 0 : index.clamp(0, updated.length - 1);
+      cardInf = false;
+      selectedIndexCardInfo = 0;
+      _fundoCardVersao++;
+      videosYT.clear();
+      if (updated.isEmpty) focusNodeIcones = [FocusNode()];
+      attTela();
+      WidgetsBinding.instance.addPostFrameCallback((_) => removedFocus.dispose());
+    } catch (error) {
+      debugPrint('Não foi possível excluir o card: $error');
+      if (!_disposed && ctx.mounted) {
+        ScaffoldMessenger.maybeOf(ctx)?.showSnackBar(
+            SnackBar(content: Text('Não foi possível excluir o card: $error')));
+      }
+    } finally {
+      _excluindoCard = false;
+      if (!_disposed && ctx.mounted) {
+        limparClickPad();
+        stateTela = true;
+        attTela();
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (_disposed || !ctx.mounted) return;
+          if (listIconsInicial.isEmpty) {
+            focusScope = focusScopeAbaGuias;
+            focusNodeAbaGuias[selectedIndexAbaGuias].requestFocus();
+          } else {
+            selectedIndexIcone = selectedIndexIcone.clamp(0, listIconsInicial.length - 1);
+            focusScope = focusScopeIcones;
+            focusNodeIcones[selectedIndexIcone].requestFocus();
+          }
+        });
+      }
+    }
+  }
+
   btnMais() {
     try{
     stateTela = false;
@@ -994,26 +1054,9 @@ class PrincipalCtrl with ChangeNotifier{
         case "Imagem da Download": {
           await salvaImgDownload();
         }
-        case  "Excluir Card":{
-          Timer(const Duration(milliseconds: 500  ),() async {
-            var result = await Pops().msgSN(ctx, "Confirmar ação?");
-            try {
-              final paad = Provider.of<Paad>(ctx, listen: false);
-              paad.click = "";
-              paad.delay = true;
-              paad.attTela();
-              Timer(const Duration(milliseconds: 350), () { if(!_disposed) paad.delay = false; });
-            } catch (_) {}
-            if(result ==  null || result == "Nao"){ 
-              Timer(const Duration(milliseconds: 350), () { if(!_disposed) stateTela = true; });
-              return;
-            }
-            if(result == "Sim"){
-              listIconsInicial.removeAt(selectedIndexIcone);
-              await db.attDados(listIconsInicial);
-              Timer(const Duration(milliseconds: 500), () => iniciaTela());
-            }
-          });
+        case "Excluir Card": {
+          await excluirCardSelecionado();
+          return;
         }
         case "Atalhos":{
           await Pops.popTela(ctx,ImagemFullScren(urlImg: "${assetsPath}tutorial.png"));

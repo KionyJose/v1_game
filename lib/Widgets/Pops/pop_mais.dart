@@ -25,6 +25,12 @@ class PopMais {
 
       List<FocusNode> focusNodes = List.generate(total, (value) => FocusNode());
 
+      void concluir(String value) {
+        if (!statePop || !context.mounted) return;
+        statePop = false;
+        Navigator.pop(context, value);
+      }
+
       comandos(BuildContext context, String event) {
         int total = 0;
         if (commandos.length == 2) {
@@ -49,24 +55,17 @@ class PopMais {
 
         if (event == "3") {
           //START
-          statePop = false;
-          Navigator.pop(context, "");
+          concluir('');
+          return;
         }
         if (event == "2") {
           //Entrar
           debugPrint("======================================== $event SAINDOO");
-          statePop = false;
-          if (focusNodes[0].hasFocus) Navigator.pop(context, str0);
-          if (focusNodes[1].hasFocus) Navigator.pop(context, str1);
-          if (focusNodes[2].hasFocus) Navigator.pop(context, str2);
-          if (focusNodes[3].hasFocus) Navigator.pop(context, str3);
-          if (focusNodes[4].hasFocus) Navigator.pop(context, str4);
-          if (focusNodes[5].hasFocus) Navigator.pop(context, str5);
-          if (focusNodes[6].hasFocus) Navigator.pop(context, str6);
-          if (focusNodes[7].hasFocus) Navigator.pop(context, str7);
-          if (focusNodes[8].hasFocus) Navigator.pop(context, str8);
+          final selected = focusNodes.indexWhere((node) => node.hasFocus);
+          if (selected >= 0) {
+            concluir([str0, str1, str2, str3, str4, str5, str6, str7, str8][selected]);
+          }
           // if (focusNodes.length > 8 && focusNodes[8].hasFocus) Navigator.pop(context, str0);
-          statePop = true;
         }
       }
 
@@ -92,7 +91,7 @@ class PopMais {
                         Icon(ico, color: Colors.white),
                       ],
                     ),
-                    onPressed: () => Navigator.pop(context, str)),
+                    onPressed: () => concluir(str)),
               ),
             ),
           ),
@@ -125,7 +124,7 @@ class PopMais {
                               ))),
                     ],
                   ),
-                  onPressed: () => Navigator.pop(context, str)),
+                  onPressed: () => concluir(str)),
             ),
           ),
         );

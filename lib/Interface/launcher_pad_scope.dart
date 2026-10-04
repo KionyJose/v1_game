@@ -90,6 +90,15 @@ class _LauncherPadScopeState extends State<LauncherPadScope> {
   }
 
   @override
+  void didUpdateWidget(LauncherPadScope oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.enabled != widget.enabled) {
+      _detach?.call();
+      _detach = widget.enabled ? _pad?.interfaceRouter.attach(_command) : null;
+    }
+  }
+
+  @override
   void dispose() {
     _detach?.call();
     FocusManager.instance.removeListener(_revealFocus);
