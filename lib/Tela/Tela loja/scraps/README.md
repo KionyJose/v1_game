@@ -41,7 +41,7 @@ ou o serviço bloquear a reprodução. Reprodução ao vivo depende do YouTube.
 `gamestorrents_download_scraper.dart` é o segundo adaptador: consulta por GET
 a URL do botão **Baixar torrent** da versão escolhida e interpreta a resposta
 HTML do formulário (`data-download-config`). O botão **Comprar** usa esse
-adaptador e inicia o download com `EdgeTorrentDownloader`. O texto da tela
+adaptador e inicia o download com `EmbeddedTorrentDownloader`. O texto da tela
 esclarece que não há pagamento; o site não fornece checkout nesse fluxo.
 
 Na página Little Nightmares III examinada em 03/10/2026, o catálogo apresentava
@@ -60,42 +60,37 @@ O JavaScript público `/assets/download.bb733f93e1508c67.js` mostra o fluxo:
 5. O arquivo salvo deve ser aberto em um cliente torrent para baixar o conteúdo.
 
 Não existe URL estática de `.torrent` no HTML inspecionado. Ao clicar em
-**Comprar**, o app abre uma janela Edge dedicada e dispara o formulário oficial,
-incluindo o JavaScript de verificação do próprio site. Se aparecer hCaptcha,
-o usuário conclui a verificação e clica em continuar nessa janela.
+**Comprar**, o app abre um painel WebView2 dentro da própria janela e dispara
+o formulário oficial. O JavaScript do site executa suas verificações; quando
+aparece hCaptcha, o usuário conclui a etapa dentro do painel.
 
-## Pasta e monitoramento do download (Windows)
+## Download integrado (Windows)
 
-`downloads/torrent_download.dart` define o contrato de download.
-`downloads/edge_torrent_downloader.dart` implementa o fluxo usando o Microsoft
-Edge instalado. O perfil temporário é exclusivo da operação, com uma porta
-local dinâmica; a sessão pessoal do usuário não é alterada. Não requer novas
-dependências. O suporte atual é Windows com Edge instalado.
+`downloads/torrent_download.dart` preserva o contrato injetável.
+`downloads/embedded_torrent_downloader.dart` gerencia WebView2 e cancelamento.
+`downloads/torrent_download_view.dart` mostra o site e intercepta a resposta
+liberada usando Fetch do protocolo DevTools, apenas para o endereço solicitado
+e MIME `application/x-bittorrent`. Não abre o Edge externo.
 
-`path_provider.getDownloadsDirectory` localiza a pasta Downloads configurada
-no Windows, inclusive quando foi redirecionada. O app cria **games torrent compra**
-dentro dela e configura o navegador para baixar diretamente nessa pasta.
-`Browser.setDownloadBehavior` com `allowAndName` salva primeiro com o GUID do
-download; os eventos `Browser.downloadWillBegin`/`Browser.downloadProgress`
-identificam e monitoram somente o arquivo solicitado. Downloads inesperados são
-cancelados. Não há varredura nem movimentação de outros arquivos de Downloads.
+Os bytes são limitados a 10 MB, salvos em
+**Downloads/games torrent compra** e validados por `ArquivoTorrent.confirmar`.
+O parser existente rejeita HTML e arquivos inválidos. Nomes são sanitizados e
+arquivos anteriores preservados. Após confirmação, a tela registra a compra na
+fila e apresenta o caminho salvo com **Abrir pasta**.
 
-`downloads/arquivo_torrent.dart` só confirma após o evento `completed`, arquivo
-presente e parsing válido pelo dtorrent_parser. Em seguida renomeia para o nome
-original seguro. Se esse nome já existir, acrescenta `(1)`, `(2)` etc., preservando
-os arquivos anteriores. `.crdownload`, HTML e arquivo inexistente não indicam
-sucesso. A tela mostra progresso, permite cancelar e exibe o caminho confirmado
-com **Abrir pasta**. A janela exclusiva fecha ao terminar/cancelar; a espera tem
-limite de 10 minutos. O download é do pequeno arquivo .torrent, sem iniciar o
-download do conteúdo completo do jogo.
+O perfil do WebView2 é próprio do app, dentro da pasta de suporte.
+Requer WebView2 Runtime instalado. A espera pela liberação tem limite de
+10 minutos; operações DevTools têm limite de 25 segundos. Cancelamento
+durante recebimento aguarda a operação atual terminar antes de limpar o parcial.
 
-Testes de integração simulam os eventos reais do protocolo e a gravação no disco
-em `test/torrent_download_test.dart`; não comprovam liberação pelo site ao vivo.
-A sessão de desenvolvimento não disponibilizou navegador conectado para validar
-o download real. Se o site bloquear Edge ou exigir CAPTCHA, a tela deve apresentar
-a falha ou aguardar interação humana, sem registrar download concluído.
+A implementação antiga `EdgeTorrentDownloader` permanece para compatibilidade
+dos testes existentes, mas não é o downloader padrão. Os testes antigos não
+comprovam este novo fluxo WebView2 nem a liberação do site ao vivo.
+Não foram executados aplicativo, build ou testes nesta alteração.
 
-Referência do protocolo: https://learn.microsoft.com/en-us/microsoft-edge/devtools/protocol/
+Detalhes de dependências e limitações: [DOWNLOAD_INTEGRADO.md](../../../../DOWNLOAD_INTEGRADO.md).
+Referência do plugin: https://inappwebview.dev/docs/webview/in-app-webview/
+Referência do protocolo: https://chromedevtools.github.io/devtools-protocol/tot/Fetch/
 
 Fontes inspecionadas:
 - https://www.gamestorrents.app/pt-br/jogos-pc/little-nightmares-iii-1/

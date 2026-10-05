@@ -106,7 +106,16 @@ void main() {
     expect(find.text(r'C:\Downloads\games torrent compra\teste.torrent'),
         findsOneWidget);
     expect(find.text('Arquivo .torrent baixado e confirmado.'), findsOneWidget);
+    expect(find.text('Comprar'), findsNothing);
+    expect(
+        find.textContaining('já está na área Downloads, pronto para iniciar.'),
+        findsOneWidget);
     expect(tester.takeException(), isNull);
+    await tester.ensureVisible(find.byType(DropdownButtonFormField<int>));
+    await tester.tap(find.byType(DropdownButtonFormField<int>));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Edição atual').last);
+    await tester.pumpAndSettle();
     download.falhar = true;
     await tester.ensureVisible(find.text('Comprar'));
     await tester.tap(find.text('Comprar'));

@@ -1,7 +1,27 @@
 import 'dart:io';
+import 'dart:ffi';
+import 'package:ffi/ffi.dart';
 import 'package:flutter/material.dart';
 import 'package:path/path.dart' as p;
+import 'package:win32/win32.dart';
 import '../Interface/launcher_pad_scope.dart';
+
+/// Espaço disponível ao usuário atual, incluindo eventuais cotas do Windows.
+int? freeDownloadDriveBytes(String drive) {
+  if (!Platform.isWindows || !RegExp(r'^[a-zA-Z]:[\\/]$').hasMatch(drive)) {
+    return null;
+  }
+  final path = drive.toNativeUtf16();
+  final available = calloc<Uint64>();
+  try {
+    return GetDiskFreeSpaceEx(path, available, nullptr, nullptr) != 0
+        ? available.value
+        : null;
+  } finally {
+    calloc.free(available);
+    calloc.free(path);
+  }
+}
 
 Future<List<String>> availableDownloadDrives() async {
   final drives = <String>[];
@@ -53,10 +73,21 @@ class _DrivePicker extends StatefulWidget {
 
 class _DrivePickerState extends State<_DrivePicker> {
   late Future<List<String>> _drives;
+  final _freeBytes = <String, int?>{};
+
+  Future<List<String>> _loadDrives() async {
+    final drives = await widget.loadDrives();
+    _freeBytes.clear();
+    for (final drive in drives) {
+      _freeBytes[drive] = freeDownloadDriveBytes(drive);
+    }
+    return drives;
+  }
+
   @override
   void initState() {
     super.initState();
-    _drives = widget.loadDrives();
+    _drives = _loadDrives();
   }
 
   @override
@@ -97,7 +128,7 @@ class _DrivePickerState extends State<_DrivePicker> {
                                     TextButton(
                                         autofocus: true,
                                         onPressed: () => setState(() {
-                                              _drives = widget.loadDrives();
+                                              _drives = _loadDrives();
                                             }),
                                         child: const Text('Atualizar discos')),
                                   ]);
@@ -111,14 +142,33 @@ class _DrivePickerState extends State<_DrivePicker> {
                                 Padding(
                                     padding: const EdgeInsets.only(bottom: 8),
                                     child: OutlinedButton.icon(
+                                        key: ValueKey(
+                                            'download-drive-${drives[index]}'),
                                         autofocus: index == 0,
                                         onPressed: () => Navigator.pop(
                                             context, drives[index]),
                                         icon: const Icon(Icons.storage_rounded),
                                         label: SizedBox(
                                             width: double.infinity,
-                                            child: Text(
-                                                'Disco ${drives[index].substring(0, 2)}  •  V1 Jogos')))),
+                                            child: Wrap(
+                                              spacing: 8,
+                                              runSpacing: 4,
+                                              crossAxisAlignment:
+                                                  WrapCrossAlignment.center,
+                                              children: [
+                                                Text(
+                                                    'Disco ${drives[index].substring(0, 2)}'),
+                                                Text(
+                                                  _freeBytes[drives[index]] ==
+                                                          null
+                                                      ? 'Espaço livre indisponível'
+                                                      : '${(_freeBytes[drives[index]]! / (1024 * 1024 * 1024)).toStringAsFixed(1).replaceAll('.', ',')} GB livres',
+                                                  style: const TextStyle(
+                                                      color: Colors.yellow),
+                                                ),
+                                                const Text('• V1 Jogos'),
+                                              ],
+                                            )))),
                             ]));
                           })),
                 ])),

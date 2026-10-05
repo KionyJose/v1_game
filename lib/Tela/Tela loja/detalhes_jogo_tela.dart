@@ -4,7 +4,7 @@ import '../../Interface/launcher_pad_scope.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:path/path.dart' as p;
 import '../../Downloads/downloads_controller.dart';
-import 'downloads/edge_torrent_downloader.dart';
+import 'downloads/embedded_torrent_downloader.dart';
 import 'downloads/torrent_download.dart';
 import 'componentes/jogo_midia.dart';
 import 'componentes/game_identity.dart';
@@ -48,17 +48,23 @@ class _DetalhesJogoTelaState extends State<DetalhesJogoTela> {
   final _cancelFocus = FocusNode();
   int _versao = 0;
   bool _consultando = false;
+  bool _compraConcluida = false;
   bool _cancelamentoSolicitado = false;
   String? _erroDownload;
   String? _arquivoSalvo;
   ProgressoTorrent? _progresso;
+  FocusNode get _purchaseFocus => _consultando
+      ? _cancelFocus
+      : _compraConcluida
+          ? _versionFocus
+          : _buyFocus;
 
   @override
   void initState() {
     super.initState();
     _scraper = widget.scraper ?? GamesTorrentsDetalhesScraper();
     _download = widget.downloadScraper ?? GamesTorrentsDownloadScraper();
-    _downloader = widget.downloader ?? EdgeTorrentDownloader();
+    _downloader = widget.downloader ?? EmbeddedTorrentDownloader(() => context);
     _detalhes = _scraper.carregar(widget.jogo.pagina);
   }
 
@@ -80,6 +86,7 @@ class _DetalhesJogoTelaState extends State<DetalhesJogoTela> {
       });
 
   Future<void> _comprar(VersaoJogo versao) async {
+    if (_consultando || _compraConcluida) return;
     setState(() {
       _consultando = true;
       _cancelamentoSolicitado = false;
@@ -108,18 +115,23 @@ class _DetalhesJogoTelaState extends State<DetalhesJogoTela> {
       if (mounted) {
         setState(() {
           _arquivoSalvo = arquivo;
+          _compraConcluida = true;
           _progresso = const ProgressoTorrent(
               'Arquivo .torrent baixado e confirmado.',
               fracao: 1);
         });
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted && _compraConcluida) _versionFocus.requestFocus();
+        });
       }
-    } catch (e) {
+    } catch (e, stack) {
+      debugPrint('Falha no fluxo de download: $e\n$stack');
       if (mounted) {
         setState(() => _erroDownload = e is ErroCatalogo
             ? e.mensagem
             : e is StateError
                 ? e.message.toString()
-                : 'Não foi possível consultar o download. Verifique sua conexão e tente novamente.');
+                : 'Falha ao preparar o download (${e.runtimeType}). Tente novamente.');
       }
     } finally {
       if (mounted) {
@@ -183,8 +195,8 @@ class _DetalhesJogoTelaState extends State<DetalhesJogoTela> {
 
   bool _purchaseMove(TraversalDirection direction) {
     if (direction == TraversalDirection.down) {
-      if (_versionFocus.hasFocus) {
-        (_consultando ? _cancelFocus : _buyFocus).requestFocus();
+      if (_versionFocus.hasFocus && !_compraConcluida) {
+        _purchaseFocus.requestFocus();
       } else if (_gallery.currentState?.hasMedia ?? false) {
         _gallery.currentState?.focusSelected();
       } else {
@@ -210,7 +222,7 @@ class _DetalhesJogoTelaState extends State<DetalhesJogoTela> {
       onVertical: (direction) {
         if (direction == TraversalDirection.up) {
           if (jogo.versoes.isNotEmpty) {
-            (_consultando ? _cancelFocus : _buyFocus).requestFocus();
+            _purchaseFocus.requestFocus();
           }
         } else {
           _media.currentState?.focusDescription();
@@ -283,7 +295,7 @@ class _DetalhesJogoTelaState extends State<DetalhesJogoTela> {
                     if (jogo.imagens.isNotEmpty || jogo.trailers.isNotEmpty) {
                       _gallery.currentState?.focusSelected();
                     } else if (jogo.versoes.isNotEmpty) {
-                      (_consultando ? _cancelFocus : _buyFocus).requestFocus();
+                      _purchaseFocus.requestFocus();
                     }
                   }),
             ],
@@ -320,6 +332,9 @@ class _DetalhesJogoTelaState extends State<DetalhesJogoTela> {
                       : (i) => setState(() {
                             _versao = i!;
                             _erroDownload = null;
+                            _compraConcluida = false;
+                            _arquivoSalvo = null;
+                            _progresso = null;
                           })),
               const SizedBox(height: 14),
               Text(jogo.versoes[_versao].fonte),
@@ -327,23 +342,44 @@ class _DetalhesJogoTelaState extends State<DetalhesJogoTela> {
                   padding: const EdgeInsets.only(top: 6),
                   child: Text('${e.key}: ${e.value}'))),
               const SizedBox(height: 20),
-              FilledButton.icon(
-                  autofocus: jogo.imagens.isEmpty && jogo.trailers.isEmpty,
-                  focusNode: _buyFocus,
-                  onPressed: _consultando
-                      ? null
-                      : () => _comprar(jogo.versoes[_versao]),
-                  icon: _consultando
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2))
-                      : const Icon(Icons.download),
-                  label: Text(_consultando ? 'Baixando torrent…' : 'Comprar')),
-              const SizedBox(height: 10),
-              const Text(
-                  'Salva o .torrent em Downloads/games torrent compra. Não realiza pagamento.',
-                  textAlign: TextAlign.center),
+              if (_compraConcluida)
+                Semantics(
+                  liveRegion: true,
+                  child: const Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(Icons.check_circle_outline,
+                          color: Color(0xFFB6A8FF)),
+                      SizedBox(width: 10),
+                      Expanded(
+                          child: Text(
+                        'Este jogo já está na área Downloads, pronto para iniciar. '
+                        'Abra Downloads pelo menu Start.',
+                      )),
+                    ],
+                  ),
+                )
+              else
+                FilledButton.icon(
+                    autofocus: jogo.imagens.isEmpty && jogo.trailers.isEmpty,
+                    focusNode: _buyFocus,
+                    onPressed: _consultando
+                        ? null
+                        : () => _comprar(jogo.versoes[_versao]),
+                    icon: _consultando
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2))
+                        : const Icon(Icons.download),
+                    label:
+                        Text(_consultando ? 'Baixando torrent…' : 'Comprar')),
+              if (!_compraConcluida) ...[
+                const SizedBox(height: 10),
+                const Text(
+                    'Salva o .torrent em Downloads/games torrent compra. Não realiza pagamento.',
+                    textAlign: TextAlign.center),
+              ],
               if (_progresso != null) ...[
                 const SizedBox(height: 12),
                 Text(_progresso!.mensagem),

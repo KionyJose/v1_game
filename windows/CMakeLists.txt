@@ -61,7 +61,34 @@ add_subdirectory("runner")
 
 # Generated plugin build rules, which manage building the plugins and adding
 # them to the application.
+find_program(NUGET nuget)
+if(NOT NUGET)
+  set(V1_NUGET_PATH "${CMAKE_BINARY_DIR}/tools/nuget.exe")
+  file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/tools")
+  if(NOT EXISTS "${V1_NUGET_PATH}")
+    file(DOWNLOAD
+      "https://dist.nuget.org/win-x86-commandline/v6.12.1/nuget.exe"
+      "${V1_NUGET_PATH}"
+      TLS_VERIFY ON STATUS V1_NUGET_STATUS)
+    list(GET V1_NUGET_STATUS 0 V1_NUGET_ERROR)
+    if(NOT V1_NUGET_ERROR EQUAL 0)
+      file(REMOVE "${V1_NUGET_PATH}")
+      message(FATAL_ERROR "Não foi possível obter NuGet para WebView2: ${V1_NUGET_STATUS}")
+    endif()
+  endif()
+  set(NUGET "${V1_NUGET_PATH}" CACHE FILEPATH "NuGet usado pelo WebView2" FORCE)
+endif()
 include(flutter/generated_plugins.cmake)
+
+if(MSVC AND TARGET flutter_inappwebview_windows_plugin)
+  # WebView2 currently uses /await and the experimental coroutine headers.
+  # Allow this plugin to compile with newer MSVC versions until it migrates.
+  target_compile_definitions(flutter_inappwebview_windows_plugin PRIVATE
+    _SILENCE_EXPERIMENTAL_COROUTINE_DEPRECATION_WARNINGS
+  )
+  # Serialize writes to the plugin's debug symbol database during compilation.
+  target_compile_options(flutter_inappwebview_windows_plugin PRIVATE /FS)
+endif()
 
 if(TARGET flutter_soloud_plugin)
   target_compile_options(flutter_soloud_plugin PRIVATE

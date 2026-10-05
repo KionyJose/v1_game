@@ -13,8 +13,8 @@ import 'jogo_detalhes.dart';
 /// necessário. POST action=download envia challenge, nonce e h-captcha-response.
 /// Somente então a resposta application/x-bittorrent é salva como .torrent.
 /// Não existe um link estático para o arquivo na página examinada.
-/// Este adaptador lê metadados; EdgeTorrentDownloader dispara o formulário
-/// no navegador dedicado, configura Downloads/games torrent compra e acompanha
+/// Este adaptador lê metadados; EmbeddedTorrentDownloader dispara o formulário
+/// no WebView2 interno, salva em Downloads/games torrent compra e acompanha
 /// a conclusão. A verificação hCaptcha permanece com o usuário.
 class GamesTorrentsDownloadScraper implements DownloadScraper {
   final http.Client _client;

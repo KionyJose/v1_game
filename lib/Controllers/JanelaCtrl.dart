@@ -56,8 +56,8 @@ class JanelaCtrl with ChangeNotifier, WindowListener{
   static const String _classeJanelaFlutter = "FLUTTER_RUNNER_WIN32_WINDOW";
   static const int GA_ROOT = 2;
   static const int SW_MINIMIZE = 6;
-  static const int SW_RESTORE = 9;  
-  static const int SW_SHOWNORMAL = 1;  
+  static const int SW_RESTORE = 9;
+  static const int SW_SHOWNORMAL = 1;
 
   bool ativa = false;
   bool _fechando = false;

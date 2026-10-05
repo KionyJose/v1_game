@@ -63,16 +63,6 @@ class GaleriaJogoState extends State<GaleriaJogo> {
       ImagemJogo(url: trailer.miniatura),
       const Center(
           child: Icon(Icons.play_circle_fill, size: 36, color: Colors.white)),
-      Positioned(
-          left: 4,
-          right: 4,
-          bottom: 2,
-          child: ColoredBox(
-              color: Colors.black87,
-              child: Text(trailer.titulo,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 11, color: Colors.white)))),
     ]);
   }
 

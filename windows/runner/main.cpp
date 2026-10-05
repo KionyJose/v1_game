@@ -54,9 +54,21 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
 
   // Initialize COM, so that it is available for use in the library and/or
   // plugins.
-  ::CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
+  const HRESULT com_result =
+      ::CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
+  if (FAILED(com_result)) {
+    ::MessageBoxW(nullptr, L"Nao foi possivel inicializar COM para o WebView2.",
+                  kMainWindowTitle, MB_OK | MB_ICONERROR);
+    ::ReleaseMutex(single_instance_mutex);
+    ::CloseHandle(single_instance_mutex);
+    return EXIT_FAILURE;
+  }
 
   flutter::DartProject project(L"data");
+  // SoLoud's miniaudio FFI can uninitialize COM when its MTA initialization
+  // fails on an STA thread. Keep Dart/audio separate from the platform thread,
+  // which owns the STA apartment and all WebView2 method-channel operations.
+  project.set_ui_thread_policy(flutter::UIThreadPolicy::RunOnSeparateThread);
 
   std::vector<std::string> command_line_arguments =
       GetCommandLineArguments();
@@ -67,6 +79,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
   Win32Window::Point origin(10, 10);
   Win32Window::Size size(1280, 720);
   if (!window.Create(kMainWindowTitle, origin, size)) {
+    ::CoUninitialize();
     ::ReleaseMutex(single_instance_mutex);
     ::CloseHandle(single_instance_mutex);
     return EXIT_FAILURE;

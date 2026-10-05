@@ -151,7 +151,9 @@ void main() {
     pad.interfaceRouter.dispatch('BAIXO');
     await tester.pumpAndSettle();
     expect(
-        Focus.of(tester.element(find.text('Disco D:  •  V1 Jogos'))).hasFocus,
+        Focus.of(tester
+                .element(find.byKey(const ValueKey('download-drive-D:\\'))))
+            .hasFocus,
         isTrue);
     pad.interfaceRouter.dispatch('2');
     await tester.pump(const Duration(milliseconds: 500));
