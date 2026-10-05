@@ -24,6 +24,8 @@ class TrailerPlayerState extends State<TrailerPlayer> {
   bool _carregando = true;
   bool _suspended = false;
   String? _erro;
+  DateTime? _lastVolumeChange;
+  double _volume = 100;
 
   @override
   void initState() {
@@ -90,6 +92,24 @@ class TrailerPlayerState extends State<TrailerPlayer> {
 
   bool command(String command) {
     final player = _player;
+    final trigger =
+        RegExp(r'^(LT|RT)(?:-(\d+(?:\.\d+)?))?$').firstMatch(command);
+    if (trigger != null) {
+      final pressure = double.tryParse(trigger.group(2) ?? '255') ?? 0;
+      if (pressure < 30) return true;
+      final now = DateTime.now();
+      if (player != null &&
+          (_lastVolumeChange == null ||
+              now.difference(_lastVolumeChange!) >=
+                  const Duration(milliseconds: 150))) {
+        _lastVolumeChange = now;
+        _volume =
+            (_volume + (trigger.group(1) == 'RT' ? 5 : -5)).clamp(0.0, 100.0);
+        player.setVolume(_volume);
+        if (mounted) setState(() {});
+      }
+      return true;
+    }
     if (command == 'START') {
       _suspended = true;
       player?.pause();
@@ -118,18 +138,18 @@ class TrailerPlayerState extends State<TrailerPlayer> {
           const Center(child: CircularProgressIndicator())
         else
           Video(controller: _video!, controls: NoVideoControls),
-        const Positioned(
+        Positioned(
             left: 12,
             right: 12,
             bottom: 12,
             child: IgnorePointer(
                 child: DecoratedBox(
-                    decoration: BoxDecoration(color: Colors.black87),
+                    decoration: const BoxDecoration(color: Colors.black87),
                     child: Padding(
-                        padding: EdgeInsets.all(8),
+                        padding: const EdgeInsets.all(8),
                         child: Text(
-                            'A / Enter: reproduzir ou pausar • LB / RB: 10s',
-                            style: TextStyle(fontSize: 12)))))),
+                            'A / Enter: reproduzir ou pausar • LB / RB: 10s • LT / RT: volume ${_volume.round()}%',
+                            style: const TextStyle(fontSize: 12)))))),
       ]));
 
   @override

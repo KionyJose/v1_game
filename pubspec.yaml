@@ -24,6 +24,7 @@ dependencies:
   ffi: ^2.0.1
   win32: ^5.0.0 
   window_manager: ^0.4.3
+  screen_retriever: ^0.2.0
   # Designer ==================================
   infinite_carousel: ^1.1.1
   carousel_slider: ^5.0.0
@@ -94,6 +95,7 @@ flutter:
     - assets/Sons/SomMovimento.mp3
     - assets/Sons/SomMovimentoBaixo.mp3
     - assets/Sons/Intro.mp3
+    - assets/Sons/Slim/
     - assets/somClickRetro.MP3
     # Scripts ===================
     - assets/Scripts/AutoHotkeyA32.exe

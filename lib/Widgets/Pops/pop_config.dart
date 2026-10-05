@@ -22,7 +22,7 @@ class PopConfig {
       bool introTemp = configSistema.intro;
       bool videosTelaPrincipalTemp = configSistema.videosTelaPrincipal;
       bool videosCardGameTemp = configSistema.noticias;
-      bool v1SlimTemp = await slimModeController.readActive();
+      bool v1SlimTemp = SlimModeConfigController.active.value;
       if (!context.mounted) return "cancelar";
       List<String> sequenciaCustomTemp =
           List.from(configSistema.sequenciaAtivaMouseCustom);
@@ -64,14 +64,27 @@ class PopConfig {
         configSistema.noticias = videosCardGameTemp;
         configSistema.sequenciaAtivaMouseCustom = sequenciaCustomTemp;
         configSistema.viewType = interfaceTemp;
-        await configSistema.save();
-        await slimModeController.writeActive(v1SlimTemp);
+        if (!await configSistema.save()) {
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Não foi possível salvar as configurações.')),
+            );
+          }
+          return;
+        }
+        try {
+          await slimModeController.writeActive(v1SlimTemp);
+        } catch (_) {
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Não foi possível salvar o modo Slim.')),
+            );
+          }
+          return;
+        }
         if (!context.mounted) return;
         await fecharDialog(context, "salvar", paad, delayClick: true);
 
-        if (v1SlimTemp) {
-          await slimModeController.openSlimAppAndClose();
-        }
       }
 
       comandos(BuildContext context, String event, Paad paad) {

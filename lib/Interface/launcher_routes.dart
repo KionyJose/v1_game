@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
+import '../Controllers/launcher_window_controller.dart';
 
-Future<T?> abrirTelaLauncher<T>(BuildContext context, Widget tela) =>
-    Navigator.of(context).push<T>(PageRouteBuilder<T>(
+Future<T?> abrirTelaLauncher<T>(BuildContext context, Widget tela) async {
+  final navigator = Navigator.of(context);
+  await LauncherWindowController.instance.openContent();
+  try {
+    if (!context.mounted) return null;
+    return await navigator.push<T>(PageRouteBuilder<T>(
       transitionDuration: const Duration(milliseconds: 320),
       reverseTransitionDuration: const Duration(milliseconds: 240),
       pageBuilder: (_, __, ___) => tela,
@@ -15,3 +20,7 @@ Future<T?> abrirTelaLauncher<T>(BuildContext context, Widget tela) =>
                 child: child));
       },
     ));
+  } finally {
+    await LauncherWindowController.instance.closeContent();
+  }
+}

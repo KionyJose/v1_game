@@ -17,6 +17,8 @@ import 'package:v1_game/Metodos/nav_mouse_watcher.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:media_kit/media_kit.dart';
 import 'Metodos/leituraArquivo.dart';
+import 'Controllers/slim_mode_config_controller.dart';
+import 'Controllers/launcher_window_controller.dart';
 
 WindowOptions windowOptions = const WindowOptions(
   center: true,
@@ -48,15 +50,15 @@ Future<void> iniciarLauncherAnterior() async {
   // Must add this line.
   MouseCtrl.primeiroMovimento();
   await windowManager.ensureInitialized();
+  await configucacoesSistema();
   await windowManager.waitUntilReadyToShow(
     windowOptions,
     () async {
+      await LauncherWindowController.instance.initialize();
       await windowManager.show();
       await windowManager.focus();
-      await windowManager.maximize();
     },
   );
-  await configucacoesSistema();
   if (configSistema.intro) SonsSistema.intro();
   await registrarAppNoSetupV1();
 
@@ -79,6 +81,7 @@ Future<void> iniciarLauncherAnterior() async {
 configucacoesSistema() async {
   // Carrega configurações do arquivo JSON
   configSistema = await ConfigSistema.load();
+  await const SlimModeConfigController().load();
   debugPrint(
       "✓ Configurações carregadas: volume=${configSistema.volume}, intro=${configSistema.intro}, viewType=${configSistema.viewType}");
 }

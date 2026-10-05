@@ -4,6 +4,8 @@ import 'dart:ffi';
 import 'package:ffi/ffi.dart';
 import 'package:flutter/material.dart';
 import 'package:window_manager/window_manager.dart';
+import 'slim_mode_config_controller.dart';
+import 'launcher_window_controller.dart';
 
 final user32 = DynamicLibrary.open('user32.dll');
 
@@ -76,6 +78,7 @@ class JanelaCtrl with ChangeNotifier, WindowListener{
       telaPresa = !telaPresa;
     }
     attTela();
+    LauncherWindowController.instance.setPinned(telaPresa);
   }
   
   @override
@@ -162,6 +165,12 @@ class JanelaCtrl with ChangeNotifier, WindowListener{
 
 
   static void restoreWindow () async {
+    if (SlimModeConfigController.active.value) {
+      await LauncherWindowController.instance.apply();
+      await windowManager.show();
+      await windowManager.focus();
+      return;
+    }
     // if(await windowManager.isVisible()) return;
     await windowManager.minimize();
     await windowManager.minimize();

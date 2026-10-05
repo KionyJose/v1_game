@@ -13,6 +13,7 @@ class LauncherPadScope extends StatefulWidget {
   final bool enabled;
   final bool menu;
   final bool revealInitialFocus;
+  final bool revealFocus;
   final bool Function(String)? onCommand;
   const LauncherPadScope(
       {super.key,
@@ -20,6 +21,7 @@ class LauncherPadScope extends StatefulWidget {
       this.enabled = true,
       this.menu = true,
       this.revealInitialFocus = true,
+      this.revealFocus = true,
       this.onCommand});
   @override
   State<LauncherPadScope> createState() => _LauncherPadScopeState();
@@ -41,6 +43,7 @@ class _LauncherPadScopeState extends State<LauncherPadScope> {
   }
 
   void _revealFocus() {
+    if (!widget.revealFocus) return;
     _scrollTimer?.cancel();
     final revision = ++_focusRevision;
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -108,7 +111,7 @@ class _LauncherPadScopeState extends State<LauncherPadScope> {
   }
 
   void _command(String command) {
-    if (!mounted || (widget.onCommand?.call(command) ?? false)) return;
+    if (!mounted || !widget.enabled || (widget.onCommand?.call(command) ?? false)) return;
     if (command == 'START') {
       if (!widget.menu) {
         Navigator.of(context).maybePop();

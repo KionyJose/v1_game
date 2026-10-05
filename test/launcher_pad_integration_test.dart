@@ -22,6 +22,8 @@ import 'package:v1_game/Tela/Tela loja/scraps/catalogo_scraper.dart';
 import 'package:v1_game/Tela/Tela loja/scraps/jogo_detalhes.dart';
 import 'package:v1_game/Tela/Tela loja/componentes/jogo_card.dart';
 import 'package:v1_game/Tela/Tela loja/componentes/galeria_jogo.dart';
+import 'package:v1_game/Tela/Tela loja/componentes/jogo_midia.dart';
+import 'package:v1_game/Interface/text_viewer_dialog.dart';
 import 'package:v1_game/Tela/Tela loja/componentes/game_identity.dart';
 import 'package:v1_game/Interface/launcher_header.dart';
 import 'detalhes_jogo_tela_test.dart'
@@ -87,6 +89,40 @@ void main() {
   tearDown(() => pad.dispose());
   Widget app(Widget home) => ChangeNotifierProvider<Paad>.value(
       value: pad, child: MaterialApp(home: home));
+
+  testWidgets('Descrição ampliada rola pelo Pad e fecha sem perder o foco',
+      (tester) async {
+    final jogo = await FonteMidiaTeste().carregar(url);
+    await tester.pumpWidget(
+        app(LauncherPadScope(child: Scaffold(body: JogoMidia(jogo: jogo)))));
+    final description = find.byKey(const ValueKey('game-description'));
+    final focus = tester.widget<Focus>(description).focusNode!;
+    focus.requestFocus();
+    await tester.pumpAndSettle();
+    pad.interfaceRouter.dispatch('2');
+    await tester.pumpAndSettle();
+    expect(find.byType(TextViewerDialog), findsOneWidget);
+    expect(find.text('Fechar'), findsOneWidget);
+    final scrollable = find.descendant(
+        of: find.byType(TextViewerDialog), matching: find.byType(Scrollable));
+    final position = tester.state<ScrollableState>(scrollable.first).position;
+    pad.interfaceRouter.dispatch('BAIXO');
+    await tester.pumpAndSettle();
+    expect(position.pixels, greaterThan(0));
+    pad.interfaceRouter.dispatch('2');
+    pad.interfaceRouter.dispatch('2');
+    await tester.pumpAndSettle();
+    expect(find.byType(TextViewerDialog), findsNothing);
+    expect(focus.hasFocus, isTrue);
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pumpAndSettle();
+    expect(find.byType(TextViewerDialog), findsOneWidget);
+    pad.interfaceRouter.dispatch('3');
+    await tester.pumpAndSettle();
+    expect(find.byType(TextViewerDialog), findsNothing);
+    expect(focus.hasFocus, isTrue);
+    expect(tester.takeException(), isNull);
+  });
 
   testWidgets(
       'Pad escolhe disco antes de iniciar, cancela escolha e retoma no mesmo destino',

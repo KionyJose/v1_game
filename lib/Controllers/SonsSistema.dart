@@ -2,30 +2,42 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_soloud/flutter_soloud.dart';
 import 'package:v1_game/Global.dart';
+import 'slim_mode_config_controller.dart';
 
 class SonsSistema {
   // Instância singleton do SoLoud (inicializada uma vez)
   static final SoLoud _soloud = SoLoud.instance;
   static bool _initialized = false;
   static bool clickRetroAtivo = false;
-  
+
   // Cache de sons carregados para melhor performance
   static final Map<String, AudioSource> _loadedSounds = {};
 
-  
-  static void direction() => _playSound('Sons/SomMovimento.mp3');
-  static void directionRL() => _playSound('Sons/SomMovimentoBaixo.mp3');
+  static void direction() => SlimModeConfigController.active.value
+      ? slimMove()
+      : _playSound('Sons/SomMovimento.mp3');
+  static void directionRL() => SlimModeConfigController.active.value
+      ? slimMove()
+      : _playSound('Sons/SomMovimentoBaixo.mp3');
   static void cheat() => _playSound('Sons/SomCheat.mp3');
   static void pim() => _playSound('Sons/SomCheat2.mp3');
-  static void click() => _playSound('Sons/SomClick.mp3');
+  static void click() => SlimModeConfigController.active.value
+      ? slimOpen()
+      : _playSound('Sons/SomClick.mp3');
+  static void slimMove() => _playSound('Sons/Slim/move_8bit.wav');
+  static void slimOpen() => _playSound('Sons/Slim/open_8bit.wav');
   static void clickRetro() => _playSound('somClickRetro.MP3');
-  static void directionAtual() => clickRetroAtivo ? clickRetro() : direction();
+  static void directionAtual() => SlimModeConfigController.active.value
+      ? slimMove()
+      : clickRetroAtivo
+          ? clickRetro()
+          : direction();
   static void intro() => _playSound('Sons/Intro.mp3');
 
   // Inicializa o SoLoud (chamar no início do app)
   static Future<void> init() async {
     if (_initialized) return;
-    
+
     try {
       await _soloud.init();
       _initialized = true;
@@ -43,7 +55,7 @@ class SonsSistema {
         await _soloud.disposeSource(source);
       }
       _loadedSounds.clear();
-      
+
       // deinit() retorna void, não precisa de await
       _soloud.deinit();
       _initialized = false;
@@ -57,8 +69,8 @@ class SonsSistema {
   static Future<void> preload(String assetPath) async {
     if (!_initialized) {
       await init();
-    }    
-    if (_loadedSounds.containsKey(assetPath)) return;    
+    }
+    if (_loadedSounds.containsKey(assetPath)) return;
     try {
       final source = await _soloud.loadAsset('assets/$assetPath');
       _loadedSounds[assetPath] = source;
@@ -72,25 +84,29 @@ class SonsSistema {
   // IMPORTANTE: O som DEVE estar pré-carregado!
   static void _playSound(String assetPath) {
     if (!_initialized) {
-      debugPrint('⚠️ SoLoud não inicializado! Chame SonsSistema.init() primeiro');
+      debugPrint(
+          '⚠️ SoLoud não inicializado! Chame SonsSistema.init() primeiro');
       return;
     }
 
     // Só toca se o som JÁ estiver carregado (sem delays)
     if (!_loadedSounds.containsKey(assetPath)) {
-      debugPrint('⚠️ Som não pré-carregado: $assetPath - Chame preloadCommonSounds()');
+      debugPrint(
+          '⚠️ Som não pré-carregado: $assetPath - Chame preloadCommonSounds()');
       return;
     }
 
     try {
+      final volume = configSistema.volume.clamp(0.0, 1.0);
+      if (volume == 0) return;
       final source = _loadedSounds[assetPath]!;
       // Toca IMEDIATAMENTE - sem await
-      _soloud.play(source, volume: configSistema.volume);
+      _soloud.play(source, volume: volume);
     } catch (erro) {
       debugPrint('✗ Erro ao tocar som $assetPath: $erro');
     }
   }
-  
+
   // Pré-carrega TODOS os sons do sistema
   static Future<void> preloadCommonSounds() async {
     await Future.wait([
@@ -101,6 +117,8 @@ class SonsSistema {
       preload('Sons/SomMovimento.mp3'),
       preload('Sons/SomMovimentoBaixo.mp3'),
       preload('Sons/Intro.mp3'),
+      preload('Sons/Slim/move_8bit.wav'),
+      preload('Sons/Slim/open_8bit.wav'),
     ]);
     debugPrint('✓ Todos os sons carregados e prontos para uso instantâneo');
   }

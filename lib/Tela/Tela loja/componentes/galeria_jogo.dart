@@ -33,8 +33,15 @@ class GaleriaJogoState extends State<GaleriaJogo> {
   bool get hasMedia => _count > 0;
   bool get _isTrailer => _indice >= widget.imagens.length;
   TrailerJogo get _trailer => widget.trailers[_indice - widget.imagens.length];
-  bool command(String command) =>
-      _player.currentState?.command(command) ?? false;
+  bool command(String command) {
+    final trigger = command == 'LT' ||
+        command == 'RT' ||
+        command.startsWith('LT-') ||
+        command.startsWith('RT-');
+    if (trigger && (!_playing || _focused != _indice)) return false;
+    return _player.currentState?.command(command) ?? false;
+  }
+
   void _activate() {
     if (!_isTrailer) {
       _ampliar();

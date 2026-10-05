@@ -11,6 +11,7 @@ import 'package:v1_game/Tela/Begin.dart';
 
 import '../Controllers/Notificacao.dart';
 import '../Downloads/downloads_lifecycle.dart';
+import '../Controllers/launcher_window_controller.dart';
 
 class MyApp extends StatefulWidget {
   const MyApp({super.key});
@@ -20,6 +21,11 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
+  @override
+  void dispose() {
+    LauncherWindowController.instance.dispose();
+    super.dispose();
+  }
   
    List<String> logs = [];
    String ultima = "";

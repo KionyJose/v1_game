@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../scraps/jogo_detalhes.dart';
 import '../../../Interface/pad_directional_group.dart';
+import '../../../Interface/text_viewer_dialog.dart';
 
 /// Leitura com foco e rolagem própria, sem perder a seleção da galeria.
 class JogoMidia extends StatefulWidget {
@@ -15,6 +17,21 @@ class JogoMidiaState extends State<JogoMidia> {
   final _focus = FocusNode();
   final _scroll = ScrollController();
   bool _focused = false;
+  bool _reading = false;
+
+  Future<void> _openDescription() async {
+    if (_reading) return;
+    _reading = true;
+    _focus.requestFocus();
+    try {
+      await mostrarTextoAmpliado(context,
+          titulo: 'Sobre o jogo', texto: widget.jogo.descricao);
+    } finally {
+      _reading = false;
+      if (mounted) _focus.requestFocus();
+    }
+  }
+
   void focusDescription() {
     if (widget.jogo.descricao.isNotEmpty) _focus.requestFocus();
   }
@@ -49,43 +66,55 @@ class JogoMidiaState extends State<JogoMidia> {
     if (widget.jogo.descricao.isEmpty) return const SizedBox.shrink();
     return PadDirectionalGroup(
         onMove: _move,
-        child: Focus(
-          key: const ValueKey('game-description'),
-          focusNode: _focus,
-          onFocusChange: (value) => setState(() => _focused = value),
-          child: GestureDetector(
-              onTap: focusDescription,
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 160),
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                    color: _focused
-                        ? const Color(0xFF201C2C)
-                        : const Color(0xFF111111),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                        color: _focused
-                            ? const Color(0xFFB6A8FF)
-                            : const Color(0xFF333333),
-                        width: 2)),
-                child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Text('Sobre o jogo',
-                          style: Theme.of(context).textTheme.titleLarge),
-                      const SizedBox(height: 12),
-                      ConstrainedBox(
-                          constraints: const BoxConstraints(maxHeight: 260),
-                          child: SingleChildScrollView(
-                              controller: _scroll,
-                              child: ExcludeFocus(
-                                  child: SelectableText(widget.jogo.descricao,
-                                      style: const TextStyle(
-                                          fontSize: 18,
-                                          height: 1.7,
-                                          color: Colors.white))))),
-                    ]),
-              )),
-        ));
+        child: Shortcuts(
+            shortcuts: const {
+              SingleActivator(LogicalKeyboardKey.enter): ActivateIntent(),
+              SingleActivator(LogicalKeyboardKey.space): ActivateIntent(),
+            },
+            child: Actions(
+                actions: {
+                  ActivateIntent: CallbackAction<ActivateIntent>(onInvoke: (_) {
+                    _openDescription();
+                    return null;
+                  }),
+                },
+                child: Focus(
+                  key: const ValueKey('game-description'),
+                  focusNode: _focus,
+                  onFocusChange: (value) => setState(() => _focused = value),
+                  child: GestureDetector(
+                      onTap: _openDescription,
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 160),
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                                color: _focused
+                                    ? const Color(0xFFB6A8FF)
+                                    : const Color(0xFF333333),
+                                width: 2)),
+                        child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Text('Sobre o jogo',
+                                  style:
+                                      Theme.of(context).textTheme.titleLarge),
+                              const SizedBox(height: 12),
+                              ConstrainedBox(
+                                  constraints:
+                                      const BoxConstraints(maxHeight: 260),
+                                  child: SingleChildScrollView(
+                                      controller: _scroll,
+                                      child: ExcludeFocus(
+                                          child: Text(
+                                              widget.jogo.descricao,
+                                              style: const TextStyle(
+                                                  fontSize: 18,
+                                                  height: 1.7,
+                                                  color: Colors.white))))),
+                            ]),
+                      )),
+                ))));
   }
 }

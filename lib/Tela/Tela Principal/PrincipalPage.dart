@@ -24,6 +24,7 @@ import 'Widgets/BodyIconesLoja.dart';
 import 'Widgets/bodyIconesJogosRetro.dart';
 import 'Widgets/CardInfWidget.dart';
 import 'Widgets/ListVideosWidget.dart';
+import 'Widgets/BodySlim.dart';
 
 class SafeCurve extends Curve {
   final Curve _inner;
@@ -67,11 +68,11 @@ class _PrincipalPageState extends State<PrincipalPage> with WindowListener {
           // debugPrint("object =========================");
           ctrl.ctx = context;
           ctrlOff = ctrl;
-          if(ctrl.telaIniciada && !_maximizeInicialAgendado){
+          if(ctrl.telaIniciada && !ctrl.slimMode && !_maximizeInicialAgendado){
             _maximizeInicialAgendado = true;
             WidgetsBinding.instance.addPostFrameCallback((_) {
               Future.delayed(const Duration(seconds: 1), () async {
-                if(!mounted) return;
+                if(!mounted || ctrl.slimMode) return;
                 await windowManager.maximize();
               });
             });
@@ -84,6 +85,14 @@ class _PrincipalPageState extends State<PrincipalPage> with WindowListener {
     );
   }
   scaffold(PrincipalCtrl ctrl){   
+    if (ctrl.slimMode) {
+      return Scaffold(
+        backgroundColor: Colors.transparent,
+        body: !ctrl.telaIniciada || ctrl.load
+            ? const LoadingIco(color: Colors.pink)
+            : BodySlim(ctrl: ctrl),
+      );
+    }
     return Scaffold(
       backgroundColor: Colors.black,
       floatingActionButton: floatBtns(),
