@@ -42,6 +42,12 @@ class PrincipalCtrl with ChangeNotifier{
   DB db = DB();  
   bool _disposed = false;
   bool get slimMode => SlimModeConfigController.active.value;
+  bool get futuristicMode => !slimMode && configSistema.viewType == 'futurista';
+  bool get compactNavigation => slimMode || futuristicMode;
+  bool interfaceChanging = false;
+  int interfaceRevision = 0;
+  void _compactMoveSound() => futuristicMode
+      ? SonsSistema.futuristicMove() : SonsSistema.slimMove();
   bool _slimOpening = false;
   bool _slimMenuOpen = false;
   late BuildContext ctx;
@@ -169,10 +175,14 @@ class PrincipalCtrl with ChangeNotifier{
 
   void aplicarModoInterface() {
     if (_disposed) return;
+    final revision = ++interfaceRevision;
+    interfaceChanging = true;
+    FocusManager.instance.primaryFocus?.unfocus();
+    limparClickPad();
     cardGamesGrid = !slimMode && configSistema.viewType == 'grid';
     cardGamesModerno = !slimMode && configSistema.viewType == 'moderno';
     cardGamesRetro = !slimMode && configSistema.viewType == 'retro';
-    if (!telaIniciada) return;
+    if (!telaIniciada) { interfaceChanging = false; return; }
     cardInf = false;
     imersao = false;
     imersaoVideos = false;
@@ -186,7 +196,7 @@ class PrincipalCtrl with ChangeNotifier{
     mediaPlayer.stop();
     bgMediaPlayer.stop();
     SonsSistema.clickRetroAtivo = false;
-    if (slimMode) {
+    if (compactNavigation) {
       ctrlAnimeBgFundo.stop();
     } else {
       ctrlAnimeBgFundo.repeat(reverse: true);
@@ -194,11 +204,17 @@ class PrincipalCtrl with ChangeNotifier{
     }
     attTela();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_disposed || !stateTela) return;
-      if (!slimMode && bodyCtrl.hasClients) {
-        bodyCtrl.jumpToPage(selectedIndexAbaGuias);
-      }
-      focarCategoriaSlim();
+      if (_disposed || revision != interfaceRevision) return;
+      // First unmount the old focus tree, then attach the new presentation.
+      interfaceChanging = false;
+      attTela();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (_disposed || !stateTela || revision != interfaceRevision) return;
+        if (!compactNavigation && bodyCtrl.hasClients && bodyCtrl.positions.length == 1) {
+          bodyCtrl.jumpToPage(selectedIndexAbaGuias);
+        }
+        focarCategoriaSlim();
+      });
     });
   }
 
@@ -224,7 +240,7 @@ class PrincipalCtrl with ChangeNotifier{
   };
 
   void selecionarItemSlim(int index) {
-    if (_disposed || !slimMode || mouseBloqueado ||
+    if (_disposed || !compactNavigation || mouseBloqueado ||
         index < 0 || index >= slimItemNodes.length) {
       return;
     }
@@ -242,15 +258,15 @@ class PrincipalCtrl with ChangeNotifier{
         imgFundoStr = listIconsInicial[index].imgStr;
     }
     focusScope = slimItemScope;
-    if (mudouItem) SonsSistema.slimMove();
+    if (mudouItem) _compactMoveSound();
     slimItemNodes[index].requestFocus();
     attTela();
   }
 
   void focarCategoriaSlim({bool barra = false, bool playSound = false}) {
-    if (_disposed || !telaIniciada) return;
+    if (_disposed || !telaIniciada || interfaceChanging) return;
     final destino = barra || slimItemNodes.isEmpty ? focusScopeAbaGuias : slimItemScope;
-    if (playSound && focusScope != destino) SonsSistema.slimMove();
+    if (playSound && focusScope != destino) _compactMoveSound();
     if (barra || slimItemNodes.isEmpty) {
       focusScope = focusScopeAbaGuias;
       focusNodeAbaGuias[selectedIndexAbaGuias].requestFocus();
@@ -262,13 +278,13 @@ class PrincipalCtrl with ChangeNotifier{
   }
 
   void selecionarCategoriaSlim(int index, {bool barra = false}) {
-    if (_disposed || mouseBloqueado || !slimMode) return;
+    if (_disposed || mouseBloqueado || !compactNavigation) return;
     final destino = index.clamp(0, listAbaGuias.length - 1);
-    if (destino != selectedIndexAbaGuias) SonsSistema.slimMove();
+    if (destino != selectedIndexAbaGuias) _compactMoveSound();
     selectedIndexAbaGuias = destino;
     attTela();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!_disposed && slimMode) {
+      if (!_disposed && compactNavigation) {
         focarCategoriaSlim(barra: barra);
       }
     });
@@ -282,7 +298,7 @@ class PrincipalCtrl with ChangeNotifier{
     }
     final barra = focusScopeAbaGuias.hasFocus;
     switch (event) {
-      case 'START': abrirMenuSlim();
+      case 'START': futuristicMode ? btnMais() : abrirMenuSlim();
       case 'LB': selecionarCategoriaSlim(selectedIndexAbaGuias - 1);
       case 'RB': selecionarCategoriaSlim(selectedIndexAbaGuias + 1);
       case 'CIMA':
@@ -326,12 +342,12 @@ class PrincipalCtrl with ChangeNotifier{
   }
 
   Future<void> abrirItemSlim() async {
-    if (_disposed || !slimMode || mouseBloqueado || _slimOpening ||
+    if (_disposed || !compactNavigation || mouseBloqueado || _slimOpening ||
         slimItemNodes.isEmpty) {
       return;
     }
     _slimOpening = true;
-    SonsSistema.slimOpen();
+    futuristicMode ? SonsSistema.futuristicOpen() : SonsSistema.slimOpen();
     try {
       switch (selectedIndexAbaGuias) {
         case 1: await movFilmes('2');
@@ -401,7 +417,7 @@ class PrincipalCtrl with ChangeNotifier{
 
   bool get podeMontarVideos {
     return 
-    !slimMode &&
+    !compactNavigation &&
     configSistema.videosTelaPrincipal &&
     videosYT.isNotEmpty &&
     telaIniciada &&
@@ -553,12 +569,12 @@ class PrincipalCtrl with ChangeNotifier{
   }
 
   pesquisaVideosYT(String nomeGame, int index) async {
-    if(_disposed || slimMode || nomeGame.isEmpty)return;
+    if(_disposed || compactNavigation || nomeGame.isEmpty)return;
     try{
       if(videosIndexYT[index].isEmpty) {
         String aux = tagVideo[Random().nextInt(tagVideo.length)];
         final videos = await WebScrap.buscaVideosYT("$nomeGame $aux",nomeGame);
-        if (_disposed || slimMode || index >= videosIndexYT.length) return;
+        if (_disposed || compactNavigation || index >= videosIndexYT.length) return;
         videosIndexYT[index] = videos;
       }
       videosYT = List.generate(videosIndexYT[index].length, (i) => videosIndexYT[index][i]);
@@ -607,7 +623,7 @@ class PrincipalCtrl with ChangeNotifier{
     }
   }
   onFocusChangeAbaGuias(bool hasFocus, int index,{ double tamanho = 0}){
-    if(_disposed) return;
+    if(_disposed || interfaceChanging || compactNavigation) return;
     if (!hasFocus ) return;
     selectedIndexAbaGuias = index;    
     if (bodyCtrl.hasClients) {
@@ -641,7 +657,7 @@ class PrincipalCtrl with ChangeNotifier{
   }
 
   carregaVideosDoGame(){
-    if (slimMode || _disposed) return;
+    if (compactNavigation || _disposed) return;
     selectedIndexVideo = 0;
     videosYT.clear();
     videosCarregados = false;
@@ -750,7 +766,8 @@ class PrincipalCtrl with ChangeNotifier{
   }
 
   onFocusChangeIcones(bool hasFocus, int index,{ double tamanho = 0}) async{
-    if(_disposed) return;
+    if(_disposed || interfaceChanging || compactNavigation) return;
+    final revision = interfaceRevision;
     if (!hasFocus || selectedIndexIcone == index) return;
     if(cardGamesGrid){
       
@@ -759,7 +776,7 @@ class PrincipalCtrl with ChangeNotifier{
     }
     try{    
       await imersaoRestart();
-      if(_disposed) return;
+      if(_disposed || interfaceChanging || compactNavigation || revision != interfaceRevision) return;
       showNewImage = false;
       selectedIndexIcone = index;
       
@@ -1082,7 +1099,7 @@ class PrincipalCtrl with ChangeNotifier{
     );
 
     scaleAnimation = Tween<double>(begin: 1.0, end: 1.1).animate(ctrlAnimeBgFundo);
-    if (!slimMode) ctrlAnimeBgFundo.repeat(reverse: true);
+    if (!compactNavigation) ctrlAnimeBgFundo.repeat(reverse: true);
   }
 
   btnEntrar() async {
@@ -1418,7 +1435,7 @@ class PrincipalCtrl with ChangeNotifier{
     try{
       event = MovimentoSistema.normalizaEntrada(event);
       if(!stateTela || event == "") return;
-      if (slimMode) {
+      if (compactNavigation) {
         comandoSlim(event);
         Provider.of<Paad>(ctx, listen: false).click = '';
         return;
@@ -1700,7 +1717,7 @@ class PrincipalCtrl with ChangeNotifier{
   }
   
   movMusica(String event) async {
-    if (!slimMode) MovimentoSistema.direcaoListView(focusScope, event);
+    if (!compactNavigation) MovimentoSistema.direcaoListView(focusScope, event);
     if(gameIniciado) {
       if(event == "3") Navigator.pop(ctx);
       return;
@@ -1726,7 +1743,7 @@ class PrincipalCtrl with ChangeNotifier{
   }
 
   movFilmes(String event) async {    
-    if (!slimMode) MovimentoSistema.direcaoListView(focusScope, event);
+    if (!compactNavigation) MovimentoSistema.direcaoListView(focusScope, event);
     if(gameIniciado) {
       if(event == "3") Navigator.pop(ctx);
       return;
@@ -1752,7 +1769,7 @@ class PrincipalCtrl with ChangeNotifier{
   }
 
   movLoja(String event) async {
-    if (!slimMode) MovimentoSistema.direcaoListView(focusScope, event);
+    if (!compactNavigation) MovimentoSistema.direcaoListView(focusScope, event);
     if(gameIniciado) {
       if(event == "3") Navigator.pop(ctx);
       return;

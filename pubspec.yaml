@@ -54,6 +54,7 @@ dependencies:
   youtube_explode_dart: ^3.0.5
   path: ^1.9.1
   crypto: ^3.0.7
+  liquid_glass_easy: 4.3.4
   # Minhas Dependencias =======================================================================
 
 dev_dependencies:
@@ -71,7 +72,13 @@ flutter:
 
   uses-material-design: true
 
+  fonts:
+    - family: Oxanium
+      fonts:
+        - asset: assets/Futurista/Oxanium.ttf
+
   assets:
+    - assets/Futurista/
     - assets/Repack/
     - assets/Repack/license/
     # Adicionando Teclado VIrtual ===========
@@ -97,6 +104,7 @@ flutter:
     - assets/Sons/SomMovimentoBaixo.mp3
     - assets/Sons/Intro.mp3
     - assets/Sons/Slim/
+    - assets/Sons/Futurista/
     - assets/somClickRetro.MP3
     # Scripts ===================
     - assets/Scripts/AutoHotkeyA32.exe

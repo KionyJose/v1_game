@@ -7,8 +7,6 @@ import 'package:v1_game/Controllers/JanelaCtrl.dart';
 import '../Controllers/Notificacao.dart';
 import '../Widgets/NotificacaoPop.dart';
 import 'Tela Principal/PrincipalPage.dart';
-import '../Controllers/slim_mode_config_controller.dart';
-import '../Widgets/launcher_window_controls.dart';
 
 class Begin extends StatelessWidget {
   const Begin({super.key});
@@ -26,10 +24,6 @@ class Begin extends StatelessWidget {
                 if (notf.ativo)
                   const Positioned(
                       bottom: 20, right: 20, child: NotificacaoPop()),
-                ValueListenableBuilder<bool>(
-                  valueListenable: SlimModeConfigController.active,
-                  builder: (_, slim, __) => LauncherWindowControls(slim: slim),
-                ),
               ],
             ),
           ),

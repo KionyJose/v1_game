@@ -29,6 +29,7 @@ class LauncherPadScope extends StatefulWidget {
 
 class _LauncherPadScopeState extends State<LauncherPadScope> {
   Paad? _pad;
+  ModalRoute<dynamic>? _route;
   void Function()? _detach;
   bool _menuOpen = false;
   final _focusRoot = FocusNode(skipTraversal: true, canRequestFocus: false);
@@ -84,11 +85,12 @@ class _LauncherPadScopeState extends State<LauncherPadScope> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    _route = ModalRoute.of(context);
     final pad = Provider.of<Paad?>(context, listen: false);
     if (!identical(_pad, pad) || _detach == null) {
       _detach?.call();
       _pad = pad;
-      if (widget.enabled) _detach = pad?.interfaceRouter.attach(_command);
+      if (widget.enabled) _detach = _attach();
     }
   }
 
@@ -97,9 +99,12 @@ class _LauncherPadScopeState extends State<LauncherPadScope> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.enabled != widget.enabled) {
       _detach?.call();
-      _detach = widget.enabled ? _pad?.interfaceRouter.attach(_command) : null;
+      _detach = widget.enabled ? _attach() : null;
     }
   }
+
+  void Function()? _attach() => _pad?.interfaceRouter.attach(_command,
+      acceptsCommand: () => mounted && widget.enabled && (_route?.isCurrent ?? true));
 
   @override
   void dispose() {

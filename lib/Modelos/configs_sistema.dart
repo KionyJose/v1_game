@@ -7,7 +7,7 @@ import 'dart:io';
 /// Salva/Carrega como JSON em: <Public Documents>/v1_game_config.json (Windows)
 class ConfigSistema {
   // Exemplo de propriedades de interface
-  String viewType; // 'grid' | 'list' | 'carousel'
+  String viewType; // 'list' | 'moderno' | 'retro' | 'futurista' (grid: atalho legado)
   String primaryColorHex; // Ex: '#FF4081'
   String accentColorHex; // Ex: '#FFC107'
   String buttonStyle; // 'rounded' | 'flat' | 'outline'

@@ -15,15 +15,33 @@ class SonsSistema {
 
   static void direction() => SlimModeConfigController.active.value
       ? slimMove()
-      : _playSound('Sons/SomMovimento.mp3');
+      : futuristicActive ? futuristicMove() : _playSound('Sons/SomMovimento.mp3');
   static void directionRL() => SlimModeConfigController.active.value
       ? slimMove()
-      : _playSound('Sons/SomMovimentoBaixo.mp3');
+      : futuristicActive ? futuristicMove() : _playSound('Sons/SomMovimentoBaixo.mp3');
   static void cheat() => _playSound('Sons/SomCheat.mp3');
   static void pim() => _playSound('Sons/SomCheat2.mp3');
   static void click() => SlimModeConfigController.active.value
       ? slimOpen()
-      : _playSound('Sons/SomClick.mp3');
+      : futuristicActive ? futuristicOpen() : _playSound('Sons/SomClick.mp3');
+  static bool get futuristicActive => !SlimModeConfigController.active.value &&
+      configSistema.viewType == 'futurista';
+  static void futuristicMove() => _playSound('Sons/Futurista/move.wav');
+  static void futuristicOpen() => _playSound('Sons/Futurista/open.wav');
+  static Future<SoundHandle?> startWaterAmbience() async {
+    await preload('Sons/Futurista/water_ambient.wav');
+    final source = _loadedSounds['Sons/Futurista/water_ambient.wav'];
+    if (!_initialized || source == null) return null;
+    return _soloud.play(source, looping: true, paused: true, volume: 0);
+  }
+  static void updateWaterAmbience(SoundHandle handle, bool active) {
+    if (!_initialized) return;
+    _soloud.setVolume(handle, configSistema.volume.clamp(0.0, 1.0) * .22);
+    _soloud.setPause(handle, !active);
+  }
+  static Future<void> stopWaterAmbience(SoundHandle handle) async {
+    if (_initialized) await _soloud.stop(handle);
+  }
   static void slimMove() => _playSound('Sons/Slim/move_8bit.wav');
   static void slimOpen() => _playSound('Sons/Slim/open_8bit.wav');
   static void clickRetro() => _playSound('somClickRetro.MP3');
@@ -119,6 +137,8 @@ class SonsSistema {
       preload('Sons/Intro.mp3'),
       preload('Sons/Slim/move_8bit.wav'),
       preload('Sons/Slim/open_8bit.wav'),
+      preload('Sons/Futurista/move.wav'),
+      preload('Sons/Futurista/open.wav'),
     ]);
     debugPrint('✓ Todos os sons carregados e prontos para uso instantâneo');
   }

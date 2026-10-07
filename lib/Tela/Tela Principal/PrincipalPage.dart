@@ -25,6 +25,8 @@ import 'Widgets/bodyIconesJogosRetro.dart';
 import 'Widgets/CardInfWidget.dart';
 import 'Widgets/ListVideosWidget.dart';
 import 'Widgets/BodySlim.dart';
+import 'Widgets/body_futurista.dart';
+import '../../Widgets/launcher_window_controls.dart';
 
 class SafeCurve extends Curve {
   final Curve _inner;
@@ -85,24 +87,38 @@ class _PrincipalPageState extends State<PrincipalPage> with WindowListener {
     );
   }
   scaffold(PrincipalCtrl ctrl){   
+    if (ctrl.interfaceChanging) {
+      return const Scaffold(backgroundColor: Color(0xFF071C24));
+    }
+    if (ctrl.futuristicMode) {
+      return Scaffold(
+        backgroundColor: const Color(0xFF090F20),
+        body: !ctrl.telaIniciada || ctrl.load
+            ? const LoadingIco(color: Color(0xFFC9B9FF))
+            : BodyFuturista(ctrl: ctrl),
+      );
+    }
     if (ctrl.slimMode) {
       return Scaffold(
         backgroundColor: Colors.transparent,
-        body: !ctrl.telaIniciada || ctrl.load
-            ? const LoadingIco(color: Colors.pink)
-            : BodySlim(ctrl: ctrl),
+        body: Stack(children: [
+          !ctrl.telaIniciada || ctrl.load
+              ? const LoadingIco(color: Colors.pink)
+              : BodySlim(ctrl: ctrl),
+          const LauncherWindowControls(slim: true),
+        ]),
       );
     }
     return Scaffold(
       backgroundColor: Colors.black,
       floatingActionButton: floatBtns(),
-      body: KeyboardListener( // Escuta teclado Press;
+      body: Stack(children: [KeyboardListener( // Escuta teclado Press;
             includeSemantics: false,
             focusNode: ctrl.keyboradEscutaNode,//ctrl.focoPrincipal,
             autofocus: false,
             onKeyEvent: (KeyEvent event) => ctrl.keyPress(event),
             child: escutaPadWid(ctrl)
-          ),
+          ), const LauncherWindowControls()]),
     );
   }
   escutaPadWid(PrincipalCtrl ctrl){
@@ -112,7 +128,12 @@ class _PrincipalPageState extends State<PrincipalPage> with WindowListener {
         
         // Aguardando o próximo frame para chamar o showDialog   if(event == "HOME" && !home){
         if(!ctrl.home){
+          final revision = ctrl.interfaceRevision;
           WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!mounted || revision != ctrl.interfaceRevision ||
+                ctrl.interfaceChanging || ctrl.compactNavigation) {
+              return;
+            }
             ctrl.escutaPad(valorAtual);// Isso pode chamar o showDialog
           });
         }if(!ctrl.telaIniciada) return Container();

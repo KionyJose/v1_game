@@ -6,7 +6,7 @@ import 'package:flutter/services.dart';
 
 import '../../../Interface/launcher_pad_scope.dart';
 import '../../../Controllers/launcher_window_controller.dart';
-import '../PrincipalCtrl.dart';
+import 'package:v1_game/Tela/Tela%20Principal/PrincipalCtrl.dart';
 
 /// Apresentação fixa do Slim. Dados e ações continuam no controlador principal.
 class BodySlim extends StatelessWidget {

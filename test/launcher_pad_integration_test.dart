@@ -783,6 +783,53 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('Mais navega em duas colunas e revela a última linha pelo Pad',
+      (tester) async {
+    tester.view.physicalSize = const Size(640, 480);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    String? result;
+    await tester.pumpWidget(app(Scaffold(
+        body: Builder(
+            builder: (context) => FilledButton(
+                onPressed: () async {
+                  result = await PopMais.mais(context);
+                },
+                child: const Text('Start'))))));
+    await tester.tap(find.text('Start'));
+    await tester.pumpAndSettle();
+    final grid = tester.widget<GridView>(find.byType(GridView));
+    final layout =
+        grid.gridDelegate as SliverGridDelegateWithFixedCrossAxisCount;
+    expect(layout.crossAxisCount, 2);
+    expect(layout.mainAxisExtent, 94);
+    pad.interfaceRouter.dispatch('DIREITA');
+    await tester.pumpAndSettle();
+    expect(FocusManager.instance.primaryFocus?.context != null, isTrue);
+    pad.interfaceRouter.dispatch('BAIXO');
+    await tester.pumpAndSettle();
+    pad.interfaceRouter.dispatch('2');
+    pad.interfaceRouter.dispatch('2');
+    await tester.pumpAndSettle();
+    expect(result, 'Cfg');
+    expect(find.text('Start'), findsOneWidget);
+    await tester.tap(find.text('Start'));
+    await tester.pumpAndSettle();
+    for (var i = 0; i < 4; i++) {
+      pad.interfaceRouter.dispatch('BAIXO');
+      await tester.pumpAndSettle();
+    }
+    expect(find.text('Excluir card').hitTestable(), findsOneWidget);
+    pad.interfaceRouter.dispatch('DIREITA');
+    await tester.pumpAndSettle();
+    expect(find.text('Voltar').hitTestable(), findsOneWidget);
+    pad.interfaceRouter.dispatch('2');
+    await tester.pumpAndSettle();
+    expect(result, '');
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets(
       'Downloads usa A e direcional do mesmo Paad para iniciar e pausar',
       (tester) async {
