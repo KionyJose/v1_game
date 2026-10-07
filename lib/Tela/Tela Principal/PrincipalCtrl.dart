@@ -1,3 +1,4 @@
+import '../../Class/game_video_tags.dart';
 // ignore_for_file: file_names, use_build_context_synchronously
 
 import 'dart:async';
@@ -49,6 +50,7 @@ class PrincipalCtrl with ChangeNotifier{
   void _compactMoveSound() => futuristicMode
       ? SonsSistema.futuristicMove() : SonsSistema.slimMove();
   bool _slimOpening = false;
+  Future<void> Function()? abrirDetalhesFuturista;
   bool _slimMenuOpen = false;
   late BuildContext ctx;
   attTela() {
@@ -137,7 +139,7 @@ class PrincipalCtrl with ChangeNotifier{
   late VideoController mediaController;
   late Player bgMediaPlayer;
   late VideoController bgMediaController;
-  List<String> tagVideo = ["gameplay","montage","funny","clip","dica","tutorial de","Shorts","Engraçado","lool","noticias","Novidades","Update","review","análise","walkthrough","speedrun","highlights","best moments","top plays","epic moments"];
+  List<String> tagVideo = List.of(GameVideoTags.values);
   
   List<String> listAbaGuias= ["Games","Cinema","Musica","Loja"];
   List<LojaGame> listLojas = const [
@@ -303,7 +305,12 @@ class PrincipalCtrl with ChangeNotifier{
       case 'RB': selecionarCategoriaSlim(selectedIndexAbaGuias + 1);
       case 'CIMA':
       case '3': focarCategoriaSlim(barra: true, playSound: true);
-      case 'BAIXO': focarCategoriaSlim(playSound: true);
+      case 'BAIXO':
+        if (futuristicMode && !barra && selectedIndexAbaGuias == 0) {
+          abrirItemSlim();
+        } else {
+          focarCategoriaSlim(playSound: true);
+        }
       case 'ESQUERDA':
       case 'DIREITA':
         final delta = event == 'DIREITA' ? 1 : -1;
@@ -353,7 +360,12 @@ class PrincipalCtrl with ChangeNotifier{
         case 1: await movFilmes('2');
         case 2: await movMusica('2');
         case 3: await movLoja('2');
-        default: await btnEntrar();
+        default:
+          if (futuristicMode && abrirDetalhesFuturista != null) {
+            await abrirDetalhesFuturista!();
+          } else {
+            await btnEntrar();
+          }
       }
     } catch (error) {
       debugPrint('Não foi possível abrir o item no Slim: $error');
@@ -1102,11 +1114,12 @@ class PrincipalCtrl with ChangeNotifier{
     if (!compactNavigation) ctrlAnimeBgFundo.repeat(reverse: true);
   }
 
-  btnEntrar() async {
+  btnEntrar({Future<void> Function()? apresentarInicializacao,
+    bool reportErrors = false}) async {
     try{
       if(!stateTela) return;
       if(listIconsInicial.isEmpty) return btnMais();
-      await db.openFile(listIconsInicial[selectedIndexIcone].local);
+      await db.openFile(listIconsInicial[selectedIndexIcone].local, throwOnError: reportErrors);
       gameIniciado = true;
       stateTela = false; // Desativa eventos durante o processo
       await Provider.of<Paad>(ctx, listen: false).ativaMouse(usarEstado: true, estado: false);
@@ -1119,7 +1132,11 @@ class PrincipalCtrl with ChangeNotifier{
 
       attTela();
       await Future.delayed(const Duration(milliseconds: 650));
-      await Pops().carregandoGames(ctx,"Entrando no game..." );
+      if (apresentarInicializacao != null) {
+        await apresentarInicializacao();
+      } else {
+        await Pops().carregandoGames(ctx,"Entrando no game..." );
+      }
       gameIniciado = false;
       Provider.of<JanelaCtrl>(ctx, listen: false).telaPresaReverse(estado: true, usarEstado: true);
       // Desativa o uso do mouse;
@@ -1145,6 +1162,11 @@ class PrincipalCtrl with ChangeNotifier{
       // focusScope = focusScopeIcones;
     }catch(e){
       debugPrint(e.toString());
+      if (reportErrors) {
+        gameIniciado = false;
+        stateTela = true;
+        rethrow;
+      }
     }
   }
 

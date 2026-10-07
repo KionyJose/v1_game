@@ -3,6 +3,37 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:v1_game/Interface/futuristic_game_backdrop.dart';
 
 void main() {
+  testWidgets('Fundo acompanha um alvo contínuo a 120 Hz sem reiniciar a mola',
+      (tester) async {
+    final position = ValueNotifier<double>(0);
+    await tester.pumpWidget(MaterialApp(
+        home: FuturisticGameBackdrop(
+            category: 0,
+            selected: 0,
+            image: 'assets/Futurista/aurora_lake.png',
+            position: position)));
+    double offset() => tester
+        .widget<Transform>(find.byKey(const ValueKey('game-backdrop-current')))
+        .transform
+        .storage[12];
+    for (var frame = 1; frame <= 120; frame++) {
+      position.value = frame / 120;
+      await tester.pump(const Duration(microseconds: 8333));
+    }
+    final moving = offset();
+    // A continually restarted animation remains near zero until the rail stops.
+    expect(moving, lessThan(-40));
+    for (var frame = 0; frame < 480; frame++) {
+      final before = offset();
+      await tester.pump(const Duration(microseconds: 8333));
+      expect(offset(), lessThanOrEqualTo(before + .001));
+      expect((offset() - before).abs(), lessThan(2));
+    }
+    expect(offset(), closeTo(-800 * .14, .1));
+    await tester.pumpWidget(const SizedBox());
+    position.dispose();
+    expect(tester.takeException(), isNull);
+  });
   testWidgets(
       'Fundo segue o carrossel com atraso e desacelera nas duas direções',
       (tester) async {

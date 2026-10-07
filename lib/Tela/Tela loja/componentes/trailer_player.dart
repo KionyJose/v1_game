@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import '../../../Interface/pad_playback_hints.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -26,6 +28,99 @@ class TrailerPlayerState extends State<TrailerPlayer> {
   String? _erro;
   DateTime? _lastVolumeChange;
   double _volume = 100;
+  bool _fullscreen = false, _disposing = false;
+  PageRoute<void>? _fullscreenRoute;
+  final _viewRevision = ValueNotifier<int>(0);
+  final _viewport = GlobalKey();
+  final _inlineHints = GlobalKey<PadPlaybackHintsState>();
+  final _fullscreenHints = GlobalKey<PadPlaybackHintsState>();
+
+  void _refresh(VoidCallback update) {
+    if (!mounted || _disposing) return;
+    setState(update);
+    _viewRevision.value++;
+  }
+
+  void _showHints() {
+    _inlineHints.currentState?.show();
+    _fullscreenHints.currentState?.show();
+  }
+
+  Future<void> _toggleFullscreen() async {
+    if (_fullscreen) {
+      if (_fullscreenRoute?.isCurrent ?? false) {
+        Navigator.of(context).pop();
+      }
+      return;
+    }
+    final box = _viewport.currentContext?.findRenderObject() as RenderBox?;
+    final origin =
+        box == null ? null : box.localToGlobal(Offset.zero) & box.size;
+    final reduce = MediaQuery.disableAnimationsOf(context);
+    _refresh(() => _fullscreen = true);
+    final route = PageRouteBuilder<void>(
+        opaque: false,
+        transitionDuration: Duration(milliseconds: reduce ? 0 : 420),
+        reverseTransitionDuration: Duration(milliseconds: reduce ? 0 : 320),
+        pageBuilder: (_, __, ___) => LauncherPadScope(
+            revealFocus: false,
+            onCommand: (command) {
+              if (command == 'R3' || command == '3') {
+                _showHints();
+                if (_fullscreenRoute?.isCurrent ?? false) {
+                  Navigator.of(context).pop();
+                }
+                return true;
+              }
+              final handled = this.command(command);
+              return handled ||
+                  ['CIMA', 'BAIXO', 'ESQUERDA', 'DIREITA'].contains(command);
+            },
+            child: Focus(
+                autofocus: true,
+                onKeyEvent: (_, event) {
+                  if (event is! KeyDownEvent) return KeyEventResult.ignored;
+                  if (event.logicalKey == LogicalKeyboardKey.enter ||
+                      event.logicalKey == LogicalKeyboardKey.space) {
+                    togglePlayback();
+                    return KeyEventResult.handled;
+                  }
+                  if (event.logicalKey == LogicalKeyboardKey.f11) {
+                    unawaited(_toggleFullscreen());
+                    return KeyEventResult.handled;
+                  }
+                  return KeyEventResult.ignored;
+                },
+                child: Material(
+                    key: const ValueKey('trailer-fullscreen'),
+                    color: Colors.black,
+                    child: ValueListenableBuilder<int>(
+                        valueListenable: _viewRevision,
+                        builder: (_, __, ___) =>
+                            _inlineVideo(fullscreen: true))))),
+        transitionsBuilder: (context, animation, _, child) {
+          final screen = Offset.zero & MediaQuery.sizeOf(context);
+          return AnimatedBuilder(
+              animation: animation,
+              child: child,
+              builder: (_, video) {
+                final progress =
+                    Curves.easeInOutCubic.transform(animation.value);
+                final rect = Rect.lerp(origin ?? screen, screen, progress)!;
+                return Stack(children: [
+                  Positioned.fill(
+                      child: ColoredBox(
+                          color: Colors.black.withValues(alpha: progress))),
+                  Positioned.fromRect(rect: rect, child: video!),
+                ]);
+              });
+        });
+    _fullscreenRoute = route;
+    await Navigator.of(context).push(route);
+    await route.completed;
+    _fullscreenRoute = null;
+    if (mounted) _refresh(() => _fullscreen = false);
+  }
 
   @override
   void initState() {
@@ -47,7 +142,7 @@ class TrailerPlayerState extends State<TrailerPlayer> {
       _video = VideoController(player);
       _erros = player.stream.error.listen((error) {
         if (mounted && error.isNotEmpty) {
-          setState(
+          _refresh(
               () => _erro = 'Não foi possível reproduzir este trailer no app.');
         }
       });
@@ -55,10 +150,10 @@ class TrailerPlayerState extends State<TrailerPlayer> {
           .open(Media(manifest.muxed.bestQuality.url.toString()),
               play: !_suspended)
           .timeout(const Duration(seconds: 20));
-      if (mounted) setState(() => _carregando = false);
+      if (mounted) _refresh(() => _carregando = false);
     } catch (_) {
       if (mounted) {
-        setState(() {
+        _refresh(() {
           _carregando = false;
           _erro = 'Não foi possível reproduzir este trailer no app.';
         });
@@ -68,6 +163,8 @@ class TrailerPlayerState extends State<TrailerPlayer> {
 
   @override
   void dispose() {
+    _disposing = true;
+    _viewRevision.dispose();
     _youtube.close();
     _erros?.cancel();
     _player?.dispose();
@@ -83,20 +180,37 @@ class TrailerPlayerState extends State<TrailerPlayer> {
       }
     } catch (_) {/* O link permanece visível se o navegador falhar. */}
     if (mounted) {
-      setState(
+      _refresh(
           () => _erro = 'Não foi possível abrir o YouTube. Tente novamente.');
     }
   }
 
-  void togglePlayback() => _player?.playOrPause();
+  void togglePlayback() {
+    _showHints();
+    _player?.playOrPause();
+  }
 
   bool command(String command) {
+    if (command == 'R3') {
+      _showHints();
+      unawaited(_toggleFullscreen());
+      return true;
+    }
+    if (command == '2') {
+      togglePlayback();
+      return true;
+    }
+    if (['CIMA', 'BAIXO', 'ESQUERDA', 'DIREITA', 'LB', 'RB', 'START']
+        .contains(command)) {
+      _showHints();
+    }
     final player = _player;
     final trigger =
         RegExp(r'^(LT|RT)(?:-(\d+(?:\.\d+)?))?$').firstMatch(command);
     if (trigger != null) {
       final pressure = double.tryParse(trigger.group(2) ?? '255') ?? 0;
       if (pressure < 30) return true;
+      _showHints();
       final now = DateTime.now();
       if (player != null &&
           (_lastVolumeChange == null ||
@@ -106,7 +220,7 @@ class TrailerPlayerState extends State<TrailerPlayer> {
         _volume =
             (_volume + (trigger.group(1) == 'RT' ? 5 : -5)).clamp(0.0, 100.0);
         player.setVolume(_volume);
-        if (mounted) setState(() {});
+        if (mounted) _refresh(() {});
       }
       return true;
     }
@@ -127,30 +241,30 @@ class TrailerPlayerState extends State<TrailerPlayer> {
     return false;
   }
 
-  Widget _inlineVideo() => ExcludeFocus(
-          child: Stack(fit: StackFit.expand, children: [
-        if (_erro != null)
-          Center(
-              child: Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: Text(_erro!, textAlign: TextAlign.center)))
-        else if (_carregando)
-          const Center(child: CircularProgressIndicator())
-        else
-          Video(controller: _video!, controls: NoVideoControls),
-        Positioned(
-            left: 12,
-            right: 12,
-            bottom: 12,
-            child: IgnorePointer(
-                child: DecoratedBox(
-                    decoration: const BoxDecoration(color: Colors.black87),
-                    child: Padding(
-                        padding: const EdgeInsets.all(8),
-                        child: Text(
-                            'A / Enter: reproduzir ou pausar • LB / RB: 10s • LT / RT: volume ${_volume.round()}%',
-                            style: const TextStyle(fontSize: 12)))))),
-      ]));
+  Widget _inlineVideo({bool fullscreen = false}) => ExcludeFocus(
+      child: SizedBox.expand(
+          key: fullscreen ? null : _viewport,
+          child: !fullscreen && _fullscreen
+              ? const ColoredBox(color: Colors.black)
+              : Stack(fit: StackFit.expand, children: [
+                  if (_erro != null)
+                    Center(
+                        child: Padding(
+                            padding: const EdgeInsets.all(20),
+                            child: Text(_erro!, textAlign: TextAlign.center)))
+                  else if (_carregando)
+                    const Center(child: CircularProgressIndicator())
+                  else
+                    Video(controller: _video!, controls: NoVideoControls),
+                  Positioned(
+                      left: 12,
+                      right: 12,
+                      bottom: 12,
+                      child: PadPlaybackHints(
+                          key: fullscreen ? _fullscreenHints : _inlineHints,
+                          text:
+                              'A / Enter: reproduzir ou pausar \u2022 LB / RB: 10s \u2022 LT / RT: volume ${_volume.round()}% \u2022 R3: expandir / voltar')),
+                ])));
 
   @override
   Widget build(BuildContext context) => widget.inline

@@ -55,6 +55,7 @@ dependencies:
   path: ^1.9.1
   crypto: ^3.0.7
   liquid_glass_easy: 4.3.4
+  lottie: ^3.6.1
   # Minhas Dependencias =======================================================================
 
 dev_dependencies:

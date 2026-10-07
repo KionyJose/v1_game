@@ -6,6 +6,67 @@ Em **Mais (+/Start) → Configurações → Interface**, selecione **Futurista**
 e salve. O modo Slim tem prioridade: desative-o para usar a nova apresentação.
 Jogos, Cinema, Música e Lojas usam a biblioteca e as ações do launcher existente.
 
+### Detalhes do jogo e entrada futurista 🎮
+
+Com um card de jogo selecionado, **Baixo** ou **A/Enter** abre os detalhes:
+o card gira para baixo em 450 ms e a página entra com perspectiva suave.
+As outras categorias continuam usando suas ações originais.
+
+- `futuristic_game_details.dart`: Jogar e capa ficam à esquerda, o vídeo grande
+  à direita. Os títulos Vídeos e Notícias recebem foco com escala e glow;
+  baixo entra no título e depois no primeiro item. Cima retorna ao Jogar ou ao
+  viewer, revelando o topo completo. O cabeçalho permanece fixo. Skeletons
+  mostram a estrutura enquanto os dados chegam; a lista de vídeos tem luz
+  suave na borda direita. A reproduz; R3 expande com animação, R3/B retorna;
+  LB/RB controlam 10 s e LT/RT o volume. As instruções desaparecem com fade
+  após 2 s sem comando. Start abre o menu/Downloads.
+- `futuristic_game_feed.dart`: reutiliza WebScrap e as tags de `game_video_tags.dart`
+  compartilhadas com `PrincipalCtrl.tagVideo`. Cada busca concluída alterna
+  tags e prioriza IDs ainda não exibidos. Somente notícias usam cache de 5 min;
+  chamadas de vídeos simultâneas compartilham a requisição em andamento.
+  Se todos os resultados já foram exibidos, embaralha os disponíveis.
+- `futuristic_launch.dart`: Jogar fecha os detalhes, aguarda a transição e
+  revela os cards antes de apresentar o Lottie `assets/Futurista/game_controller.json`
+  sobre a biblioteca desfocada, com “Iniciando seu jogo” e som original.
+  Mantém o fluxo do executável, mouse, janela e reordenação da biblioteca.
+  A/B/Enter retornam à seleção de jogos após confirmação do início e
+  introdução mínima de 2 s. Falhas permanecem na biblioteca com aviso.
+- `pad_playback_hints.dart`: faixa reutilizável de instruções com timeout e fade.
+  `TrailerPlayer` mantém o Player/VideoController ao expandir ou recolher.
+- `tools/generate_futuristic_launch.py`: recria a composição sem samples;
+  `SonsSistema` pré-carrega o som e respeita o volume global.
+
+Teste: `flutter test --no-pub test/futuristic_game_details_test.dart`.
+
+Em **Configurações → FPS da UI**, escolha **30**, **60** ou **Livre** e salve.
+Livre é o padrão e permite acompanhar o vsync do monitor, sem limite adicional.
+A preferência é persistida no JSON e aplicada ao iniciar o launcher e ao salvar.
+Pad: esquerda/direita alteram a opção e A avança; teclado: setas e Enter.
+`ui_frame_binding.dart` controla os pedidos de quadros da interface por prazo
+monotônico; mudanças de FPS não alteram a duração das animações. Quadros forçados
+de janela/inicialização e a reprodução de vídeo preservam o comportamento nativo.
+FPS efetivo continua dependendo do tempo de renderização e da GPU.
+
+No Futurista, o cabeçalho mostra engrenagem, cadeado, controles conectados e X
+nessa ordem. O cadeado usa somente o ícone: vermelho travado, verde livre.
+
+As categorias mantêm o painel de abas original, sem reflexos.
+Os cards dos jogos têm lentes de Liquid Glass individuais nas bordas, com as
+capas nítidas no centro e sem painel grande atrás da lista.
+`futuristic_card_mirror.dart` desenha um reflexo invertido verticalmente que se
+dissipa abaixo de cada card, sem duplicar foco, semântica ou captura de refração.
+O reflexo ocupa metade da altura do card. A lista vai até a borda direita e fica
+mais próxima da base da janela. A faixa de vidro ao redor da capa tem 9 pixels
+(4 a mais), e o selecionado tem escala 1 contra 0,8 dos outros: 25% maior.
+As escalas dos cards e reflexos mudam suavemente sem alterar os slots da lista.
+O brilho percorre uma faixa inclinada em 1,05 s e sai inteiramente pela direita
+antes de a animação ser removida.
+`futuristic_particles.dart` acrescenta 44 partículas à frente da imagem de fundo,
+atrás da interface. Um único painter recebe os movimentos do carrossel e produz
+uma rajada na mesma direção, com amortecimento baseado no tempo. A camada usa
+`RepaintBoundary`, sem reconstruir os widgets por quadro; pausa com a tela oculta,
+o aplicativo inativo ou a preferência de reduzir animações.
+
 - Pad: esquerda/direita navegam; LB/RB mudam a categoria; cima/B levam à barra;
   baixo retorna aos cartões; A abre; Start abre o menu original.
 - Teclado: setas ou WASD, Q/E ou PageUp/PageDown, Enter/Espaço, Esc e +/F10.
@@ -13,7 +74,9 @@ Jogos, Cinema, Música e Lojas usam a biblioteca e as ações do launcher existe
   refração por shader, reflexos ópticos nas bordas, blur e sombras de profundidade.
   `GlassBackdrop` fornece a paisagem ao renderer Skia do Windows; Impeller é
   detectado pela capacidade de usar filtros shader. A captura usa meia resolução
-  e 24 Hz, separadamente das animações da interface, para reduzir o custo.
+  e `deviceRefreshRate`: acompanha cada quadro do monitor, inclusive 120/165 Hz.
+  No Skia, uma captura compartilhada ocorre durante a pintura do próprio quadro,
+  evitando a imagem atrasada e o limite anterior de aproximadamente 24 Hz.
   `body_futurista.dart`
   reúne apresentação, cartões, controles da janela no cabeçalho e ciclo da trilha.
 - `launcher_more_grid.dart`: menu Mais em duas colunas, com ícones, nomes e
@@ -30,12 +93,15 @@ Jogos, Cinema, Música e Lojas usam a biblioteca e as ações do launcher existe
   essa posição. A mola dos cards usa rigidez 100 e amortecimento 22.
 - `futuristic_game_backdrop.dart`: capa do item selecionado como fundo;
   acompanha a posição real do carrossel com atraso de 90 ms e uma segunda
-  mola mais lenta (rigidez 28, amortecimento 12). As imagens se mesclam por
-  1,3 s, em no máximo duas camadas, mantendo a mesma direção do deslocamento.
+  mola mais lenta (rigidez 28, amortecimento 12).
+  O acompanhamento usa um ticker contínuo, preservando velocidade quando o alvo
+  muda a cada quadro, sem reiniciar a desaceleração durante a rolagem.
+  As imagens se mesclam por 1,3 s, em no máximo duas camadas, mantendo a mesma
+  direção do deslocamento.
   Sem capa, permanece a paisagem de lago e aurora. Reduzir animações elimina
   o atraso e o movimento.
-- `futuristic_view_box.dart`: painel Liquid Glass com o mesmo material das abas
-  e controles do cabeçalho, incluindo blur, refração e reflexos ópticos.
+- `futuristic_view_box.dart`: transição de páginas, com vidro opcional. Na lista
+  de jogos usa `glass: false`, deixando o fundo visível entre os cards.
   Troca de abas recortada, com entrada
   desacelerada em 580 ms e parallax da página anterior usando uma imagem estática.
   Há apenas uma árvore de foco ativa; inversões rápidas descartam a imagem anterior.

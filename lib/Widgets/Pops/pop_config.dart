@@ -6,6 +6,8 @@ import 'package:v1_game/Controllers/MovimentoSistema.dart';
 import 'package:v1_game/Controllers/SonsSistema.dart';
 import 'package:v1_game/Controllers/slim_mode_config_controller.dart';
 import 'package:v1_game/Global.dart';
+import '../../Interface/ui_frame_binding.dart';
+import '../../Interface/ui_fps_options.dart';
 
 class PopConfig {
   static config(BuildContext context) async {
@@ -13,12 +15,13 @@ class PopConfig {
     try {
       bool statePop = true;
       String retorno = "";
-      int total = 9;
+      int total = 10;
       FocusScopeNode focusScope = FocusScopeNode();
       const slimModeController = SlimModeConfigController();
 
       // Cria cópias das configurações para poder cancelar
       double volumeTemp = configSistema.volume;
+      int uiFpsTemp = configSistema.uiFps;
       bool introTemp = configSistema.intro;
       bool videosTelaPrincipalTemp = configSistema.videosTelaPrincipal;
       bool videosCardGameTemp = configSistema.noticias;
@@ -58,6 +61,8 @@ class PopConfig {
       }
 
       Future<void> salvarConfiguracoes(Paad paad) async {
+        final previousUiFps = configSistema.uiFps;
+        configSistema.uiFps = uiFpsTemp;
         configSistema.volume = volumeTemp;
         configSistema.intro = introTemp;
         configSistema.videosTelaPrincipal = videosTelaPrincipalTemp;
@@ -65,6 +70,7 @@ class PopConfig {
         configSistema.sequenciaAtivaMouseCustom = sequenciaCustomTemp;
         configSistema.viewType = interfaceTemp;
         if (!await configSistema.save()) {
+          configSistema.uiFps = previousUiFps;
           if (context.mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(content: Text('Não foi possível salvar as configurações.')),
@@ -72,6 +78,7 @@ class PopConfig {
           }
           return;
         }
+        UiFrameRateController.apply(uiFpsTemp);
         try {
           await slimModeController.writeActive(v1SlimTemp);
         } catch (_) {
@@ -146,6 +153,14 @@ class PopConfig {
 
         // Ajustes nos valores com setas
         if (event == "ESQUERDA" || event == "DIREITA") {
+          if (focusNodes[9].hasFocus) {
+            const options = [30, 60, 0];
+            final index = options.indexOf(uiFpsTemp);
+            uiFpsTemp = options[(index + (event == 'DIREITA' ? 1 : -1) + options.length) % options.length];
+            SonsSistema.click();
+            setStateDialog?.call(() {});
+            return;
+          }
           // Volume (focusNodes[0])
           if (focusNodes[0].hasFocus) {
             if (event == "DIREITA" && volumeTemp < 1.0) {
@@ -214,6 +229,13 @@ class PopConfig {
           fecharDialog(context, "cancelar", paad);
         }
         if (event == "2") {
+          if (focusNodes[9].hasFocus) {
+            const options = [30, 60, 0];
+            uiFpsTemp = options[(options.indexOf(uiFpsTemp) + 1) % options.length];
+            SonsSistema.click();
+            setStateDialog?.call(() {});
+            return;
+          }
           // Confirmar ou Toggle
           debugPrint(
               "======================================== BOTÃO 2 PRESSIONADO");
@@ -701,6 +723,13 @@ class PopConfig {
                                             }),
                                           ),
                                         ),
+
+                                        UiFpsOptions(value: uiFpsTemp, focusNode: focusNodes[9],
+                                          onChanged: (value) {
+                                            uiFpsTemp = value;
+                                            SonsSistema.click();
+                                            setStateDialog?.call(() {});
+                                          }),
 
                                         // Sequência Custom de Ativar Mouse
                                         Padding(

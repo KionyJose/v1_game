@@ -8,6 +8,7 @@ import 'dart:io';
 class ConfigSistema {
   // Exemplo de propriedades de interface
   String viewType; // 'list' | 'moderno' | 'retro' | 'futurista' (grid: atalho legado)
+  int uiFps; // 0 = Livre (monitor), 30 ou 60 = cadência da UI
   String primaryColorHex; // Ex: '#FF4081'
   String accentColorHex; // Ex: '#FFC107'
   String buttonStyle; // 'rounded' | 'flat' | 'outline'
@@ -37,6 +38,7 @@ class ConfigSistema {
 
   ConfigSistema({
     required this.viewType,
+    this.uiFps = 0,
     required this.primaryColorHex,
     required this.accentColorHex,
     required this.buttonStyle,
@@ -85,6 +87,7 @@ class ConfigSistema {
   factory ConfigSistema.fromJson(Map<String, dynamic> json) {
     return ConfigSistema(
       viewType: json['viewType'] ?? 'list',
+      uiFps: json['uiFps'] == 30 ? 30 : (json['uiFps'] == 60 ? 60 : 0),
       primaryColorHex: json['primaryColorHex'] ?? '#1E88E5',
       accentColorHex: json['accentColorHex'] ?? '#FFC107',
       buttonStyle: json['buttonStyle'] ?? 'rounded',
@@ -123,6 +126,7 @@ class ConfigSistema {
   Map<String, dynamic> toJson() {
     return {
       'viewType': viewType,
+      'uiFps': uiFps,
       'primaryColorHex': primaryColorHex,
       'accentColorHex': accentColorHex,
       'buttonStyle': buttonStyle,
@@ -146,6 +150,7 @@ class ConfigSistema {
 
   ConfigSistema copyWith({
     String? viewType,
+    int? uiFps,
     String? primaryColorHex,
     String? accentColorHex,
     String? buttonStyle,
@@ -167,6 +172,7 @@ class ConfigSistema {
   }) {
     return ConfigSistema(
       viewType: viewType ?? this.viewType,
+      uiFps: uiFps ?? this.uiFps,
       primaryColorHex: primaryColorHex ?? this.primaryColorHex,
       accentColorHex: accentColorHex ?? this.accentColorHex,
       buttonStyle: buttonStyle ?? this.buttonStyle,
@@ -256,6 +262,7 @@ class ConfigSistema {
     if (ok) {
       // substituir valores locais
       viewType = d.viewType;
+      uiFps = d.uiFps;
       primaryColorHex = d.primaryColorHex;
       accentColorHex = d.accentColorHex;
       buttonStyle = d.buttonStyle;

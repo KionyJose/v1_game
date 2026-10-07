@@ -28,6 +28,7 @@ class SonsSistema {
       configSistema.viewType == 'futurista';
   static void futuristicMove() => _playSound('Sons/Futurista/move.wav');
   static void futuristicOpen() => _playSound('Sons/Futurista/open.wav');
+  static void futuristicLaunch() => _playSound('Sons/Futurista/launch.wav');
   static Future<SoundHandle?> startWaterAmbience() async {
     await preload('Sons/Futurista/water_ambient.wav');
     final source = _loadedSounds['Sons/Futurista/water_ambient.wav'];
@@ -139,6 +140,7 @@ class SonsSistema {
       preload('Sons/Slim/open_8bit.wav'),
       preload('Sons/Futurista/move.wav'),
       preload('Sons/Futurista/open.wav'),
+      preload('Sons/Futurista/launch.wav'),
     ]);
     debugPrint('✓ Todos os sons carregados e prontos para uso instantâneo');
   }

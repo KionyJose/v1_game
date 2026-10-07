@@ -19,6 +19,7 @@ import 'package:media_kit/media_kit.dart';
 import 'Metodos/leituraArquivo.dart';
 import 'Controllers/slim_mode_config_controller.dart';
 import 'Controllers/launcher_window_controller.dart';
+import 'Interface/ui_frame_binding.dart';
 
 WindowOptions windowOptions = const WindowOptions(
   center: true,
@@ -32,7 +33,7 @@ void main() async {
 
 // Entrada do launcher com MediaKit, provedores e integração de Pad do sistema.
 Future<void> iniciarLauncherAnterior() async {
-  WidgetsFlutterBinding.ensureInitialized();
+  LauncherFrameBinding();
   MediaKit.ensureInitialized();
   localizaCaminhos();
 
@@ -81,6 +82,7 @@ Future<void> iniciarLauncherAnterior() async {
 configucacoesSistema() async {
   // Carrega configurações do arquivo JSON
   configSistema = await ConfigSistema.load();
+  UiFrameRateController.apply(configSistema.uiFps);
   await const SlimModeConfigController().load();
   debugPrint(
       "✓ Configurações carregadas: volume=${configSistema.volume}, intro=${configSistema.intro}, viewType=${configSistema.viewType}");

@@ -5,14 +5,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/physics.dart';
 import '../../../Interface/futuristic_card_effect.dart';
+import '../../../Interface/futuristic_launch.dart';
 import '../../../Interface/futuristic_game_backdrop.dart';
+import '../../../Interface/futuristic_card_mirror.dart';
+import '../../../Interface/futuristic_card_fold.dart';
+import '../Futurista/futuristic_game_details.dart';
+import '../../../Interface/futuristic_particles.dart';
 import '../../../Interface/futuristic_view_box.dart';
 import 'package:flutter_soloud/flutter_soloud.dart';
 import 'package:window_manager/window_manager.dart';
-import 'package:provider/provider.dart';
-import '../../../Class/Paad.dart';
-import '../../../Controllers/JanelaCtrl.dart';
-import '../../../Bando de Dados/db.dart';
+import '../../../Interface/futuristic_window_controls.dart';
 
 import '../../../Controllers/SonsSistema.dart';
 import '../../../Interface/launcher_pad_scope.dart';
@@ -32,10 +34,14 @@ class _BodyFuturistaState extends State<BodyFuturista> with WindowListener {
   Timer? _audioTimer;
   ModalRoute<dynamic>? _route;
   bool _foreground = true;
+  bool _openingGame = false, _launchingGame = false;
+  late final Future<void> Function() _detailsHandler;
 
   @override
   void initState() {
     super.initState();
+    _detailsHandler = _openGameDetails;
+    widget.ctrl.abrirDetalhesFuturista = _detailsHandler;
     windowManager.addListener(this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) widget.ctrl.focarCategoriaSlim();
@@ -68,8 +74,97 @@ class _BodyFuturistaState extends State<BodyFuturista> with WindowListener {
   void _syncAudio() {
     final handle = _ambience;
     if (!mounted || handle == null) return;
-    SonsSistema.updateWaterAmbience(handle,
-        _foreground && widget.ctrl.stateTela && (_route?.isCurrent ?? true));
+    SonsSistema.updateWaterAmbience(
+        handle,
+        _foreground &&
+            !_openingGame &&
+            !_launchingGame &&
+            widget.ctrl.stateTela &&
+            (_route?.isCurrent ?? true));
+  }
+
+  Future<void> _openGameDetails() async {
+    final ctrl = widget.ctrl;
+    if (!mounted ||
+        _openingGame ||
+        _launchingGame ||
+        ctrl.listIconsInicial.isEmpty) {
+      return;
+    }
+    final game = ctrl.listIconsInicial[ctrl.selectedIndexIcone];
+    setState(() => _openingGame = true);
+    _syncAudio();
+    try {
+      if (!MediaQuery.disableAnimationsOf(context)) {
+        await Future<void>.delayed(const Duration(milliseconds: 450));
+      }
+      if (!mounted) return;
+      final reduce = MediaQuery.disableAnimationsOf(context);
+      final detailsRoute = PageRouteBuilder<bool>(
+        transitionDuration: Duration(milliseconds: reduce ? 0 : 580),
+        reverseTransitionDuration: Duration(milliseconds: reduce ? 0 : 380),
+        pageBuilder: (_, __, ___) => FuturisticGameDetails(
+            name: game.nome, image: game.imgStr, videoTags: ctrl.tagVideo),
+        transitionsBuilder: (_, animation, __, child) => AnimatedBuilder(
+            animation: animation,
+            child: child,
+            builder: (_, page) {
+              final t = Curves.easeOutCubic.transform(animation.value);
+              return Transform(
+                  alignment: Alignment.bottomCenter,
+                  transform: Matrix4.identity()
+                    ..setEntry(3, 2, .0005)
+                    ..rotateX((1 - t) * .45),
+                  child: Opacity(opacity: t, child: page));
+            }),
+      );
+      final played = await launchFuturisticGameFromLibrary(context,
+          detailsRoute: detailsRoute,
+          name: game.nome,
+          image: game.imgStr, revealLibrary: () async {
+        if (!mounted) return;
+        ctrl.stateTela = false;
+        setState(() {
+          _openingGame = false;
+          _launchingGame = true;
+        });
+        _syncAudio();
+        if (!reduce) {
+          await Future<void>.delayed(const Duration(milliseconds: 450));
+        }
+      }, start: (presentation) async {
+        if (!mounted) throw StateError('A interface foi alterada.');
+        final index = ctrl.listIconsInicial
+            .indexWhere((item) => item.local == game.local);
+        if (index < 0) {
+          throw StateError('O jogo n\u00e3o est\u00e1 mais na biblioteca.');
+        }
+        ctrl.selectedIndexIcone = index;
+        ctrl.stateTela = true;
+        await ctrl.btnEntrar(
+            apresentarInicializacao: presentation, reportErrors: true);
+      });
+      if (played == true && mounted) ctrl.selecionarItemSlim(0);
+    } catch (error) {
+      debugPrint('Falha ao iniciar o jogo: $error');
+      if (mounted) {
+        ctrl.stateTela = true;
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text(
+                'N\u00e3o foi poss\u00edvel iniciar o jogo. Confira o caminho do execut\u00e1vel.')));
+        final index = ctrl.listIconsInicial
+            .indexWhere((item) => item.local == game.local);
+        if (index >= 0) ctrl.selecionarItemSlim(index);
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _openingGame = false;
+          _launchingGame = false;
+        });
+        _syncAudio();
+      }
+    }
   }
 
   @override
@@ -86,6 +181,9 @@ class _BodyFuturistaState extends State<BodyFuturista> with WindowListener {
 
   @override
   void dispose() {
+    if (widget.ctrl.abrirDetalhesFuturista == _detailsHandler) {
+      widget.ctrl.abrirDetalhesFuturista = null;
+    }
     _audioTimer?.cancel();
     windowManager.removeListener(this);
     final handle = _ambience;
@@ -112,13 +210,14 @@ class _BodyFuturistaState extends State<BodyFuturista> with WindowListener {
                   Icons.sports_esports_rounded),
             });
     return LauncherPadScope(
-      enabled: !ctrl.mouseBloqueado,
+      enabled: !ctrl.mouseBloqueado && !_launchingGame,
       revealInitialFocus: false,
       revealFocus: false,
       onCommand: ctrl.comandoSlim,
       child: Focus(
         skipTraversal: true,
         onKeyEvent: (_, event) {
+          if (_launchingGame) return KeyEventResult.handled;
           if (event is! KeyDownEvent && event is! KeyRepeatEvent) {
             return KeyEventResult.ignored;
           }
@@ -146,7 +245,7 @@ class _BodyFuturistaState extends State<BodyFuturista> with WindowListener {
           return KeyEventResult.handled;
         },
         child: FuturisticHome(
-          windowControls: const _FuturisticWindowControls(),
+          windowControls: const FuturisticWindowControls(),
           category: category,
           selected: ctrl.slimItemIndex,
           items: items,
@@ -154,7 +253,8 @@ class _BodyFuturistaState extends State<BodyFuturista> with WindowListener {
           categoryNodes: ctrl.focusNodeAbaGuias,
           itemScope: ctrl.slimItemScope,
           categoryScope: ctrl.focusScopeAbaGuias,
-          enabled: !ctrl.mouseBloqueado,
+          enabled: !ctrl.mouseBloqueado && !_launchingGame,
+          openingGame: _openingGame,
           onSelect: ctrl.selecionarItemSlim,
           onCategory: (index) =>
               ctrl.selecionarCategoriaSlim(index, barra: true),
@@ -173,48 +273,6 @@ class FuturisticItem {
   final IconData icon;
 }
 
-class _FuturisticWindowControls extends StatelessWidget {
-  const _FuturisticWindowControls();
-  @override
-  Widget build(BuildContext context) {
-    final window = context.watch<JanelaCtrl?>();
-    final pads = context.watch<Paad?>()?.controlesAtivos.length ?? 0;
-    return ExcludeFocus(
-        child: Row(mainAxisSize: MainAxisSize.min, children: [
-      IconButton(
-          tooltip: 'Travar tela',
-          icon: Icon(
-              window?.telaPresa == true
-                  ? Icons.lock_outline
-                  : Icons.lock_open_rounded,
-              color: const Color(0xFFB6DDDB),
-              size: 18),
-          onPressed: window?.telaPresaReverse),
-      Text(window?.telaPresa == true ? 'Fixada' : 'Livre',
-          style: const TextStyle(color: FuturisticPalette.pearl, fontSize: 12)),
-      const SizedBox(width: 14),
-      Tooltip(
-          message: '$pads controles conectados',
-          child: Row(mainAxisSize: MainAxisSize.min, children: [
-            const Icon(Icons.sports_esports_rounded,
-                color: FuturisticPalette.water, size: 18),
-            const SizedBox(width: 6),
-            Text('$pads',
-                style: const TextStyle(
-                    color: FuturisticPalette.pearl, fontSize: 12)),
-          ])),
-      IconButton(
-          tooltip: 'Fechar aplicativo',
-          icon: const Icon(Icons.close_rounded,
-              color: Color(0xFFB6DDDB), size: 20),
-          onPressed: () {
-            DB.closeOpenedFileFast();
-            JanelaCtrl.fecharAppForcado(origem: 'modo Futurista');
-          }),
-    ]));
-  }
-}
-
 /// Independently testable glass layout; it never launches processes itself.
 class FuturisticHome extends StatefulWidget {
   const FuturisticHome(
@@ -231,7 +289,9 @@ class FuturisticHome extends StatefulWidget {
       required this.onOpen,
       required this.onMenu,
       this.windowControls,
-      this.enabled = true});
+      this.enabled = true,
+      this.openingGame = false});
+  final bool openingGame;
   final Widget? windowControls;
   final int category, selected;
   final List<FuturisticItem> items;
@@ -353,43 +413,58 @@ class _FuturisticHomeState extends State<FuturisticHome>
   }
 
   @override
-  Widget
-      build(BuildContext context) =>
-          LayoutBuilder(builder: (context, constraints) {
-            final compact = constraints.maxWidth < 800;
-            final padding = compact ? 24.0 : 56.0;
-            final height = constraints.maxHeight;
-            final extent =
-                (height * (height < 550 ? .26 : .32)).clamp(110.0, 245.0) + 24;
-            if (_extent != extent) {
-              _extent = extent;
-              _reveal();
-            }
-            final cardHeight = _extent - 24;
-            final selected = widget.items.isEmpty
-                ? null
-                : widget
-                    .items[widget.selected.clamp(0, widget.items.length - 1)];
-            final duration = MediaQuery.disableAnimationsOf(context)
-                ? Duration.zero
-                : const Duration(milliseconds: 220);
-            return GlassScene(
-                child: GlassBackdrop(
-                    background: RepaintBoundary(
-                        child: FuturisticGameBackdrop(
-                            category: widget.category,
-                            selected: widget.selected,
-                            image: selected?.image ?? '',
-                            position: _railPosition)),
-                    child: Stack(fit: StackFit.expand, children: [
-                      SafeArea(
-                          child: Padding(
-                              padding:
-                                  EdgeInsets.fromLTRB(padding, 22, padding, 18),
-                              child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(children: [
+  Widget build(BuildContext context) =>
+      LayoutBuilder(builder: (context, constraints) {
+        final compact = constraints.maxWidth < 800;
+        final padding = compact ? 24.0 : 56.0;
+        final height = constraints.maxHeight;
+        final extent =
+            (height * (height < 550 ? .23 : .32)).clamp(110.0, 245.0) + 24;
+        if (_extent != extent) {
+          _extent = extent;
+          _reveal();
+        }
+        final cardHeight = _extent - 24;
+        final selected = widget.items.isEmpty
+            ? null
+            : widget.items[widget.selected.clamp(0, widget.items.length - 1)];
+        final duration = MediaQuery.disableAnimationsOf(context)
+            ? Duration.zero
+            : const Duration(milliseconds: 220);
+        return GlassScene(
+            child: GlassBackdrop(
+                background: RepaintBoundary(
+                    child: FuturisticGameBackdrop(
+                        category: widget.category,
+                        selected: widget.selected,
+                        image: selected?.image ?? '',
+                        position: _railPosition)),
+                child: Stack(fit: StackFit.expand, children: [
+                  FuturisticParticles(position: _railPosition),
+                  Positioned(
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      height: height * .25,
+                      child: const IgnorePointer(
+                          child: DecoratedBox(
+                              decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                      begin: Alignment.bottomCenter,
+                                      end: Alignment.topCenter,
+                                      colors: [
+                            Color(0xB3000000),
+                            Colors.transparent,
+                          ]))))),
+                  SafeArea(
+                      child: Padding(
+                          padding: EdgeInsets.fromLTRB(padding, 22, 0, 4),
+                          child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Padding(
+                                    padding: EdgeInsets.only(right: padding),
+                                    child: Row(children: [
                                       Image.asset('assets/IconeAppV1.png',
                                           width: 34, height: 34),
                                       const SizedBox(width: 12),
@@ -408,194 +483,256 @@ class _FuturisticHomeState extends State<FuturisticHome>
                                                 fontSize: 11,
                                                 letterSpacing: 3)),
                                       const SizedBox(width: 12),
-                                      GlassPanel(
-                                          radius: 26,
-                                          child: Padding(
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                      horizontal: 8),
-                                              child: Row(
-                                                  mainAxisSize:
-                                                      MainAxisSize.min,
-                                                  children: [
-                                                    if (widget.windowControls !=
-                                                        null)
-                                                      widget.windowControls!,
-                                                    ExcludeFocus(
-                                                        child: IconButton(
-                                                            tooltip: 'Menu',
-                                                            onPressed: widget
-                                                                    .enabled
-                                                                ? widget.onMenu
-                                                                : null,
-                                                            icon: const Icon(
-                                                                Icons
-                                                                    .more_horiz_rounded,
-                                                                color:
-                                                                    FuturisticPalette
-                                                                        .pearl))),
-                                                  ]))),
-                                    ]),
-                                    const SizedBox(height: 22),
-                                    _categories(compact, duration),
-                                    const Spacer(),
-                                    FuturisticViewBox(
-                                        page: widget.category,
-                                        child: Padding(
-                                            padding: EdgeInsets.all(
-                                                compact ? 14 : 22),
-                                            child: Column(
-                                                mainAxisSize: MainAxisSize.min,
-                                                crossAxisAlignment:
-                                                    CrossAxisAlignment.start,
-                                                children: [
-                                                  Text(
-                                                      labels[widget.category]
-                                                          .toUpperCase(),
-                                                      style: const TextStyle(
+                                      FuturisticHeaderControls(
+                                          onMenu: widget.enabled
+                                              ? widget.onMenu
+                                              : null,
+                                          windowControls:
+                                              widget.windowControls),
+                                    ])),
+                                const SizedBox(height: 22),
+                                _categories(compact, duration),
+                                const Spacer(),
+                                FuturisticViewBox(
+                                    glass: false,
+                                    page: widget.category,
+                                    child: Padding(
+                                        padding: EdgeInsets.only(
+                                            left: compact ? 14 : 22,
+                                            top: compact ? 14 : 22),
+                                        child: Column(
+                                            mainAxisSize: MainAxisSize.min,
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                  labels[widget.category]
+                                                      .toUpperCase(),
+                                                  style: const TextStyle(
+                                                      color: Color(0xFFB6DDDB),
+                                                      fontSize: 12,
+                                                      fontFamily: 'Oxanium',
+                                                      letterSpacing: 3)),
+                                              const SizedBox(height: 10),
+                                              AnimatedSwitcher(
+                                                  duration: duration,
+                                                  child: Align(
+                                                      key: ValueKey(
+                                                          selected?.name),
+                                                      alignment:
+                                                          Alignment.centerLeft,
+                                                      child: Text(
+                                                          selected?.name ??
+                                                              'Sua próxima descoberta',
+                                                          maxLines: 1,
+                                                          overflow: TextOverflow
+                                                              .ellipsis,
+                                                          style: TextStyle(
+                                                              color:
+                                                                  Colors.white,
+                                                              fontSize: compact
+                                                                  ? 28
+                                                                  : 42,
+                                                              fontFamily:
+                                                                  'Oxanium',
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .w500,
+                                                              shadows: const [
+                                                                Shadow(
+                                                                    color: Colors
+                                                                        .black54,
+                                                                    blurRadius:
+                                                                        16)
+                                                              ])))),
+                                              const SizedBox(height: 8),
+                                              Text(
+                                                  widget.items.isEmpty
+                                                      ? 'Adicione seus favoritos pelo menu.'
+                                                      : '${widget.items.length} favoritos • Um universo para explorar',
+                                                  style: const TextStyle(
+                                                      color: Color(0xFFB6DDDB),
+                                                      fontSize: 13)),
+                                              const SizedBox(height: 24),
+                                              SizedBox(
+                                                  height: cardHeight * 1.5 + 22,
+                                                  child: FocusScope(
+                                                      node: widget.itemScope,
+                                                      child: widget
+                                                              .items.isEmpty
+                                                          ? const Center(
+                                                              child: Icon(
+                                                                  Icons
+                                                                      .water_rounded,
+                                                                  color: Colors
+                                                                      .white38,
+                                                                  size: 52))
+                                                          : LayoutBuilder(
+                                                              builder: (_,
+                                                                      rail) =>
+                                                                  Stack(
+                                                                      children: [
+                                                                        ListView.builder(
+                                                                            key: ValueKey(widget
+                                                                                .category),
+                                                                            controller:
+                                                                                _scroll,
+                                                                            scrollDirection:
+                                                                                Axis.horizontal,
+                                                                            padding: EdgeInsets.only(right: (rail.maxWidth - _extent).clamp(0.0, double.infinity)),
+                                                                            itemExtent: _extent,
+                                                                            itemCount: widget.items.length,
+                                                                            physics: const NeverScrollableScrollPhysics(),
+                                                                            itemBuilder: (context, index) => _card(index, duration)),
+                                                                        Positioned(
+                                                                            left:
+                                                                                0,
+                                                                            top:
+                                                                                8,
+                                                                            width:
+                                                                                cardHeight,
+                                                                            height:
+                                                                                cardHeight,
+                                                                            child:
+                                                                                IgnorePointer(child: AnimatedOpacity(opacity: widget.openingGame ? 0 : 1, duration: duration, child: DecoratedBox(key: const ValueKey('futuristic-fixed-slot'), decoration: BoxDecoration(borderRadius: BorderRadius.circular(25), border: Border.all(color: FuturisticPalette.pearl, width: 2), boxShadow: const [BoxShadow(color: Color(0x608D70D8), blurRadius: 20)]))))),
+                                                                      ])))),
+                                            ]))),
+                              ]))),
+                  if (widget.category == 0 && widget.items.isNotEmpty)
+                    Positioned(
+                        left: 0,
+                        right: 0,
+                        bottom: 4,
+                        child: SafeArea(
+                            top: false,
+                            child: IgnorePointer(
+                                child: AnimatedOpacity(
+                                    opacity: widget.openingGame ? 0 : 1,
+                                    duration: duration,
+                                    child: const Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          Text('Mais detalhes',
+                                              style: TextStyle(
+                                                  color: Color(0xFFB6DDDB),
+                                                  fontFamily: 'Oxanium',
+                                                  fontSize: 12,
+                                                  letterSpacing: 1.2)),
+                                          SizedBox(width: 6),
+                                          Icon(
+                                              Icons.keyboard_arrow_down_rounded,
+                                              color: Color(0xFFB6DDDB),
+                                              size: 22),
+                                        ]))))),
+                ])));
+      });
+
+  Widget _categories(bool compact, Duration duration) {
+    final tabWidth = compact ? 55.0 : 132.0;
+    final slideDuration = duration == Duration.zero
+        ? Duration.zero
+        : const Duration(milliseconds: 360);
+    return FocusScope(
+        node: widget.categoryScope,
+        child: GlassPanel(
+            radius: 28,
+            child: Padding(
+                padding: const EdgeInsets.all(5),
+                child: SizedBox(
+                    width: tabWidth * 4,
+                    height: 46,
+                    child: ListenableBuilder(
+                        listenable: widget.categoryScope,
+                        builder: (_, __) => Stack(children: [
+                              AnimatedPositioned(
+                                  key: const ValueKey(
+                                      'futuristic-tab-indicator'),
+                                  duration: slideDuration,
+                                  curve: Curves.easeOutQuart,
+                                  left: widget.category * tabWidth,
+                                  top: 0,
+                                  bottom: 0,
+                                  width: tabWidth,
+                                  child: IgnorePointer(
+                                      child: AnimatedContainer(
+                                          duration: duration,
+                                          decoration: BoxDecoration(
+                                              borderRadius:
+                                                  BorderRadius.circular(23),
+                                              gradient: LinearGradient(colors: [
+                                                Colors.white.withValues(
+                                                    alpha: widget.categoryScope
+                                                            .hasFocus
+                                                        ? .28
+                                                        : .16),
+                                                FuturisticPalette.water
+                                                    .withValues(
+                                                        alpha: widget
+                                                                .categoryScope
+                                                                .hasFocus
+                                                            ? .18
+                                                            : .08),
+                                              ]),
+                                              border: Border.all(
+                                                  color: widget.categoryScope
+                                                          .hasFocus
+                                                      ? FuturisticPalette.pearl
+                                                      : Colors.white24),
+                                              boxShadow: widget
+                                                      .categoryScope.hasFocus
+                                                  ? const [
+                                                      BoxShadow(
                                                           color:
-                                                              Color(0xFFB6DDDB),
-                                                          fontSize: 12,
-                                                          fontFamily: 'Oxanium',
-                                                          letterSpacing: 3)),
-                                                  const SizedBox(height: 10),
-                                                  AnimatedSwitcher(
-                                                      duration: duration,
-                                                      child: Align(
-                                                          key: ValueKey(
-                                                              selected?.name),
-                                                          alignment: Alignment
-                                                              .centerLeft,
-                                                          child: Text(
-                                                              selected?.name ??
-                                                                  'Sua próxima descoberta',
-                                                              maxLines: 1,
-                                                              overflow:
-                                                                  TextOverflow
-                                                                      .ellipsis,
-                                                              style: TextStyle(
+                                                              Color(0x303FBDBB),
+                                                          blurRadius: 16),
+                                                    ]
+                                                  : null)))),
+                              Row(
+                                  children: List.generate(
+                                      4,
+                                      (index) => SizedBox(
+                                          width: tabWidth,
+                                          child: Focus(
+                                              focusNode:
+                                                  widget.categoryNodes[index],
+                                              onFocusChange: (focused) {
+                                                if (focused && widget.enabled) {
+                                                  widget.onCategory(index);
+                                                }
+                                              },
+                                              child: GestureDetector(
+                                                  behavior:
+                                                      HitTestBehavior.opaque,
+                                                  onTap: widget.enabled
+                                                      ? () => widget
+                                                          .categoryNodes[index]
+                                                          .requestFocus()
+                                                      : null,
+                                                  child: Center(
+                                                      child: Row(
+                                                          mainAxisSize:
+                                                              MainAxisSize.min,
+                                                          children: [
+                                                        Icon(icons[index],
+                                                            size: 19,
+                                                            color:
+                                                                Colors.white),
+                                                        if (!compact) ...[
+                                                          const SizedBox(
+                                                              width: 8),
+                                                          Text(labels[index],
+                                                              style: const TextStyle(
                                                                   color: Colors
                                                                       .white,
-                                                                  fontSize:
-                                                                      compact
-                                                                          ? 28
-                                                                          : 42,
                                                                   fontFamily:
                                                                       'Oxanium',
-                                                                  fontWeight:
-                                                                      FontWeight
-                                                                          .w500,
-                                                                  shadows: const [
-                                                                    Shadow(
-                                                                        color: Colors
-                                                                            .black54,
-                                                                        blurRadius:
-                                                                            16)
-                                                                  ])))),
-                                                  const SizedBox(height: 8),
-                                                  Text(
-                                                      widget.items.isEmpty
-                                                          ? 'Adicione seus favoritos pelo menu.'
-                                                          : '${widget.items.length} favoritos • Um universo para explorar',
-                                                      style: const TextStyle(
-                                                          color:
-                                                              Color(0xFFB6DDDB),
-                                                          fontSize: 13)),
-                                                  const SizedBox(height: 24),
-                                                  SizedBox(
-                                                      height: cardHeight + 16,
-                                                      child: FocusScope(
-                                                          node:
-                                                              widget.itemScope,
-                                                          child: widget
-                                                                  .items.isEmpty
-                                                              ? const Center(
-                                                                  child: Icon(
-                                                                      Icons
-                                                                          .water_rounded,
-                                                                      color: Colors
-                                                                          .white38,
-                                                                      size: 52))
-                                                              : LayoutBuilder(
-                                                                  builder: (_,
-                                                                          rail) =>
-                                                                      Stack(
-                                                                          children: [
-                                                                            ListView.builder(
-                                                                                key: ValueKey(widget.category),
-                                                                                controller: _scroll,
-                                                                                scrollDirection: Axis.horizontal,
-                                                                                padding: EdgeInsets.only(right: (rail.maxWidth - _extent).clamp(0.0, double.infinity)),
-                                                                                itemExtent: _extent,
-                                                                                itemCount: widget.items.length,
-                                                                                physics: const NeverScrollableScrollPhysics(),
-                                                                                itemBuilder: (context, index) => _card(index, duration)),
-                                                                            Positioned(
-                                                                                left: 0,
-                                                                                top: 8,
-                                                                                width: cardHeight,
-                                                                                height: cardHeight,
-                                                                                child: IgnorePointer(child: DecoratedBox(key: const ValueKey('futuristic-fixed-slot'), decoration: BoxDecoration(borderRadius: BorderRadius.circular(25), border: Border.all(color: FuturisticPalette.pearl, width: 2), boxShadow: const [BoxShadow(color: Color(0x608D70D8), blurRadius: 20)])))),
-                                                                          ])))),
-                                                ]))),
-                                    const Spacer(),
-                                  ]))),
-                    ])));
-          });
-
-  Widget _categories(bool compact, Duration duration) => FocusScope(
-      node: widget.categoryScope,
-      child: GlassPanel(
-          radius: 28,
-          child: Padding(
-              padding: const EdgeInsets.all(5),
-              child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: List.generate(
-                      4,
-                      (index) => Focus(
-                          focusNode: widget.categoryNodes[index],
-                          onFocusChange: (focus) {
-                            if (focus && widget.enabled) {
-                              widget.onCategory(index);
-                            }
-                          },
-                          child: Builder(builder: (context) {
-                            final focused = Focus.of(context).hasFocus;
-                            return GestureDetector(
-                                onTap: widget.enabled
-                                    ? () => widget.categoryNodes[index]
-                                        .requestFocus()
-                                    : null,
-                                child: AnimatedContainer(
-                                    duration: duration,
-                                    curve: Curves.easeOutCubic,
-                                    padding: EdgeInsets.symmetric(
-                                        horizontal: compact ? 12 : 22,
-                                        vertical: 12),
-                                    decoration: BoxDecoration(
-                                        borderRadius: BorderRadius.circular(23),
-                                        color: widget.category == index
-                                            ? Colors.white.withValues(
-                                                alpha: focused ? .25 : .14)
-                                            : Colors.transparent,
-                                        border: Border.all(
-                                            color: focused
-                                                ? const Color(0xFFE0FFF8)
-                                                : Colors.transparent)),
-                                    child: Row(children: [
-                                      Icon(icons[index],
-                                          size: 19, color: Colors.white),
-                                      if (!compact) ...[
-                                        const SizedBox(width: 8),
-                                        Text(labels[index],
-                                            style: const TextStyle(
-                                                color: Colors.white,
-                                                fontFamily: 'Oxanium',
-                                                fontSize: 14))
-                                      ]
-                                    ])));
-                          })))))));
+                                                                  fontSize:
+                                                                      14)),
+                                                        ],
+                                                      ]))))))),
+                            ]))))));
+  }
 
   Widget _card(int index, Duration duration) {
     final item = widget.items[index];
@@ -623,52 +760,73 @@ class _FuturisticHomeState extends State<FuturisticHome>
                         },
                   child: Padding(
                       padding: const EdgeInsets.fromLTRB(0, 8, 24, 8),
-                      child: ValueListenableBuilder<int>(
-                          valueListenable: _settled,
-                          builder: (_, revision, child) => FuturisticCardEffect(
-                              selected: selected,
-                              focused: focused,
-                              settledRevision: revision,
-                              child: child!),
-                          child: AnimatedContainer(
-                              duration: duration,
-                              curve: Curves.easeOutCubic,
-                              padding: const EdgeInsets.all(5),
-                              decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(25),
-                                  color: Colors.white.withValues(alpha: .06),
-                                  border: Border.all(
-                                      color:
-                                          Colors.white.withValues(alpha: .16),
-                                      width: 1)),
-                              child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(20),
-                                  child: Stack(fit: StackFit.expand, children: [
-                                    _cover(item),
-                                    const DecoratedBox(
-                                        decoration: BoxDecoration(
-                                            gradient: LinearGradient(
-                                                begin: Alignment.center,
-                                                end: Alignment.bottomCenter,
-                                                colors: [
-                                          Colors.transparent,
-                                          Color(0xDD051B24)
-                                        ]))),
-                                    Positioned(
-                                        left: 12,
-                                        right: 12,
-                                        bottom: 12,
-                                        child: Text(item.name,
-                                            maxLines: 2,
-                                            overflow: TextOverflow.ellipsis,
-                                            style: const TextStyle(
-                                                color: Colors.white,
-                                                fontSize: 14,
-                                                fontFamily: 'Oxanium',
-                                                fontWeight: FontWeight.w500))),
-                                  ])))))));
+                      child: Column(mainAxisSize: MainAxisSize.min, children: [
+                        SizedBox(
+                            width: _extent - 24,
+                            height: _extent - 24,
+                            child: AnimatedScale(
+                                scale: selected ? 1 : .8,
+                                alignment: Alignment.bottomLeft,
+                                duration: duration,
+                                curve: Curves.easeOutCubic,
+                                child: FuturisticCardFold(
+                                    opening: selected && widget.openingGame,
+                                    child: ValueListenableBuilder<int>(
+                                        valueListenable: _settled,
+                                        builder: (_, revision, child) =>
+                                            FuturisticCardEffect(
+                                                selected: selected,
+                                                focused: focused,
+                                                settledRevision: revision,
+                                                child: child!),
+                                        child: GlassPanel(
+                                            radius: 25,
+                                            focused: focused,
+                                            child: Padding(
+                                                padding:
+                                                    const EdgeInsets.all(9),
+                                                child: _cardFace(item))))))),
+                        const SizedBox(height: 6),
+                        AnimatedOpacity(
+                            opacity: selected && widget.openingGame ? 0 : 1,
+                            duration: duration,
+                            child: AnimatedScale(
+                                scale: selected ? 1 : .8,
+                                alignment: Alignment.topLeft,
+                                duration: duration,
+                                curve: Curves.easeOutCubic,
+                                child: FuturisticCardMirror(
+                                    size: _extent - 24,
+                                    child: Padding(
+                                        padding: const EdgeInsets.all(9),
+                                        child: _cardFace(item))))),
+                      ]))));
         }));
   }
+
+  Widget _cardFace(FuturisticItem item) => ClipRRect(
+      borderRadius: BorderRadius.circular(20),
+      child: Stack(fit: StackFit.expand, children: [
+        _cover(item),
+        const DecoratedBox(
+            decoration: BoxDecoration(
+                gradient: LinearGradient(
+                    begin: Alignment.center,
+                    end: Alignment.bottomCenter,
+                    colors: [Colors.transparent, Color(0xDD051B24)]))),
+        Positioned(
+            left: 12,
+            right: 12,
+            bottom: 12,
+            child: Text(item.name,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontFamily: 'Oxanium',
+                    fontWeight: FontWeight.w500))),
+      ]));
 
   Widget _cover(FuturisticItem item) {
     final fallback = ColoredBox(

@@ -10,7 +10,7 @@ class FuturisticPalette {
   static const water = Color(0xFFA9EEE4);
 }
 
-/// Supplies a single low-resolution backdrop for refraction on desktop Skia.
+/// Shares one backdrop capture per display frame for desktop Skia refraction.
 class GlassBackdrop extends StatelessWidget {
   const GlassBackdrop(
       {super.key,
@@ -25,8 +25,10 @@ class GlassBackdrop extends StatelessWidget {
       pixelRatio: .5,
       useImpellerBackdrop: ui.ImageFilter.isShaderFilterSupported,
       realTimeCapture: animated && !MediaQuery.disableAnimationsOf(context),
-      regionCapture: true,
-      refreshRate: LiquidGlassRefreshRate.medium,
+      // Capture during paint: all lenses sample this frame's background.
+      // Half-resolution sampling keeps the GPU cost down at high refresh rates.
+      regionCapture: false,
+      refreshRate: LiquidGlassRefreshRate.deviceRefreshRate,
       child: child);
 }
 

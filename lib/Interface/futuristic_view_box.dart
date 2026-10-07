@@ -5,7 +5,9 @@ import 'futuristic_material.dart';
 
 /// A page transition with one live focus tree and a non-interactive old frame.
 class FuturisticViewBox extends StatefulWidget {
-  const FuturisticViewBox({super.key, required this.page, required this.child});
+  const FuturisticViewBox(
+      {super.key, required this.page, required this.child, this.glass = true});
+  final bool glass;
   final int page;
   final Widget child;
   @override
@@ -74,44 +76,40 @@ class _FuturisticViewBoxState extends State<FuturisticViewBox>
   }
 
   @override
-  Widget build(BuildContext context) => GlassPanel(
-        radius: 32,
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(32),
-          child: LayoutBuilder(
-              builder: (_, constraints) => AnimatedBuilder(
-                    animation: _transition,
-                    child: RepaintBoundary(key: _boundary, child: widget.child),
-                    builder: (_, child) {
-                      final t =
-                          Curves.easeOutQuint.transform(_transition.value);
-                      return Stack(fit: StackFit.passthrough, children: [
-                        if (_previous != null)
-                          Positioned.fill(
-                              child: IgnorePointer(
-                                  child: Opacity(
-                                      opacity: 1 - t,
-                                      child: Transform.translate(
-                                          offset: Offset(
-                                              -_direction *
-                                                  constraints.maxWidth *
-                                                  .06 *
-                                                  t,
-                                              0),
-                                          child: RawImage(
-                                              image: _previous,
-                                              fit: BoxFit.fill))))),
-                        Transform.translate(
-                            offset: Offset(
-                                _direction *
-                                    constraints.maxWidth *
-                                    .1 *
-                                    (1 - t),
-                                0),
-                            child: Opacity(opacity: t, child: child)),
-                      ]);
-                    },
-                  )),
-        ),
-      );
+  Widget build(BuildContext context) {
+    final content = LayoutBuilder(
+        builder: (_, constraints) => AnimatedBuilder(
+              animation: _transition,
+              child: RepaintBoundary(key: _boundary, child: widget.child),
+              builder: (_, child) {
+                final t = Curves.easeOutQuint.transform(_transition.value);
+                return Stack(fit: StackFit.passthrough, children: [
+                  if (_previous != null)
+                    Positioned.fill(
+                        child: IgnorePointer(
+                            child: Opacity(
+                                opacity: 1 - t,
+                                child: Transform.translate(
+                                    offset: Offset(
+                                        -_direction *
+                                            constraints.maxWidth *
+                                            .06 *
+                                            t,
+                                        0),
+                                    child: RawImage(
+                                        image: _previous, fit: BoxFit.fill))))),
+                  Transform.translate(
+                      offset: Offset(
+                          _direction * constraints.maxWidth * .1 * (1 - t), 0),
+                      child: Opacity(opacity: t, child: child)),
+                ]);
+              },
+            ));
+    return widget.glass
+        ? GlassPanel(
+            radius: 32,
+            child: ClipRRect(
+                borderRadius: BorderRadius.circular(32), child: content))
+        : ClipRect(child: content);
+  }
 }

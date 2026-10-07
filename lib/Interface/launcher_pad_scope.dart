@@ -65,6 +65,15 @@ class _LauncherPadScopeState extends State<LauncherPadScope> {
               FocusManager.instance.primaryFocus?.context != target) {
             return;
           }
+          if ((section?.widget as PadScrollTarget?)?.scrollToStart ?? false) {
+            final position = Scrollable.maybeOf(section!)?.position;
+            if (position != null && position.hasContentDimensions) {
+              position.animateTo(position.minScrollExtent,
+                  duration: const Duration(milliseconds: 220),
+                  curve: Curves.easeOutCubic);
+            }
+            return;
+          }
           Scrollable.ensureVisible(section ?? target,
               alignment: 0.35,
               duration: const Duration(milliseconds: 220),
@@ -104,7 +113,8 @@ class _LauncherPadScopeState extends State<LauncherPadScope> {
   }
 
   void Function()? _attach() => _pad?.interfaceRouter.attach(_command,
-      acceptsCommand: () => mounted && widget.enabled && (_route?.isCurrent ?? true));
+      acceptsCommand: () =>
+          mounted && widget.enabled && (_route?.isCurrent ?? true));
 
   @override
   void dispose() {
@@ -116,7 +126,11 @@ class _LauncherPadScopeState extends State<LauncherPadScope> {
   }
 
   void _command(String command) {
-    if (!mounted || !widget.enabled || (widget.onCommand?.call(command) ?? false)) return;
+    if (!mounted ||
+        !widget.enabled ||
+        (widget.onCommand?.call(command) ?? false)) {
+      return;
+    }
     if (command == 'START') {
       if (!widget.menu) {
         Navigator.of(context).maybePop();

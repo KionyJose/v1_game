@@ -130,6 +130,57 @@ void main() {
     expect(ConfigSistema.fromJson(config.toJson()).viewType, 'futurista');
   });
 
+  testWidgets('Destaque desliza e redireciona ao trocar rapidamente as abas',
+      (tester) async {
+    tester.view.physicalSize = const Size(1280, 720);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final tabs = List.generate(4, (_) => FocusNode());
+    final scope = FocusScopeNode(), tabScope = FocusScopeNode();
+    var category = 0;
+    await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+            body: StatefulBuilder(
+                builder: (_, update) => FuturisticHome(
+                    category: category,
+                    selected: 0,
+                    items: const [],
+                    itemNodes: const [],
+                    categoryNodes: tabs,
+                    itemScope: scope,
+                    categoryScope: tabScope,
+                    onSelect: (_) {},
+                    onCategory: (value) => update(() => category = value),
+                    onOpen: () {},
+                    onMenu: () {})))));
+    tabs.first.requestFocus();
+    await tester.pump();
+    final indicator = find.byKey(const ValueKey('futuristic-tab-indicator'));
+    final origin = tester.getRect(indicator).left;
+    final width = tester.getRect(indicator).width;
+    tabs[1].requestFocus();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 180));
+    expect(tester.getRect(indicator).left,
+        inExclusiveRange(origin, origin + width));
+    tabs[3].requestFocus();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 360));
+    expect(tester.getRect(indicator).left, closeTo(origin + width * 3, .01));
+    tabs[0].requestFocus();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 360));
+    expect(tester.getRect(indicator).left, closeTo(origin, .01));
+    await tester.pumpWidget(const SizedBox());
+    for (final node in tabs) {
+      node.dispose();
+    }
+    scope.dispose();
+    tabScope.dispose();
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('Brilho aparece após parar e é cancelado ao trocar a seleção',
       (tester) async {
     var selected = true;
@@ -280,6 +331,16 @@ void main() {
         tester.state<ScrollableState>(find.byType(Scrollable).first).position;
     expect(scroll.pixels, greaterThan(900));
     expect(tester.getRect(slot), anchor);
+    final other = find
+        .byWidgetPredicate(
+            (widget) => widget is FuturisticCardEffect && !widget.selected)
+        .first;
+    final selectedCard = find.byWidgetPredicate(
+        (widget) => widget is FuturisticCardEffect && widget.selected);
+    expect(tester.getRect(selectedCard).width / tester.getRect(other).width,
+        closeTo(1.25, .001));
+    expect(tester.getRect(find.byType(ListView).first).right,
+        tester.view.physicalSize.width / tester.view.devicePixelRatio);
     await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 16));

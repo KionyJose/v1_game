@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/physics.dart';
+import 'package:flutter/scheduler.dart';
 import 'futuristic_landscape.dart';
 
 /// A second spring follows the actual rail, so backdrop and cards share direction
@@ -24,6 +25,9 @@ class FuturisticGameBackdrop extends StatefulWidget {
 class _FuturisticGameBackdropState extends State<FuturisticGameBackdrop>
     with TickerProviderStateMixin {
   late final AnimationController _follow, _fade;
+  late final Ticker _followTicker;
+  Duration? _lastTick;
+  double _target = 0, _velocity = 0;
   Timer? _delay;
   String? _previousImage;
   int _previousIndex = 0;
@@ -33,6 +37,8 @@ class _FuturisticGameBackdropState extends State<FuturisticGameBackdrop>
     super.initState();
     _follow = AnimationController.unbounded(
         vsync: this, value: widget.position.value);
+    _target = widget.position.value;
+    _followTicker = createTicker(_advanceFollow);
     _fade = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 1300), value: 1)
       ..addStatusListener((status) {
@@ -49,19 +55,46 @@ class _FuturisticGameBackdropState extends State<FuturisticGameBackdrop>
 
   void _followRail() {
     if (!mounted || _delay != null) return;
-    final target = widget.position.value;
+    _target = widget.position.value;
     if (_reduce) {
-      _follow.value = target;
+      _resetFollow(_target);
       return;
     }
-    if ((target - _follow.value).abs() < .0001 && !_follow.isAnimating) return;
-    final velocity = _follow.isAnimating ? _follow.velocity : 0.0;
-    _follow.animateWith(SpringSimulation(
+    if ((_target - _follow.value).abs() < .00005 && _velocity.abs() < .0004) {
+      return;
+    }
+    if (!_followTicker.isActive) {
+      _lastTick = null;
+      _followTicker.start();
+    }
+  }
+
+  // Keep one running clock: updating the rail's target must never restart the
+  // spring at elapsed time zero on every display frame.
+  void _advanceFollow(Duration elapsed) {
+    final previous = _lastTick;
+    _lastTick = elapsed;
+    if (previous == null) return;
+    final seconds = (elapsed - previous).inMicroseconds / 1000000;
+    if (seconds <= 0) return;
+    final spring = SpringSimulation(
         const SpringDescription(mass: 1, stiffness: 28, damping: 12),
         _follow.value,
-        target,
-        velocity,
-        tolerance: const Tolerance(distance: .0003, velocity: .004)));
+        _target,
+        _velocity);
+    _velocity = spring.dx(seconds);
+    _follow.value = spring.x(seconds);
+    if ((_target - _follow.value).abs() < .00005 && _velocity.abs() < .0004) {
+      _resetFollow(_target);
+    }
+  }
+
+  void _resetFollow(double value) {
+    _followTicker.stop();
+    _lastTick = null;
+    _velocity = 0;
+    _target = value;
+    _follow.value = value;
   }
 
   @override
@@ -70,7 +103,7 @@ class _FuturisticGameBackdropState extends State<FuturisticGameBackdrop>
     if (_reduce) {
       _delay?.cancel();
       _delay = null;
-      _follow.value = widget.position.value;
+      _resetFollow(widget.position.value);
       _fade.value = 1;
       _previousImage = null;
     }
@@ -92,7 +125,7 @@ class _FuturisticGameBackdropState extends State<FuturisticGameBackdrop>
     _delay = null;
     if (_reduce) {
       _previousImage = null;
-      _follow.value = widget.position.value;
+      _resetFollow(widget.position.value);
       _fade.value = 1;
       return;
     }
@@ -102,7 +135,7 @@ class _FuturisticGameBackdropState extends State<FuturisticGameBackdrop>
       _previousIndex = oldWidget.selected;
     }
     if (oldWidget.category != widget.category) {
-      _follow.value = widget.selected.toDouble();
+      _resetFollow(widget.selected.toDouble());
       _previousIndex = widget.selected;
     }
     _fade.stop();
@@ -119,6 +152,7 @@ class _FuturisticGameBackdropState extends State<FuturisticGameBackdrop>
   void dispose() {
     widget.position.removeListener(_followRail);
     _delay?.cancel();
+    _followTicker.dispose();
     _follow.dispose();
     _fade.dispose();
     super.dispose();

@@ -18,7 +18,7 @@ class FuturisticCardEffect extends StatefulWidget {
 class _FuturisticCardEffectState extends State<FuturisticCardEffect>
     with SingleTickerProviderStateMixin {
   late final _acknowledge = AnimationController(
-      vsync: this, duration: const Duration(milliseconds: 620));
+      vsync: this, duration: const Duration(milliseconds: 1050));
   @override
   void didUpdateWidget(FuturisticCardEffect oldWidget) {
     super.didUpdateWidget(oldWidget);
@@ -60,15 +60,23 @@ class _Shine extends CustomPainter {
   final double progress;
   @override
   void paint(Canvas canvas, Size size) {
-    final center = size.width * (-.4 + progress * 1.8);
-    final band = Rect.fromLTWH(
-        center - size.width * .2, 0, size.width * .4, size.height);
+    const tilt = .22;
+    final width = size.width * .55;
+    final t = Curves.easeInOutSine.transform(progress);
+    final start = -width / 2 - 2;
+    final end = size.width + tilt * size.height + width / 2 + 2;
+    final center = start + (end - start) * t;
+    final band = Rect.fromLTWH(center - width / 2, 0, width, size.height);
+    // Move the complete slanted band beyond the far edge before removing it.
+    // A diagonal full-card shader previously remained visible at completion.
+    canvas.save();
+    canvas.skew(-tilt, 0);
     canvas.drawRect(
-        Offset.zero & size,
+        band,
         Paint()
           ..shader = const LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
+              begin: Alignment.centerLeft,
+              end: Alignment.centerRight,
               colors: [
                 Colors.transparent,
                 Color(0x50DFFFF7),
@@ -81,6 +89,7 @@ class _Shine extends CustomPainter {
                 .5,
                 1
               ]).createShader(band));
+    canvas.restore();
   }
 
   @override
