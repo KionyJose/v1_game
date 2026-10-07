@@ -8,6 +8,17 @@ com o aplicativo; sua localização é resolvida em `aria2_engine.dart`.
 
 ## Arquivos e persistência
 
+### Distribuição no Windows
+
+O build inclui `aria2c.exe` na mesma pasta de `v1_game.exe`, usando a cópia
+em `windows/third_party/aria2`. As licenças acompanham o pacote em
+`licenses/aria2`. O launcher prioriza esse executável antes de procurar uma
+instalação externa. Exporte toda a pasta `build/windows/x64/runner/Release`,
+incluindo `data`, DLLs, `aria2c.exe` e `licenses`; não copie somente o launcher.
+
+No instalador, coloque `aria2c.exe` na raiz da pasta de instalação do launcher
+e preserve `licenses/aria2`. Não é necessário instalar aria2 pelo WinGet no cliente.
+
 - Entrada automática: `Downloads/games torrent compra/*.torrent`.
 - Metadados individuais: `<arquivo>.torrent.json`, ao lado do torrent.
 - Conteúdo dos novos jogos: `<disco>:\V1 Jogos\<nome do jogo> - <infoHash curto>\`.

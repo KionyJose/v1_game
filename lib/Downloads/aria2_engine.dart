@@ -249,11 +249,11 @@ class Aria2Engine implements TorrentEngine {
     final executableDir = File(Platform.resolvedExecutable).parent.path;
     final localAppData = Platform.environment['LOCALAPPDATA'];
     final candidates = [
+      p.join(executableDir, 'aria2c.exe'),
       r'C:\aria2\aria2c.exe',
       r'C:\Tools\aria2\aria2c.exe',
       p.join(Directory.current.path, 'assets', 'Scripts', 'aria2c.exe'),
       p.join(Directory.current.path, 'aria2c.exe'),
-      p.join(executableDir, 'aria2c.exe'),
       p.join(executableDir, 'data', 'flutter_assets', 'assets', 'Scripts',
           'aria2c.exe'),
       if (localAppData != null)

@@ -132,6 +132,18 @@ set(INSTALL_BUNDLE_LIB_DIR "${CMAKE_INSTALL_PREFIX}")
 install(TARGETS ${BINARY_NAME} RUNTIME DESTINATION "${CMAKE_INSTALL_PREFIX}"
   COMPONENT Runtime)
 
+# Bundle the torrent engine so client machines do not need a separate install.
+set(V1_ARIA2_DIR "${CMAKE_CURRENT_SOURCE_DIR}/third_party/aria2")
+install(PROGRAMS "${V1_ARIA2_DIR}/aria2c.exe"
+  DESTINATION "${CMAKE_INSTALL_PREFIX}" COMPONENT Runtime)
+install(FILES
+  "${V1_ARIA2_DIR}/AUTHORS"
+  "${V1_ARIA2_DIR}/COPYING"
+  "${V1_ARIA2_DIR}/LICENSE.OpenSSL"
+  "${V1_ARIA2_DIR}/README.html"
+  "${V1_ARIA2_DIR}/README.mingw"
+  DESTINATION "${CMAKE_INSTALL_PREFIX}/licenses/aria2" COMPONENT Runtime)
+
 install(FILES "${FLUTTER_ICU_DATA_FILE}" DESTINATION "${INSTALL_BUNDLE_DATA_DIR}"
   COMPONENT Runtime)
 
