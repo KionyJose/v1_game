@@ -7,6 +7,7 @@ import 'package:path_provider/path_provider.dart';
 import '../Tela/Tela loja/downloads/arquivo_torrent.dart';
 import 'download_record.dart';
 import 'download_destination.dart';
+import '../System/app_storage.dart';
 
 class DownloadStore {
   final Directory purchases;
@@ -44,8 +45,9 @@ class DownloadStore {
   }
 
   Future<void> load() async {
-    await purchases.create(recursive: true);
-    await payloads.create(recursive: true);
+    await ensureWritableDirectory(purchases);
+    await ensureWritableDirectory(payloads);
+    await ensureWritableDirectory(indexFile.parent);
     if (await indexFile.exists()) {
       // Não sobrescrever silenciosamente um índice danificado.
       final json =
@@ -171,7 +173,21 @@ class DownloadStore {
     await temporary.writeAsString(
         const JsonEncoder.withIndent('  ').convert(json),
         flush: true);
-    await temporary.rename(file.path);
+    for (var attempt = 0;; attempt++) {
+      try {
+        await temporary.rename(file.path);
+        break;
+      } on FileSystemException catch (error) {
+        // Indexação/antivírus podem segurar brevemente o arquivo no Windows.
+        // Nunca apaga o índice atual para contornar uma falha de permissão.
+        if (!Platform.isWindows ||
+            attempt >= 4 ||
+            ![5, 32, 33].contains(error.osError?.errorCode)) {
+          rethrow;
+        }
+        await Future<void>.delayed(Duration(milliseconds: 100 * (attempt + 1)));
+      }
+    }
   }
 
   Future<void> delete(DownloadRecord record, {bool deletePayload = false}) =>

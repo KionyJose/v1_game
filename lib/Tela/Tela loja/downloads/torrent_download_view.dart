@@ -8,6 +8,7 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
 import '../../../Interface/launcher_pad_scope.dart';
+import '../../../System/app_storage.dart';
 import '../scraps/jogo_detalhes.dart';
 import 'arquivo_torrent.dart';
 import 'torrent_download.dart';
@@ -165,6 +166,7 @@ class _TorrentDownloadViewState extends State<TorrentDownloadView> {
       final folder =
           await Directory(p.join(downloads.path, ArquivoTorrent.pasta))
               .create(recursive: true);
+      await ensureWritableDirectory(folder);
       final id = 'v1-${DateTime.now().microsecondsSinceEpoch}';
       pending = File(p.join(folder.path, id));
       if (widget.cancel.value || _finished) {
@@ -252,6 +254,9 @@ class _TorrentDownloadViewState extends State<TorrentDownloadView> {
                     supportMultipleWindows: false,
                   ),
                   onWebViewCreated: _created,
+                  onPermissionRequest: (_, request) async => PermissionResponse(
+                      resources: request.resources,
+                      action: PermissionResponseAction.DENY),
                   onLoadStop: _loaded,
                   shouldOverrideUrlLoading: (_, action) async {
                     if (action.isForMainFrame != true) {

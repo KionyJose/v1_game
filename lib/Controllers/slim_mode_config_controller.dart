@@ -1,11 +1,12 @@
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import '../System/app_storage.dart';
 
 class SlimModeConfigController {
   const SlimModeConfigController();
 
-  static const configPath = 'C:\\Users\\Public\\Documents\\v1_game_slim.txt';
+  static String get configPath => AppStorage.dataFile('v1_game_slim.txt').path;
   static final active = ValueNotifier<bool>(false);
 
   Future<bool> readActive() async {

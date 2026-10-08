@@ -8,6 +8,7 @@ import 'download_destination.dart';
 import 'download_game_launcher.dart';
 import 'game_preparation.dart';
 import 'installed_game_library.dart';
+import '../System/app_storage.dart';
 
 class DownloadsController extends ChangeNotifier {
   static final instance = DownloadsController();
@@ -124,7 +125,7 @@ class DownloadsController extends ChangeNotifier {
     if (!await Directory(drive).exists()) {
       throw StateError('Este disco não está disponível. Escolha outro disco.');
     }
-    await Directory(destination).create(recursive: true);
+    await ensureWritableDirectory(Directory(destination));
     final previous = record.destination;
     final chosen = record.destinationChosen;
     record.destination = destination;
@@ -289,6 +290,7 @@ class DownloadsController extends ChangeNotifier {
 
   Future<void> start(DownloadRecord record) => _action(record, () async {
         if (record.running || record.state == DownloadState.completed) return;
+        await ensureWritableDirectory(Directory(record.destination));
         if (record.state != DownloadState.paused) {
           record.analysisElapsed = Duration.zero;
         }

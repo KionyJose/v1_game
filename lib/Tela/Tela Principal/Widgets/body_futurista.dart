@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/physics.dart';
 import '../../../Interface/futuristic_card_effect.dart';
+import '../../../Interface/futuristic_details_transition.dart';
 import '../../../Interface/futuristic_launch.dart';
 import '../../../Interface/futuristic_game_backdrop.dart';
 import '../../../Interface/futuristic_card_mirror.dart';
@@ -105,18 +106,8 @@ class _BodyFuturistaState extends State<BodyFuturista> with WindowListener {
         reverseTransitionDuration: Duration(milliseconds: reduce ? 0 : 380),
         pageBuilder: (_, __, ___) => FuturisticGameDetails(
             name: game.nome, image: game.imgStr, videoTags: ctrl.tagVideo),
-        transitionsBuilder: (_, animation, __, child) => AnimatedBuilder(
-            animation: animation,
-            child: child,
-            builder: (_, page) {
-              final t = Curves.easeOutCubic.transform(animation.value);
-              return Transform(
-                  alignment: Alignment.bottomCenter,
-                  transform: Matrix4.identity()
-                    ..setEntry(3, 2, .0005)
-                    ..rotateX((1 - t) * .45),
-                  child: Opacity(opacity: t, child: page));
-            }),
+        transitionsBuilder: (_, animation, __, child) =>
+            FuturisticDetailsTransition(animation: animation, child: child),
       );
       final played = await launchFuturisticGameFromLibrary(context,
           detailsRoute: detailsRoute,
@@ -129,9 +120,6 @@ class _BodyFuturistaState extends State<BodyFuturista> with WindowListener {
           _launchingGame = true;
         });
         _syncAudio();
-        if (!reduce) {
-          await Future<void>.delayed(const Duration(milliseconds: 450));
-        }
       }, start: (presentation) async {
         if (!mounted) throw StateError('A interface foi alterada.');
         final index = ctrl.listIconsInicial

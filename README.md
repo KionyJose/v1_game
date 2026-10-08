@@ -1,5 +1,7 @@
 # V1 Launcher (Beta)
 
+🔐 **Instalação e permissões no Windows:** consulte o [guia de permissões e dependências](docs/windows-permissions.md). Ele explica a verificação inicial, os acessos de cada recurso e como preparar o Release para o cliente.
+
 **V1 Launcher** é um *launcher* para PC inspirado na interface do PlayStation 5, projetado para substituir 99% do uso do mouse e teclado no Windows. Com ele, você pode navegar pelo seu sistema operacional de forma intuitiva e eficiente, sem depender dos métodos tradicionais de entrada.
 
 ## 🤝 Apoie o Projeto

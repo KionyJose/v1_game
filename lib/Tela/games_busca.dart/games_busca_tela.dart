@@ -23,12 +23,14 @@ class GamesBuscaTela {
                 builder: (context, ctrl, child) {
                   // Roteamento de eventos do Pad (adiado para após a build)
                   WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (!context.mounted || ctrl.closing) return;
                     try {
                       ctrl.handlePad(paad.click, context);
                     } catch (_) {}
+                    if (ctrl.closing || !context.mounted) return;
 
                     // Inicia scan quando necessário
-                    if (!ctrl.loading && ctrl.allGames.isEmpty) {
+                    if (!ctrl.loading && !ctrl.scanned) {
                       ctrl.startScan();
                     }
 

@@ -108,6 +108,7 @@ flutter:
     - assets/Sons/Futurista/
     - assets/somClickRetro.MP3
     # Scripts ===================
+    - assets/Scripts/disable_xbox_steam.ps1
     - assets/Scripts/AutoHotkeyA32.exe
     - assets/Scripts/moovMouse.ahk
     # FOTOS CAPA STREAMING ===================

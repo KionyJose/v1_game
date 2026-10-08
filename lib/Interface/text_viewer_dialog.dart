@@ -78,7 +78,8 @@ class _TextViewerDialogState extends State<TextViewerDialog> {
                 children: [
                   Text(widget.titulo,
                       style: const TextStyle(
-                          fontSize: 28, fontWeight: FontWeight.bold)),
+                          fontSize: 28, fontWeight: FontWeight.bold,
+                          color: Colors.white)),
                   const SizedBox(height: 20),
                   Flexible(
                     child: Scrollbar(

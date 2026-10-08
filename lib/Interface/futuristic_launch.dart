@@ -202,6 +202,7 @@ class _FuturisticLaunchState extends State<FuturisticLaunch>
                                             height: side,
                                             child: Lottie.asset(
                                                 'assets/Futurista/game_controller.json',
+                                                backgroundLoading: true,
                                                 controller: _controller,
                                                 frameRate: FrameRate.max,
                                                 fit: BoxFit.contain,

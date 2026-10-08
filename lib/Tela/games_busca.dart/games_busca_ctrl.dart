@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:path/path.dart' as path;
 import 'package:v1_game/Modelos/JogoBuscado.dart';
+import '../../System/windows_game_discovery.dart';
 
 class GameEntry {
   final String name;
@@ -15,6 +16,29 @@ class GameEntry {
 }
 
 class GamesBuscaCtrl with ChangeNotifier {
+  bool scanned = false;
+  bool _disposed = false;
+  bool closing = false;
+
+  Future<void> _scanStage(String stage, Future<void> Function() scan) async {
+    if (_disposed) return;
+    try {
+      await scan();
+    } catch (error) {
+      debugPrint('[GAMES_BUSCA] Falha na etapa $stage: $error');
+    }
+  }
+
+  @override
+  void notifyListeners() {
+    if (!_disposed) super.notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    super.dispose();
+  }
   String query = '';
   bool loading = false;
   List<GameEntry> allGames = [];
@@ -124,6 +148,8 @@ class GamesBuscaCtrl with ChangeNotifier {
   }
 
   Future<void> scanAll({int limit = 500}) async {
+    if (loading || _disposed) return;
+    scanned = true;
     loading = true;
     allGames.clear();
     filtered.clear();
@@ -168,10 +194,11 @@ class GamesBuscaCtrl with ChangeNotifier {
       }
     } catch (_) {}
 
-    await _buscarSteamPorManifests(found, limit);
-    await _buscarEpicPorManifests(found, limit);
-    await _buscarGogPorManifests(found, limit);
-    await _buscarProgramasRecursos(found, limit);
+    await _scanStage('Steam', () => _buscarSteamPorManifests(found, limit));
+    await _scanStage('Epic', () => _buscarEpicPorManifests(found, limit));
+    await _scanStage('GOG', () => _buscarGogPorManifests(found, limit));
+    await _scanStage('Registro', () => _buscarProgramasRecursos(found, limit));
+    if (_disposed) return;
     debugPrint('[GAMES_BUSCA] Apos manifests/programas: ${found.length}');
 
     // 2. Buscar jogos do Game Pass/Microsoft Store
@@ -244,6 +271,7 @@ class GamesBuscaCtrl with ChangeNotifier {
 
     // 3. Busca padrão dos roots já existentes
     for (final entry in defaultRoots.entries) {
+      if (_disposed) return;
       final platform = entry.key;
       for (final root in entry.value) {
         try {
@@ -333,11 +361,11 @@ class GamesBuscaCtrl with ChangeNotifier {
 
   Future<String?> _resolverAtalho(String lnkPath) async {
     try {
-      const script = r'$s=(New-Object -ComObject WScript.Shell).CreateShortcut($args[0]); if($s.TargetPath){$s.TargetPath}else{$args[0]}';
-      final result = await Process.run('powershell', ['-NoProfile', '-Command', script, lnkPath]);
-      final out = result.stdout.toString().trim();
-      if (result.exitCode == 0 && out.isNotEmpty && await File(out).exists()) return out;
-    } catch (_) {}
+      final target = await readWindowsShortcutTarget(lnkPath);
+      if (target != null && await File(target).exists()) return target;
+    } catch (error) {
+      debugPrint('[GAMES_BUSCA] Não foi possível ler o atalho $lnkPath: $error');
+    }
     return null;
   }
 
@@ -411,34 +439,14 @@ class GamesBuscaCtrl with ChangeNotifier {
   }
 
   Future<void> _buscarProgramasRecursos(List<GameEntry> found, int limit) async {
-    const script = r'''
-$keys = @(
- 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*',
- 'HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*',
- 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*'
-)
-foreach($k in $keys){
-  Get-ItemProperty $k -ErrorAction SilentlyContinue |
-    Where-Object { $_.DisplayName -and ($_.InstallLocation -or $_.DisplayIcon) } |
-    ForEach-Object {
-      $name=$_.DisplayName
-      $loc=$_.InstallLocation
-      $icon=$_.DisplayIcon
-      "$name`t$loc`t$icon"
-    }
-}
-''';
     try {
-      final result = await Process.run('powershell', ['-NoProfile', '-Command', script]);
-      if (result.exitCode != 0) return;
-      final linhas = result.stdout.toString().split(RegExp(r'\r?\n'));
-      for (final linha in linhas) {
-        if (linha.trim().isEmpty) continue;
-        final partes = linha.split('\t');
-        if (partes.isEmpty) continue;
-        final name = partes[0].trim();
-        final install = partes.length > 1 ? partes[1].trim() : '';
-        final icon = partes.length > 2 ? partes[2].trim().replaceAll('"', '').split(',').first : '';
+      final programs = await readWindowsInstalledPrograms();
+      for (final program in programs) {
+        if (_disposed) return;
+        final name = program.name;
+        final install = program.installDirectory;
+        final icon = program.icon.replaceFirst(RegExp(r',\s*-?\d+\s*$'), '')
+            .replaceAll('"', '').trim();
         final exe = await _resolverExePrograma(install, icon);
         if (name.isNotEmpty && exe != null && !_jaExiste(found, name, exe)) {
           found.add(GameEntry(name: name, exePath: exe, installDir: install.isNotEmpty ? install : File(exe).parent.path, platform: 'Outros', thumbnailPath: null, priority: 20));
@@ -540,6 +548,7 @@ foreach($k in $keys){
 
   /// Handle pad input events (called by UI Consumer/escuta)
   void handlePad(String? event, BuildContext context) {
+    if (_disposed || closing || !context.mounted) return;
     if (event == null || event.isEmpty) return;
     final now = DateTime.now().millisecondsSinceEpoch;
     if (now - _lastInputAt < inputDelayMs) return;
@@ -565,6 +574,7 @@ foreach($k in $keys){
       return;
     }
     if (event == '3' || event == 'START') {
+      closing = true;
       Navigator.of(context).pop('cancelar');
       return;
     }
@@ -572,6 +582,8 @@ foreach($k in $keys){
 
   /// Handler when the user selects a game; returns a `JogoBuscado` model via Navigator.
   void pickGame(BuildContext context, GameEntry game) {
+    if (_disposed || closing || !context.mounted) return;
+    closing = true;
     final j = JogoBuscado(
       name: game.name,
       exePath: game.exePath,

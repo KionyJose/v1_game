@@ -136,6 +136,18 @@ install(TARGETS ${BINARY_NAME} RUNTIME DESTINATION "${CMAKE_INSTALL_PREFIX}"
 set(V1_ARIA2_DIR "${CMAKE_CURRENT_SOURCE_DIR}/third_party/aria2")
 install(PROGRAMS "${V1_ARIA2_DIR}/aria2c.exe"
   DESTINATION "${CMAKE_INSTALL_PREFIX}" COMPONENT Runtime)
+install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/../tools/windows/Install-Prerequisites.ps1"
+  DESTINATION "${CMAKE_INSTALL_PREFIX}/prerequisites" COMPONENT Runtime)
+install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/../docs/windows-permissions.md"
+  DESTINATION "${CMAKE_INSTALL_PREFIX}/prerequisites" COMPONENT Runtime)
+foreach(V1_PREREQUISITE vc_redist.x64.exe MicrosoftEdgeWebview2Setup.exe packages.json)
+  if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/third_party/prerequisites/${V1_PREREQUISITE}")
+    install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/prerequisites/${V1_PREREQUISITE}"
+      DESTINATION "${CMAKE_INSTALL_PREFIX}/prerequisites" COMPONENT Runtime)
+  else()
+    message(WARNING "Release sem ${V1_PREREQUISITE}; execute tools/windows/Prepare-ReleasePrerequisites.ps1 antes de distribuir.")
+  endif()
+endforeach()
 install(FILES
   "${V1_ARIA2_DIR}/AUTHORS"
   "${V1_ARIA2_DIR}/COPYING"

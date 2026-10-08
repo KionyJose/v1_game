@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 import 'package:path/path.dart' as p;
+import '../System/app_storage.dart';
 
 abstract class TorrentEngine {
   Future<String> start(String torrentPath, String destination);
@@ -65,6 +66,8 @@ class Aria2Engine implements TorrentEngine {
               .toRadixString(16)
               .padLeft(2, '0')).join();
       _processLog.clear();
+      final runtime = Directory(p.join(AppStorage.root.path, 'aria2'));
+      await ensureWritableDirectory(runtime);
       _process = await Process.start(
           executable,
           [
@@ -76,10 +79,13 @@ class Aria2Engine implements TorrentEngine {
             '--check-integrity=true',
             '--seed-time=0',
             '--enable-dht=true',
+            '--dht-file-path=${p.join(runtime.path, 'dht.dat')}',
+            '--dht-file-path6=${p.join(runtime.path, 'dht6.dat')}',
             '--summary-interval=0',
             '--console-log-level=error',
           ],
-          runInShell: false);
+          runInShell: false,
+          workingDirectory: runtime.path);
       void capture(String line) {
         // O token RPC não deve aparecer nos diagnósticos.
         _processLog.add(line.replaceAll(_secret!, '[token]'));

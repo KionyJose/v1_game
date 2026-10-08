@@ -12,15 +12,46 @@ import 'package:v1_game/Tela/Begin.dart';
 import '../Controllers/Notificacao.dart';
 import '../Downloads/downloads_lifecycle.dart';
 import '../Controllers/launcher_window_controller.dart';
+import '../System/startup_readiness.dart';
+import '../System/startup_access_view.dart';
+import '../Interface/text_viewer_dialog.dart';
 
 class MyApp extends StatefulWidget {
-  const MyApp({super.key});
+  const MyApp({super.key, this.readiness, this.onStorageRecovered});
+  final StartupReadiness? readiness;
+  final Future<void> Function()? onStorageRecovered;
 
   @override
   State<MyApp> createState() => _MyAppState();
 }
 
 class _MyAppState extends State<MyApp> {
+  StartupReadiness? _readiness;
+  bool _checking = false;
+
+  void _notifyReadiness() {
+    if (_readiness?.storageReady != true || _readiness!.issues.isEmpty) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final context = navigatorKey.currentContext;
+      if (!mounted || context == null) return;
+      mostrarTextoAmpliado(context, titulo: 'Verificação inicial',
+          texto: _readiness!.issues.join('\n\n'));
+    });
+  }
+
+  Future<void> _retryAccess() async {
+    setState(() => _checking = true);
+    var report = await StartupReadiness.check();
+    try {
+      if (report.storageReady) await widget.onStorageRecovered?.call();
+    } catch (error) {
+      report = StartupReadiness(storageReady: false,
+          issues: ['Não foi possível carregar as configurações: $error']);
+    }
+    if (!mounted) return;
+    setState(() { _readiness = report; _checking = false; });
+    _notifyReadiness();
+  }
   @override
   void dispose() {
     LauncherWindowController.instance.dispose();
@@ -33,6 +64,8 @@ class _MyAppState extends State<MyApp> {
   @override
   void initState() {
     super.initState();
+    _readiness = widget.readiness;
+    _notifyReadiness();
     
     // Redireciona a função print para a função customizada
     // debugPrint = (String? message, {int? wrapWidth}) {
@@ -76,7 +109,10 @@ class _MyAppState extends State<MyApp> {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
       ),
-      home: const Begin()
+      home: _readiness?.storageReady == false
+          ? StartupAccessView(issues: _readiness!.issues,
+              retry: _checking ? null : _retryAccess)
+          : const Begin()
     );
   }
 

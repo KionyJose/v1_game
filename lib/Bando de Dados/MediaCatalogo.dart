@@ -6,12 +6,13 @@ import 'dart:io';
 import 'package:v1_game/Modelos/MediaCanal.dart';
 
 import '../Global.dart';
+import '../System/app_storage.dart';
 
 class MediaCatalogo{
 
   static List<String> listaCatalogoNomesC = ["Netflix","Prime Video","MAX","Apple TV","Disney +", "Globo Play","TeleCine","CrunchyRoll","Paramount+"];
   static List<String> listaCatalogoNomesM = ["spotify","Youtube Music","Apple Music","Deezer"];
-  static const String _dbPath = "C:\\Users\\Public\\Documents\\v1_media_cards.json";
+  static String get _dbPath => AppStorage.dataFile('v1_media_cards.json').path;
 
   static Future<List<MediaCanal>> catalogoCine() async =>
       _catalogoComDadosSalvos('cinema', _meuCatalogoC());

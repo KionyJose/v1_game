@@ -6,6 +6,7 @@ import 'package:path/path.dart' as p;
 import 'download_game_launcher.dart';
 import 'download_record.dart';
 import 'repack_manifest.dart';
+import '../System/app_storage.dart';
 
 typedef PreparationStatus = void Function(String message, double? progress);
 
@@ -108,6 +109,7 @@ class GamePreparation {
     if (archives.isEmpty) {
       throw StateError('Os arquivos fg-*.bin do repack não foram encontrados.');
     }
+    await ensureWritableDirectory(Directory(record.destination));
     final tools = Directory(p.join(record.destination, '.v1-tools'));
     if (await FileSystemEntity.isLink(tools.path)) {
       throw StateError('A pasta de instalação não pode ser um link.');
@@ -164,7 +166,7 @@ class GamePreparation {
     }
     final output = Directory(p.join(record.destination, subdirectory));
     await tools.create(recursive: true);
-    await output.create(recursive: true);
+    await ensureWritableDirectory(output);
     record.installationDirectory = output.path;
     if (await FileSystemEntity.isLink(tools.path) ||
         await FileSystemEntity.isLink(output.path)) {

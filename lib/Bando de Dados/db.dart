@@ -7,23 +7,26 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:v1_game/Modelos/IconeInicial.dart';
 
 import '../Global.dart';
+import '../System/app_storage.dart';
 
 class DB{
 
   
   // String dbPath = "C:\\Users\\kiony\\OneDrive\\Área de Trabalho\\testeDBLocal.txt"; 
-  String dbPath = "C:\\Users\\Public\\Documents\\testeDBLocal.txt"; 
-  String dbPathConfigSis = "C:\\Users\\Public\\Documents\\v1_config.txt"; 
+  String dbPath = AppStorage.dataFile('testeDBLocal.txt').path;
+  String dbPathConfigSis = AppStorage.dataFile('v1_config.txt').path;
 
   leiaBanco() async =>  await leituraDeDados();
   
   attDados(List<IconInicial> list) async {
     // Solicitar permissão para escrever na área de trabalho
-    var status = await Permission.storage.request();
+    final granted = Platform.isWindows ||
+        (await Permission.storage.request()).isGranted;
     String  lista =  codificaLista(list);
-    if (status.isGranted) {
+    if (granted) {
       // Escrever conteúdo no arquivo
       File file = File(dbPath);
+      await file.parent.create(recursive: true);
       await file.writeAsString(lista);
 
     } else {
@@ -375,12 +378,15 @@ class DB{
     
     appName = executablePath.split('\\').last;
     appPath = executablePath;
-    final command = '''
-    reg add "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run" /v "$appName" /t REG_SZ /d "$appPath" /f
-    ''';
-
     try {
-      Process.runSync('powershell', ['-Command', command]);
+      final result = Process.runSync('reg.exe', [
+        'add', r'HKCU\Software\Microsoft\Windows\CurrentVersion\Run',
+        '/v', appName, '/t', 'REG_SZ', '/d', '"$appPath"', '/f',
+      ]);
+      if (result.exitCode != 0) {
+        debugPrint('Windows não permitiu configurar a inicialização: ${result.stderr}');
+        return;
+      }
       debugPrint('Aplicativo adicionado ao iniciar com o Windows.');
     } catch (e) {
       debugPrint('Erro ao adicionar ao início: $e');

@@ -1,6 +1,8 @@
 // ignore_for_file: file_names
 
 import 'dart:io';
+import 'package:path/path.dart' as p;
+import '../System/app_storage.dart';
 
 import 'package:flutter/material.dart';
 import 'package:v1_game/Modelos/ImgWebScrap.dart';
@@ -109,11 +111,17 @@ class WebScrap{
       final response = await http.get(Uri.parse(imageUrl));
 
       if (response.statusCode == 200) {
-        String extencao = imageUrl.split('.').last;
-        const  directoryPath = 'C:\\Users\\Public\\Pictures\\FundoGamesV1';
-        String  filePath = '$directoryPath\\$nomeGame.$extencao';
+        final extension = p.extension(Uri.parse(imageUrl).path).toLowerCase();
+        final extencao = const ['.jpg', '.jpeg', '.png', '.webp', '.gif']
+            .contains(extension) ? extension : '.jpg';
+        final directoryPath = p.join(AppStorage.root.path, 'FundoGamesV1');
+        final safeName = nomeGame.replaceAll(RegExp(r'[<>:"/\\|?*\x00-\x1f]'), '_')
+            .replaceAll(RegExp(r'[. ]+$'), '');
+        final filePath = p.join(directoryPath,
+            'game-${safeName.isEmpty ? 'imagem' : safeName}$extencao');
 
         final directory = Directory(directoryPath);
+        await ensureWritableDirectory(directory);
         if (!await directory.exists()) {
           await directory.create(recursive: true);
         }

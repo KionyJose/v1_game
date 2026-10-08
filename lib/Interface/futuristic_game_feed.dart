@@ -1,4 +1,5 @@
 import 'dart:math';
+import 'dart:isolate';
 import '../Class/WebScrap.dart';
 import '../Class/game_video_tags.dart';
 import '../Modelos/NoticiaGame.dart';
@@ -18,11 +19,19 @@ class FuturisticGameFeed {
   static void invalidate(String name) => _loader.invalidate(name);
 }
 
+// HTTP parsing runs outside the UI isolate, including responses arriving during
+// a route transition. Injected searches remain available for tests and callers.
+Future<List<NoticiaGame>> _searchNews(String name) =>
+    Isolate.run(() => WebScrap.buscaNoticiasGame(name));
+
+Future<List<VideoYT>> _searchVideos(String name, String tag) =>
+    Isolate.run(() => WebScrap.buscaVideosYT(name, tag));
+
 /// News are cached; each completed video search advances the tag rotation.
 class PersonalizedGameFeed {
   PersonalizedGameFeed(
-      {this.newsSearch = WebScrap.buscaNoticiasGame,
-      this.videoSearch = WebScrap.buscaVideosYT,
+      {this.newsSearch = _searchNews,
+      this.videoSearch = _searchVideos,
       Random? random})
       : _random = random ?? Random();
   final Future<List<NoticiaGame>> Function(String) newsSearch;

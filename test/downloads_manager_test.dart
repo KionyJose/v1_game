@@ -113,6 +113,20 @@ void main() {
     expect(metadata['download']['destination'], record.destination);
   });
 
+  test('destino inacessível impede iniciar o motor e informa o usuário',
+      () async {
+    final record = await add('test');
+    final blocked = File(p.join(root.path, 'blocked'));
+    await blocked.writeAsString('arquivo preservado');
+    record.destination = p.join(blocked.path, 'game');
+    await controller.start(record);
+    expect(engine.destinations, isEmpty);
+    expect(record.gid, isNull);
+    expect(record.running, isFalse);
+    expect(record.error, contains('Escolha outra pasta/disco'));
+    expect(await blocked.readAsString(), 'arquivo preservado');
+  });
+
   test('Destino escolhido não permite excluir caminhos fora da pasta do jogo',
       () async {
     final record = await add('test');

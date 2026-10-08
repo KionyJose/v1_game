@@ -19,6 +19,7 @@ import 'package:v1_game/Interface/futuristic_card_effect.dart';
 import 'package:v1_game/Interface/futuristic_window_controls.dart';
 import 'package:v1_game/Interface/futuristic_game_feed.dart';
 import 'package:v1_game/Interface/futuristic_launch.dart';
+import 'package:v1_game/Interface/futuristic_details_transition.dart';
 import 'package:v1_game/Modelos/IconeInicial.dart';
 import 'package:v1_game/Modelos/NoticiaGame.dart';
 import 'package:v1_game/Modelos/videoYT.dart';
@@ -69,13 +70,14 @@ void main() {
   late Paad pad;
   setUp(() => pad = Paad(escutar: false, janelaCtrl: JanelaCtrl()));
   tearDown(() => pad.dispose());
-  Widget app(Widget home) => ChangeNotifierProvider<Paad>.value(
-      value: pad,
-      child: MaterialApp(
-          builder: (_, child) => MediaQuery(
-              data: const MediaQueryData(disableAnimations: true),
-              child: child!),
-          home: home));
+  Widget app(Widget home, {bool animations = false}) =>
+      ChangeNotifierProvider<Paad>.value(
+          value: pad,
+          child: MaterialApp(
+              builder: (_, child) => MediaQuery(
+                  data: MediaQueryData(disableAnimations: !animations),
+                  child: child!),
+              home: home));
   Future<void> size(WidgetTester tester, Size value) async {
     tester.view.physicalSize = value;
     tester.view.devicePixelRatio = 1;
@@ -277,6 +279,46 @@ void main() {
     await tester.pumpWidget(const SizedBox());
     expect(tester.takeException(), isNull);
   });
+
+  for (final early in [true, false]) {
+    testWidgets('Jogar fecha sem esperar dados: entrada interrompida=$early',
+        (tester) async {
+      await size(tester, const Size(1280, 720));
+      final pending = Completer<FuturisticGameContent>();
+      var searches = 0;
+      late BuildContext root;
+      await tester.pumpWidget(app(Builder(builder: (context) {
+        root = context;
+        return const Scaffold(body: Text('Biblioteca'));
+      }), animations: true));
+      final route = PageRouteBuilder<bool>(
+          transitionDuration: const Duration(milliseconds: 580),
+          reverseTransitionDuration: const Duration(milliseconds: 380),
+          pageBuilder: (_, __, ___) => details(load: (_) {
+                searches++;
+                return pending.future;
+              }),
+          transitionsBuilder: (_, animation, __, child) =>
+              FuturisticDetailsTransition(animation: animation, child: child));
+      final result = Navigator.of(root).push(route);
+      await tester.pump();
+      await tester.pump(Duration(milliseconds: early ? 100 : 600));
+      await tester.pump();
+      expect(searches, early ? 0 : 1);
+      pad.interfaceRouter.dispatch('2');
+      await tester.pump();
+      expect(route.animation!.status, AnimationStatus.reverse);
+      pending.complete(content());
+      await tester.pump(const Duration(milliseconds: 40));
+      expect(find.text('Vídeo 0'), findsNothing);
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.pump();
+      expect(await result, isTrue);
+      expect(find.byType(FuturisticGameDetails), findsNothing);
+      expect(find.text('Biblioteca'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+  }
 
   testWidgets('Jogar inicia uma vez e o Pad controla a apresentação de entrada',
       (tester) async {

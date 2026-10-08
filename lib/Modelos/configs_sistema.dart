@@ -2,9 +2,10 @@
 
 import 'dart:convert';
 import 'dart:io';
+import '../System/app_storage.dart';
 
 /// Modelo de configuração do sistema (UI / tema / estilos)
-/// Salva/Carrega como JSON em: <Public Documents>/v1_game_config.json (Windows)
+/// Salva/Carrega como JSON na pasta privada de dados do usuário.
 class ConfigSistema {
   // Exemplo de propriedades de interface
   String viewType; // 'list' | 'moderno' | 'retro' | 'futurista' (grid: atalho legado)
@@ -197,20 +198,9 @@ class ConfigSistema {
   static const _fileName = 'v1_game_config.json';
 
   /// Retorna o caminho completo do arquivo de configuração.
-  /// Em Windows tenta usar a pasta pública de Documentos; se não encontrada, usa 'C:\\Users\\Public\\Documents'.
+  /// Migra a configuração antiga para a pasta privada do usuário.
   static Future<String> _getFilePath() async {
-    final sep = Platform.pathSeparator;
-    if (Platform.isWindows) {
-      final publicEnv = Platform.environment['PUBLIC'];
-      if (publicEnv != null && publicEnv.isNotEmpty) {
-        return '$publicEnv${sep}Documents$sep$_fileName';
-      }
-      // fallback comum
-      return 'C:${sep}Users${sep}Public${sep}Documents$sep$_fileName';
-    } else {
-      final home = Platform.environment['HOME'] ?? '.';
-      return '$home${sep}Documents$sep$_fileName';
-    }
+    return AppStorage.dataFile(_fileName).path;
   }
 
   /// Carrega a configuração do arquivo; se não existir, cria com valores padrão e retorna-os.

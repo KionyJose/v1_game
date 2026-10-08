@@ -20,6 +20,8 @@ import 'Metodos/leituraArquivo.dart';
 import 'Controllers/slim_mode_config_controller.dart';
 import 'Controllers/launcher_window_controller.dart';
 import 'Interface/ui_frame_binding.dart';
+import 'System/startup_readiness.dart';
+import 'System/app_storage.dart';
 
 WindowOptions windowOptions = const WindowOptions(
   center: true,
@@ -36,6 +38,7 @@ Future<void> iniciarLauncherAnterior() async {
   LauncherFrameBinding();
   MediaKit.ensureInitialized();
   localizaCaminhos();
+  final readiness = await StartupReadiness.check();
 
   // Inicializa o sistema de áudio SoLoud
   await SonsSistema.init();
@@ -64,11 +67,11 @@ Future<void> iniciarLauncherAnterior() async {
   await registrarAppNoSetupV1();
 
   // semBarras();
-  await TESTES().testes();
+  if (readiness.storageReady) await TESTES().testes();
 
   // Windows usa pastas do usuário, sem permissão de armazenamento do Android.
   if (Platform.isWindows) {
-    runApp(const MyApp());
+    runApp(MyApp(readiness: readiness, onStorageRecovered: configucacoesSistema));
     return;
   }
 
@@ -79,7 +82,7 @@ Future<void> iniciarLauncherAnterior() async {
   if (!status.isGranted) debugPrint('Permissão de armazenamento não concedida');
 }
 
-configucacoesSistema() async {
+Future<void> configucacoesSistema() async {
   // Carrega configurações do arquivo JSON
   configSistema = await ConfigSistema.load();
   UiFrameRateController.apply(configSistema.uiFps);
@@ -186,6 +189,7 @@ iconPath=$iconPath
 }
 
 criaAtalhoTecladoApp() async {
+  try {
   String caminhoDesktop = await LerArquivos().getDesktopPath();
   // Atalho App
   criarAtalho(
@@ -193,17 +197,23 @@ criaAtalhoTecladoApp() async {
     destino: "$caminhoDesktop\\V1 Launcher.lnk",
   );
   // Atalho Teclado
-  criarAtalho(
-    origem: '$localPai\\TecladoVirtual\\teclado_virtual.exe',
-    destino: '$localPai\\teclado_virtual.lnk',
-  );
+  final teclado = '$localPai\\TecladoVirtual\\teclado_virtual.exe';
+  if (File(teclado).existsSync()) {
+    criarAtalho(
+      origem: teclado,
+      destino: p.join(AppStorage.root.path, 'teclado_virtual.lnk'),
+    );
+  }
+  } catch (error) {
+    debugPrint('Não foi possível criar os atalhos do usuário: $error');
+  }
 }
 
 void criarAtalho({required String origem, required String destino}) {
   final script = '''
   \$WshShell = New-Object -ComObject WScript.Shell
-  \$Shortcut = \$WshShell.CreateShortcut('$destino')
-  \$Shortcut.TargetPath = '$origem'
+  \$Shortcut = \$WshShell.CreateShortcut('${destino.replaceAll("'", "''")}')
+  \$Shortcut.TargetPath = '${origem.replaceAll("'", "''")}'
   \$Shortcut.Save()
   ''';
 

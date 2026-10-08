@@ -47,15 +47,51 @@ class _FuturisticGameDetailsState extends State<FuturisticGameDetails> {
   List<FocusNode> _videoNodes = [], _newsNodes = [];
   FuturisticGameContent _content = const FuturisticGameContent();
   bool _loading = true, _busy = false;
+  bool _loadStarted = false, _leaving = false;
+  Animation<double>? _routeAnimation;
   int _selectedVideo = 0, _playShineRevision = 0;
   VideoYT? _playing;
   @override
   void initState() {
     super.initState();
     _play.addListener(_playFocusChanged);
-    _load();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _play.requestFocus();
+    });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final animation = ModalRoute.of(context)?.animation;
+    if (animation != _routeAnimation) {
+      _routeAnimation?.removeStatusListener(_routeStatusChanged);
+      _routeAnimation = animation;
+      animation?.addStatusListener(_routeStatusChanged);
+    }
+    if (animation == null || animation.status == AnimationStatus.completed) {
+      _startContentLoad();
+    }
+  }
+
+  void _routeStatusChanged(AnimationStatus status) {
+    if (status == AnimationStatus.reverse) _leaving = true;
+    if (status == AnimationStatus.completed) _startContentLoad();
+  }
+
+  void _startContentLoad() {
+    if (_loadStarted || _busy || _leaving) return;
+    // Render the entrance first; a quick Play must not start a content search.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      // ModalRoute temporarily exposes a completed animation while measuring
+      // its offstage page. Recheck after that first frame before starting work.
+      if (!mounted || _loadStarted || _busy || _leaving) return;
+      if (_routeAnimation != null &&
+          _routeAnimation!.status != AnimationStatus.completed) {
+        return;
+      }
+      _loadStarted = true;
+      _load();
     });
   }
 
@@ -69,10 +105,11 @@ class _FuturisticGameDetailsState extends State<FuturisticGameDetails> {
   }
 
   Future<void> _load() async {
+    if (!mounted || _busy || _leaving) return;
     try {
       final content = await (widget.loadContent?.call(widget.name) ??
           FuturisticGameFeed.load(widget.name, tags: widget.videoTags));
-      if (!mounted) return;
+      if (!mounted || _busy || _leaving) return;
       final oldNodes = [..._videoNodes, ..._newsNodes];
       setState(() {
         _content = content;
@@ -89,12 +126,14 @@ class _FuturisticGameDetailsState extends State<FuturisticGameDetails> {
         }
       });
     } catch (_) {
-      if (mounted) setState(() => _loading = false);
+      if (mounted && !_busy && !_leaving) {
+        setState(() => _loading = false);
+      }
     }
   }
 
   void _retryLoad() {
-    if (_loading) return;
+    if (_loading || _busy || _leaving) return;
     FuturisticGameFeed.invalidate(widget.name);
     _play.requestFocus();
     setState(() => _loading = true);
@@ -209,6 +248,7 @@ class _FuturisticGameDetailsState extends State<FuturisticGameDetails> {
 
   @override
   void dispose() {
+    _routeAnimation?.removeStatusListener(_routeStatusChanged);
     _play.removeListener(_playFocusChanged);
     for (final node in [
       _play,
