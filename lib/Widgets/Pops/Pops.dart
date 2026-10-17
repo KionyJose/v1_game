@@ -1,4 +1,6 @@
 // ignore_for_file: avoid_print, unused_local_variable, file_names, deprecated_member_use
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -7,6 +9,7 @@ import 'package:v1_game/Class/WebScrap.dart';
 import 'package:v1_game/Widgets/LoadWid.dart';
 
 import '../../Interface/pad_confirmation.dart';
+import '../../Interface/futuristic_material.dart';
 import '../../Bando de Dados/db.dart';
 import '../../Controllers/MovimentoSistema.dart';
 import '../../Modelos/IconeInicial.dart';
@@ -28,14 +31,14 @@ class Pops {
     );        
   }
   popScren( Widget tela) {
-    return AlertDialog(
-        backgroundColor: Colors.transparent,
-        contentPadding: const EdgeInsets.all(0),
-        content: ClipRRect(
-          borderRadius: BorderRadius.circular(20),
-          child: tela
-        )
-    );        
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      insetPadding: const EdgeInsets.all(24),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: tela,
+      ),
+    );
   }
 
   carregandoGames(BuildContext ctx,String str) {
@@ -316,13 +319,23 @@ class Pops {
   Future<String?> msgSN(BuildContext context, String str) =>
       confirmarPad(context, str);
 
-  navPasta(BuildContext context,  String caminho, String tarefa, List<IconInicial> listiconIni, int index) async {    
+  navPasta(BuildContext context, String caminho, String tarefa,
+      List<IconInicial> listiconIni, int index,
+      {bool futuristic = false}) async {
     DB db = DB();
+    ui.Image? scene;
     try{
-    var value = await showDialog(
-      context: context, 
-      builder: (context) => Pops().popScren(const NavPasta()),
+    if (futuristic) scene = await GlassScene.capture();
+    if (!context.mounted) return;
+    final route = DialogRoute<dynamic>(
+      context: context,
+      builder: (context) => Pops().popScren(NavPasta(
+        futuristic: futuristic,
+        scene: scene,
+      )),
     );
+    final value = await Navigator.of(context, rootNavigator: true).push(route);
+    await route.completed;
     if (value == null) return;
     if (value[0] == "caminho") {
       if(tarefa == "Caminho do game"){
@@ -364,6 +377,8 @@ class Pops {
     debugPrint("Finalizei navPasta dentro");
     }catch(e){
       debugPrint("Erro nav dentro = $e");
+    } finally {
+      scene?.dispose();
     }
   }
 }

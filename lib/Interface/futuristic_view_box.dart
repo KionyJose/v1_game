@@ -61,7 +61,9 @@ class _FuturisticViewBoxState extends State<FuturisticViewBox>
       }());
       if (painted) {
         try {
-          _previous = boundary.toImageSync(pixelRatio: .75);
+          final pixelRatio =
+              MediaQuery.devicePixelRatioOf(context).clamp(1.0, 1.5).toDouble();
+          _previous = boundary.toImageSync(pixelRatio: pixelRatio);
         } catch (_) {}
       }
     }

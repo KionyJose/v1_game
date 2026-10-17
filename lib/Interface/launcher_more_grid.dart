@@ -7,8 +7,10 @@ import 'launcher_pad_scope.dart';
 
 /// Result strings preserve the existing launcher's action contract.
 class LauncherMoreGrid extends StatefulWidget {
-  const LauncherMoreGrid({super.key, this.scene});
+  const LauncherMoreGrid(
+      {super.key, this.scene, this.futuristic = false});
   final ui.Image? scene;
+  final bool futuristic;
   @override
   State<LauncherMoreGrid> createState() => _LauncherMoreGridState();
 }
@@ -80,6 +82,25 @@ class _LauncherMoreGridState extends State<LauncherMoreGrid> {
     return true;
   }
 
+  Widget _panel(Widget child) {
+    if (widget.futuristic) return GlassPanel(radius: 32, child: child);
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(24),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: const Color(0xF0181D27),
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: const Color(0x40FFFFFF)),
+          boxShadow: const [
+            BoxShadow(
+                color: Color(0x70000000), blurRadius: 24, offset: Offset(0, 12))
+          ],
+        ),
+        child: child,
+      ),
+    );
+  }
+
   @override
   void dispose() {
     _scroll.dispose();
@@ -99,18 +120,18 @@ class _LauncherMoreGridState extends State<LauncherMoreGrid> {
       child: SizedBox(
         width: 560,
         height: (size.height - 48).clamp(160.0, 612.0),
-        child: GlassPanel(
-            radius: 32,
-            child: Padding(
+        child: _panel(Padding(
               padding: const EdgeInsets.all(20),
               child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Padding(
-                        padding: EdgeInsets.only(left: 6, bottom: 18),
+                    Padding(
+                        padding: const EdgeInsets.only(left: 6, bottom: 18),
                         child: Text('Mais',
                             style: TextStyle(
-                                color: FuturisticPalette.pearl,
+                                color: widget.futuristic
+                                    ? FuturisticPalette.pearl
+                                    : Colors.white,
                                 fontSize: 26,
                                 fontWeight: FontWeight.w500))),
                     Expanded(
@@ -123,65 +144,85 @@ class _LauncherMoreGridState extends State<LauncherMoreGrid> {
                               mainAxisSpacing: 12,
                               crossAxisSpacing: 12),
                       itemCount: items.length,
-                      itemBuilder: (_, index) => Focus(
-                        focusNode: _nodes[index],
-                        autofocus: index == 0,
-                        onFocusChange: (focused) {
-                          if (focused) _select(index);
-                        },
-                        child: Semantics(
-                            button: true,
-                            label: items[index].$1,
-                            selected: index == _selected,
-                            child: GestureDetector(
-                              onTap: () => _close(items[index].$2),
-                              child: AnimatedContainer(
-                                  duration: const Duration(milliseconds: 180),
-                                  curve: Curves.easeOutCubic,
-                                  decoration: BoxDecoration(
-                                      borderRadius: BorderRadius.circular(20),
-                                      gradient: LinearGradient(
-                                          begin: Alignment.topLeft,
-                                          end: Alignment.bottomRight,
-                                          colors: index == _selected
-                                              ? [
-                                                  const Color(0xB08063BB),
-                                                  const Color(0x905A417F)
-                                                ]
-                                              : [
-                                                  const Color(0x402F2946),
-                                                  const Color(0x70312645)
-                                                ]),
-                                      border: Border.all(
-                                          color: index == _selected
-                                              ? FuturisticPalette.pearl
-                                              : const Color(0x40FFFFFF),
-                                          width: index == _selected ? 2 : 1),
-                                      boxShadow: [
-                                        if (index == _selected)
-                                          const BoxShadow(
-                                              color: Color(0x408C6BCC),
-                                              blurRadius: 12,
-                                              offset: Offset(0, 4))
-                                      ]),
-                                  child: Column(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      children: [
-                                        Icon(items[index].$3,
-                                            color: index == _selected
-                                                ? FuturisticPalette.pearl
-                                                : FuturisticPalette.accent,
-                                            size: 28),
-                                        const SizedBox(height: 8),
-                                        Text(items[index].$1,
-                                            textAlign: TextAlign.center,
-                                            style: const TextStyle(
-                                                color: FuturisticPalette.pearl,
-                                                fontSize: 14)),
-                                      ])),
-                            )),
-                      ),
+                      itemBuilder: (_, index) {
+                        final selected = index == _selected;
+                        final futuristicColors = selected
+                            ? const [
+                                Color(0xB08063BB),
+                                Color(0x905A417F)
+                              ]
+                            : const [
+                                Color(0x402F2946),
+                                Color(0x70312645)
+                              ];
+                        return Focus(
+                          focusNode: _nodes[index],
+                          autofocus: index == 0,
+                          onFocusChange: (focused) {
+                            if (focused) _select(index);
+                          },
+                          child: Semantics(
+                              button: true,
+                              label: items[index].$1,
+                              selected: selected,
+                              child: GestureDetector(
+                                onTap: () => _close(items[index].$2),
+                                child: AnimatedContainer(
+                                    duration:
+                                        const Duration(milliseconds: 180),
+                                    curve: Curves.easeOutCubic,
+                                    decoration: BoxDecoration(
+                                        color: widget.futuristic
+                                            ? null
+                                            : selected
+                                                ? const Color(0xFF40516A)
+                                                : const Color(0xFF252B36),
+                                        borderRadius:
+                                            BorderRadius.circular(20),
+                                        gradient: widget.futuristic
+                                            ? LinearGradient(
+                                                begin: Alignment.topLeft,
+                                                end: Alignment.bottomRight,
+                                                colors: futuristicColors)
+                                            : null,
+                                        border: Border.all(
+                                            color: selected
+                                                ? widget.futuristic
+                                                    ? FuturisticPalette.pearl
+                                                    : const Color(0xFFB9D1EA)
+                                                : const Color(0x40FFFFFF),
+                                            width: selected ? 2 : 1),
+                                        boxShadow: widget.futuristic && selected
+                                            ? const [
+                                                BoxShadow(
+                                                    color: Color(0x408C6BCC),
+                                                    blurRadius: 12,
+                                                    offset: Offset(0, 4))
+                                              ]
+                                            : const []),
+                                    child: Column(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          Icon(items[index].$3,
+                                              color: widget.futuristic
+                                                  ? selected
+                                                      ? FuturisticPalette.pearl
+                                                      : FuturisticPalette.accent
+                                                  : Colors.white,
+                                              size: 28),
+                                          const SizedBox(height: 8),
+                                          Text(items[index].$1,
+                                              textAlign: TextAlign.center,
+                                              style: TextStyle(
+                                                  color: widget.futuristic
+                                                      ? FuturisticPalette.pearl
+                                                      : Colors.white,
+                                                  fontSize: 14)),
+                                        ])),
+                              )),
+                        );
+                      },
                     )),
                   ]),
             )),
@@ -210,12 +251,14 @@ class _LauncherMoreGridState extends State<LauncherMoreGrid> {
               _command(command);
               return KeyEventResult.handled;
             },
-            child: widget.scene == null
+            child: !widget.futuristic
                 ? dialog
                 : GlassBackdrop(
                     animated: false,
                     background:
-                        RawImage(image: widget.scene, fit: BoxFit.cover),
+                        widget.scene == null
+                            ? const ColoredBox(color: Color(0xFF090F20))
+                            : RawImage(image: widget.scene, fit: BoxFit.cover),
                     child: dialog)));
   }
 }

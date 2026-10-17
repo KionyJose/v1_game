@@ -1,15 +1,19 @@
 // ignore_for_file: file_names, avoid_print, use_build_context_synchronously, must_be_immutable, deprecated_member_use
 
 import 'dart:io';
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:v1_game/Interface/futuristic_material.dart';
 import 'package:v1_game/Controllers/MovimentoSistema.dart';
 import 'package:v1_game/Controllers/PastaCtl.dart';
 import 'package:v1_game/Modelos/Item.dart';
 import 'package:v1_game/Widgets/LoadWid.dart';
 
 class NavPasta extends StatefulWidget {
-  const NavPasta({super.key});
+  const NavPasta({super.key, this.futuristic = false, this.scene});
+  final bool futuristic;
+  final ui.Image? scene;
 
   @override
   State<NavPasta> createState() => _NavPastaState();
@@ -46,8 +50,19 @@ class _NavPastaState extends State<NavPasta> {
 
   @override
   Widget build(BuildContext context) {
+    final browser = escutaPadWid(ctrl);
+    final content = widget.futuristic
+        ? GlassBackdrop(
+            animated: false,
+            background: widget.scene == null
+                ? const ColoredBox(color: Color(0xFF090F20))
+                : RawImage(image: widget.scene, fit: BoxFit.cover),
+            child: Center(
+                child: GlassPanel(radius: 24, child: browser)),
+          )
+        : browser;
     return KeyboardListener(
-      child: escutaPadWid(ctrl),
+      child: content,
       focusNode: FocusNode(),
       onKeyEvent: (KeyEvent event) {
         if (event is KeyDownEvent) {            
@@ -87,12 +102,16 @@ class _NavPastaState extends State<NavPasta> {
 
   body(PastaCtrl ctrl){
     return Container(// container da Tela ====================================
-      color: Colors.white70,
+      color: widget.futuristic ? const Color(0x33100F23) : Colors.white70,
       height: MediaQuery.of(context).size.height * 0.90,
       width: MediaQuery.of(context).size.width * 0.90,
       child: Column(
         children: [
-          FittedBox (child:  Text("Navegando ${ctrl.listCaminho.last }",style: const TextStyle(fontSize: 20),)),
+          FittedBox(
+              child: Text("Navegando ${ctrl.listCaminho.last}",
+                  style: TextStyle(
+                      color: widget.futuristic ? Colors.white : Colors.black,
+                      fontSize: 20))),
           Flexible(
             flex: 30,
             child: Row(
@@ -112,7 +131,9 @@ class _NavPastaState extends State<NavPasta> {
     return Padding(
       padding: const EdgeInsets.only(left: 3,right: 3),
       child: Container(
-        color: Colors.black,
+        color: widget.futuristic
+            ? const Color(0x66F4F0FF)
+            : Colors.black,
         height: 1200,
         width: 2,
       ),
@@ -163,7 +184,9 @@ class _NavPastaState extends State<NavPasta> {
 
   listItemsList(PastaCtrl ctrl){
     return Container(
-      color: Colors.black38,
+      color: widget.futuristic
+          ? const Color(0x33100F23)
+          : Colors.black38,
       child: FocusScope(
         node: ctrl.gridViewFocus2,
         child: ListView.builder(
@@ -182,7 +205,13 @@ class _NavPastaState extends State<NavPasta> {
     );
   }
   widListItem(PastaCtrl ctrl, int index, Item item, BuildContext context ,int selectedIndex){
-    Color corFinal = ctrl.gridViewFocus2 == ctrl.focusScope ? Colors.black54 : Colors.white24;
+    Color corFinal = ctrl.gridViewFocus2 == ctrl.focusScope
+        ? widget.futuristic
+            ? const Color(0x668F70D8)
+            : Colors.black54
+        : widget.futuristic
+            ? const Color(0x20FFFFFF)
+            : Colors.white24;
     return Container(
       padding: const EdgeInsets.only(left: 10),
       color: selectedIndex == index ?  corFinal : Colors.transparent,
@@ -257,7 +286,13 @@ class _NavPastaState extends State<NavPasta> {
 
   // popScren(Widget tela) {
   arquivo(PastaCtrl ctrl,int index, String name, BuildContext context ,int selectedIndex){
-    Color corFinal = ctrl.gridViewFocus1 == ctrl.focusScope ? Colors.black87.withOpacity(0.7) : Colors.black45;
+    Color corFinal = ctrl.gridViewFocus1 == ctrl.focusScope
+        ? widget.futuristic
+            ? const Color(0x668F70D8)
+            : Colors.black87.withOpacity(0.7)
+        : widget.futuristic
+            ? const Color(0x20FFFFFF)
+            : Colors.black45;
     return FittedBox(
       child: Padding(
         padding: const EdgeInsets.all(5),

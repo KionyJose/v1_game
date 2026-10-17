@@ -181,21 +181,53 @@ class _FuturisticGameBackdropState extends State<FuturisticGameBackdrop>
     return RepaintBoundary(child: picture);
   }
 
+  Widget _parallaxArtwork(String image, BoxConstraints constraints) {
+    final width = constraints.maxWidth;
+    final height = constraints.maxHeight;
+    if (image.isEmpty || width <= 0 || height <= 0) return _artwork(image);
+
+    Widget panel({bool mirrored = false}) {
+      final artwork = SizedBox(
+        width: width,
+        height: height,
+        child: _artwork(image),
+      );
+      return mirrored ? Transform.flip(flipX: true, child: artwork) : artwork;
+    }
+
+    // Matching mirrored copies extend both sides of the moving center image.
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [panel(mirrored: true), panel(), panel(mirrored: true)],
+    );
+  }
+
   @override
   Widget build(BuildContext context) =>
       ClipRect(child: LayoutBuilder(builder: (_, constraints) {
-        final span = constraints.maxWidth * .14;
-        final current = _artwork(widget.image);
-        final previous =
-            _previousImage == null ? null : _artwork(_previousImage!);
-        Widget layer(Widget child, int index, String key) =>
-            Transform.translate(
-                key: ValueKey(key),
-                offset: Offset(
-                    ((index - _follow.value) * span)
-                        .clamp(-span * 1.3, span * 1.3),
-                    0),
-                child: Transform.scale(scale: 1.4, child: child));
+        final span = constraints.maxWidth * .035;
+        final devicePixelRatio = MediaQuery.devicePixelRatioOf(context);
+        final current = _parallaxArtwork(widget.image, constraints);
+        final previous = _previousImage == null
+            ? null
+            : _parallaxArtwork(_previousImage!, constraints);
+        Widget layer(Widget child, int index, String key) {
+          final translated =
+              ((index - _follow.value) * span).clamp(-span * 1.3, span * 1.3);
+          final pixelAligned = (translated * devicePixelRatio).roundToDouble() /
+              devicePixelRatio;
+          return Transform.translate(
+              key: ValueKey(key),
+              offset: Offset(pixelAligned, 0),
+              child: OverflowBox(
+                  alignment: Alignment.center,
+                  minWidth: constraints.maxWidth * 3,
+                  maxWidth: constraints.maxWidth * 3,
+                  minHeight: constraints.maxHeight,
+                  maxHeight: constraints.maxHeight,
+                  child: child));
+        }
+
         return AnimatedBuilder(
             animation: Listenable.merge([_follow, _fade]),
             builder: (_, __) {

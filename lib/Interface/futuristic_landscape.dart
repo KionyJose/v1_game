@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'futuristic_material.dart';
 
@@ -39,8 +40,22 @@ class _FuturisticLandscapeState extends State<FuturisticLandscape>
   @override
   Widget build(BuildContext context) {
     final reduce = MediaQuery.disableAnimationsOf(context);
+    final devicePixelRatio = MediaQuery.devicePixelRatioOf(context);
+    final landscape = Image.asset(
+      'assets/Futurista/aurora_lake.png',
+      fit: BoxFit.cover,
+      filterQuality: FilterQuality.medium,
+      errorBuilder: (_, __, ___) => const WaterLandscape(),
+    );
     return ClipRect(
         child: Stack(fit: StackFit.expand, children: [
+      if (!reduce)
+        RepaintBoundary(
+          child: ImageFiltered(
+            imageFilter: ui.ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+            child: Transform.scale(scale: 1.08, child: landscape),
+          ),
+        ),
       TweenAnimationBuilder<double>(
         tween: Tween(end: reduce ? 0 : (widget.category - 1.5) * 12),
         duration: reduce ? Duration.zero : const Duration(milliseconds: 650),
@@ -50,17 +65,17 @@ class _FuturisticLandscapeState extends State<FuturisticLandscape>
             child: child,
             builder: (_, image) {
               final phase = _drift.value * math.pi * 2;
+              final dx = pageOffset + (reduce ? 0 : math.sin(phase) * 16);
+              final dy = reduce ? 0.0 : math.cos(phase) * 7;
               return Transform.translate(
                   offset: Offset(
-                      pageOffset + (reduce ? 0 : math.sin(phase) * 16),
-                      reduce ? 0 : math.cos(phase) * 7),
-                  child: Transform.scale(scale: 1.08, child: image));
+                      (dx * devicePixelRatio).roundToDouble() /
+                          devicePixelRatio,
+                      (dy * devicePixelRatio).roundToDouble() /
+                          devicePixelRatio),
+                  child: image);
             }),
-        child: RepaintBoundary(
-            child: Image.asset('assets/Futurista/aurora_lake.png',
-                fit: BoxFit.cover,
-                filterQuality: FilterQuality.medium,
-                errorBuilder: (_, __, ___) => const WaterLandscape())),
+        child: RepaintBoundary(child: landscape),
       ),
       const DecoratedBox(
           decoration: BoxDecoration(

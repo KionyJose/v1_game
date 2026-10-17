@@ -22,11 +22,11 @@ class GlassBackdrop extends StatelessWidget {
   @override
   Widget build(BuildContext context) => LiquidGlassView(
       backgroundWidget: background,
-      pixelRatio: .5,
+      pixelRatio: .75,
       useImpellerBackdrop: ui.ImageFilter.isShaderFilterSupported,
       realTimeCapture: animated && !MediaQuery.disableAnimationsOf(context),
-      // Capture during paint: all lenses sample this frame's background.
-      // Half-resolution sampling keeps the GPU cost down at high refresh rates.
+      // Capture during paint so each lens sees the current, sharper backdrop.
+      // 0.75 improves refraction detail without a full-size 4K readback.
       regionCapture: false,
       refreshRate: LiquidGlassRefreshRate.deviceRefreshRate,
       child: child);
@@ -67,7 +67,9 @@ class _GlassSceneState extends State<GlassScene> {
     }());
     if (!ready) return null;
     try {
-      return boundary.toImageSync(pixelRatio: .5);
+      final pixelRatio =
+          MediaQuery.devicePixelRatioOf(context).clamp(1.0, 1.5).toDouble();
+      return boundary.toImageSync(pixelRatio: pixelRatio);
     } catch (_) {
       return null;
     }

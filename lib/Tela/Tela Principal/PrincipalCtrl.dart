@@ -1269,14 +1269,16 @@ class PrincipalCtrl with ChangeNotifier{
       abrirMenuSlim();
       return;
     }
+    final categoriaEstavaEmFoco = focusScopeAbaGuias.hasFocus;
     try{
     stateTela = false;
     WidgetsBinding.instance.addPostFrameCallback((_) async  {
 
-      String retorno = await PopMais.mais(ctx);
+      String retorno = await PopMais.mais(ctx, futuristic: futuristicMode);
       debugPrint(retorno);
       if(retorno.isEmpty){ 
-        stateTela = true;
+        _retomarFocoAposMenuMais(
+            categoriaEstavaEmFoco: categoriaEstavaEmFoco);
         return;
       }
 
@@ -1288,7 +1290,9 @@ class PrincipalCtrl with ChangeNotifier{
         
         case "Caminho do game" || "Caminho de Imagem" || "Add": {
           debugPrint("Entrei navPasta");
-          final nome = await Pops().navPasta(ctx, "", retorno, listIconsInicial, selectedIndexIcone);
+          final nome = await Pops().navPasta(
+              ctx, "", retorno, listIconsInicial, selectedIndexIcone,
+              futuristic: futuristicMode);
           if(retorno=="Add" && nome != null && nome != ""){
             selectedIndexIcone = 0;
             limparClickPad();
@@ -1315,6 +1319,11 @@ class PrincipalCtrl with ChangeNotifier{
         case "Cfg":{
           String retorno = await PopConfig.config(ctx);
           if(retorno.isEmpty || retorno == "cancelar"){
+            if (futuristicMode) {
+              _retomarFocoAposMenuMais(
+                  categoriaEstavaEmFoco: categoriaEstavaEmFoco);
+              return;
+            }
             // Restaura o foco após cancelar
             focusNodeIcones[selectedIndexIcone].requestFocus();
             focusScopeIcones.requestFocus();
@@ -1336,6 +1345,11 @@ class PrincipalCtrl with ChangeNotifier{
         case "busca":{
           final retorno = await GamesBuscaTela.abrir(ctx);
           if(retorno == null || retorno == "cancelar"){            
+            if (futuristicMode) {
+              _retomarFocoAposMenuMais(
+                  categoriaEstavaEmFoco: categoriaEstavaEmFoco);
+              return;
+            }
             // Restaura o foco após cancelar
             focusNodeIcones[selectedIndexIcone].requestFocus();
             focusScopeIcones.requestFocus();
@@ -1405,6 +1419,18 @@ class PrincipalCtrl with ChangeNotifier{
       debugPrint("ERO BTNMAIS === $e");
       // Pops().msgSimples(ctx,"ERRO = 1$e");
     }
+  }
+
+  void _retomarFocoAposMenuMais({required bool categoriaEstavaEmFoco}) {
+    stateTela = true;
+    limparClickPad(delayMs: 220);
+    attTela();
+    if (!futuristicMode) return;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_disposed || !ctx.mounted || !stateTela || !futuristicMode) return;
+      focarCategoriaSlim(barra: categoriaEstavaEmFoco);
+    });
   }
 
   void limparClickPad({int delayMs = 450}) {
