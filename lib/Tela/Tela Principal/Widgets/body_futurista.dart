@@ -236,6 +236,7 @@ class _BodyFuturistaState extends State<BodyFuturista> with WindowListener {
           windowControls: const FuturisticWindowControls(),
           category: category,
           selected: ctrl.slimItemIndex,
+          gridMode: ctrl.cardGamesGrid,
           items: items,
           itemNodes: ctrl.slimItemNodes,
           categoryNodes: ctrl.focusNodeAbaGuias,
@@ -267,6 +268,7 @@ class FuturisticHome extends StatefulWidget {
       {super.key,
       required this.category,
       required this.selected,
+      this.gridMode = false,
       required this.items,
       required this.itemNodes,
       required this.categoryNodes,
@@ -279,7 +281,7 @@ class FuturisticHome extends StatefulWidget {
       this.windowControls,
       this.enabled = true,
       this.openingGame = false});
-  final bool openingGame;
+  final bool openingGame, gridMode;
   final Widget? windowControls;
   final int category, selected;
   final List<FuturisticItem> items;
@@ -299,6 +301,7 @@ class _FuturisticHomeState extends State<FuturisticHome>
   late final ValueNotifier<double> _railPosition;
   late final AnimationController _motion;
   double _extent = 200;
+  static const _cardGap = 26.4;
   int _revision = 0;
   Timer? _focusSettle;
   static const labels = ['Jogos', 'Cinema', 'Música', 'Lojas'];
@@ -309,13 +312,51 @@ class _FuturisticHomeState extends State<FuturisticHome>
     Icons.storefront_rounded
   ];
 
+  bool get _showGameGrid => widget.gridMode && widget.category == 0;
+
   void _tick() {
     if (!_scroll.hasClients || _scroll.positions.length != 1) return;
     _scroll.jumpTo(_motion.value.clamp(0.0, _scroll.position.maxScrollExtent));
-    _railPosition.value = _scroll.offset / _extent;
+    _railPosition.value = _indexAtOffset(_scroll.offset);
+  }
+
+  double _cardVisualWidth(int index) =>
+      (_extent - _cardGap) * (index == widget.selected ? 1 : .8);
+
+  double _itemStride(int index) =>
+      _cardVisualWidth(index) + _cardGap;
+
+  double _itemStart(int index) {
+    final smallStride = (_extent - _cardGap) * .8 + _cardGap;
+    final selectedAdjustment = widget.selected < index
+        ? _itemStride(widget.selected) - smallStride
+        : 0.0;
+    return index * smallStride + selectedAdjustment;
+  }
+
+  double _indexAtOffset(double offset) {
+    final count = widget.items.length;
+    if (count < 2) return 0;
+    final selected = widget.selected.clamp(0, count - 1);
+    final selectedStart = _itemStart(selected);
+    final selectedStride = _itemStride(selected);
+    final smallStride = (_extent - _cardGap) * .8 + _cardGap;
+    if (offset < selectedStart) {
+      return (offset / smallStride).clamp(0.0, selected.toDouble());
+    }
+    if (offset <= selectedStart + selectedStride) {
+      return selected + (offset - selectedStart) / selectedStride;
+    }
+    return selected + 1 +
+        (offset - selectedStart - selectedStride) / smallStride;
   }
 
   void _reveal({bool categoryChanged = false}) {
+    if (_showGameGrid) {
+      _motion.stop();
+      _railPosition.value = widget.selected.toDouble();
+      return;
+    }
     final revision = ++_revision;
     _focusSettle?.cancel();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
@@ -325,7 +366,7 @@ class _FuturisticHomeState extends State<FuturisticHome>
           _scroll.positions.length != 1) {
         return;
       }
-      final target = (widget.selected * _extent)
+      final target = _itemStart(widget.selected)
           .clamp(0.0, _scroll.position.maxScrollExtent);
       final reduceMotion = MediaQuery.disableAnimationsOf(context);
       final velocity =
@@ -335,7 +376,7 @@ class _FuturisticHomeState extends State<FuturisticHome>
           reduceMotion ||
           (target - _scroll.offset).abs() < .5) {
         _scroll.jumpTo(target);
-        _railPosition.value = _scroll.offset / _extent;
+        _railPosition.value = _indexAtOffset(_scroll.offset);
       } else {
         _motion.value = _scroll.offset;
         try {
@@ -354,7 +395,7 @@ class _FuturisticHomeState extends State<FuturisticHome>
       }
       if (!mounted || revision != _revision || !_scroll.hasClients) return;
       _scroll.jumpTo(target);
-      _railPosition.value = _scroll.offset / _extent;
+      _railPosition.value = _indexAtOffset(_scroll.offset);
       _acknowledge(revision);
     });
   }
@@ -381,7 +422,15 @@ class _FuturisticHomeState extends State<FuturisticHome>
   @override
   void didUpdateWidget(FuturisticHome oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.category != widget.category) _motion.stop();
+    if (_showGameGrid) {
+      _motion.stop();
+      _railPosition.value = widget.selected.toDouble();
+      return;
+    }
+    if (oldWidget.category != widget.category ||
+        oldWidget.gridMode != widget.gridMode) {
+      _motion.stop();
+    }
     if (oldWidget.selected != widget.selected ||
         oldWidget.category != widget.category ||
         oldWidget.items.length != widget.items.length) {
@@ -480,113 +529,131 @@ class _FuturisticHomeState extends State<FuturisticHome>
                                     ])),
                                 const SizedBox(height: 22),
                                 _categories(compact, duration),
-                                const Spacer(),
-                                FuturisticViewBox(
-                                    glass: false,
-                                    page: widget.category,
-                                    child: Padding(
-                                        padding: EdgeInsets.only(
-                                            left: compact ? 14 : 22,
-                                            top: compact ? 14 : 22),
-                                        child: Column(
-                                            mainAxisSize: MainAxisSize.min,
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
+                                if (_showGameGrid) ...[
+                                  SizedBox(height: compact ? 16 : 22),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Padding(
+                                          padding: EdgeInsets.only(
+                                              left: compact ? 14 : 22,
+                                              right: compact ? 14 : 56),
+                                          child: Row(
                                             children: [
-                                              Text(
-                                                  labels[widget.category]
-                                                      .toUpperCase(),
-                                                  style: const TextStyle(
-                                                      color: Color(0xFFB6DDDB),
+                                              const Text('JOGOS',
+                                                  style: TextStyle(
+                                                      color:
+                                                          Color(0xFFB6DDDB),
                                                       fontSize: 12,
                                                       fontFamily: 'Oxanium',
                                                       letterSpacing: 3)),
-                                              const SizedBox(height: 10),
-                                              AnimatedSwitcher(
-                                                  duration: duration,
-                                                  child: Align(
-                                                      key: ValueKey(
-                                                          selected?.name),
-                                                      alignment:
-                                                          Alignment.centerLeft,
-                                                      child: Text(
-                                                          selected?.name ??
-                                                              'Sua próxima descoberta',
-                                                          maxLines: 1,
-                                                          overflow: TextOverflow
-                                                              .ellipsis,
-                                                          style: TextStyle(
-                                                              color:
-                                                                  Colors.white,
-                                                              fontSize: compact
-                                                                  ? 28
-                                                                  : 42,
-                                                              fontFamily:
-                                                                  'Oxanium',
-                                                              fontWeight:
-                                                                  FontWeight
-                                                                      .w500,
-                                                              shadows: const [
-                                                                Shadow(
-                                                                    color: Colors
-                                                                        .black54,
-                                                                    blurRadius:
-                                                                        16)
-                                                              ])))),
-                                              const SizedBox(height: 8),
+                                              const Spacer(),
                                               Text(
-                                                  widget.items.isEmpty
-                                                      ? 'Adicione seus favoritos pelo menu.'
-                                                      : '${widget.items.length} favoritos • Um universo para explorar',
+                                                  '${widget.items.length} jogos',
                                                   style: const TextStyle(
-                                                      color: Color(0xFFB6DDDB),
-                                                      fontSize: 13)),
-                                              const SizedBox(height: 24),
-                                              SizedBox(
-                                                  height: cardHeight * 1.5 + 22,
-                                                  child: FocusScope(
-                                                      node: widget.itemScope,
-                                                      child: widget
-                                                              .items.isEmpty
-                                                          ? const Center(
-                                                              child: Icon(
-                                                                  Icons
-                                                                      .water_rounded,
-                                                                  color: Colors
-                                                                      .white38,
-                                                                  size: 52))
-                                                          : LayoutBuilder(
-                                                              builder: (_,
-                                                                      rail) =>
-                                                                  Stack(
-                                                                      children: [
-                                                                        ListView.builder(
-                                                                            key: ValueKey(widget
-                                                                                .category),
-                                                                            controller:
-                                                                                _scroll,
-                                                                            scrollDirection:
-                                                                                Axis.horizontal,
-                                                                            padding: EdgeInsets.only(right: (rail.maxWidth - _extent).clamp(0.0, double.infinity)),
-                                                                            itemExtent: _extent,
-                                                                            itemCount: widget.items.length,
-                                                                            physics: const NeverScrollableScrollPhysics(),
-                                                                            itemBuilder: (context, index) => _card(index, duration)),
-                                                                        Positioned(
-                                                                            left:
-                                                                                0,
-                                                                            top:
-                                                                                8,
-                                                                            width:
-                                                                                cardHeight,
-                                                                            height:
-                                                                                cardHeight,
-                                                                            child:
-                                                                                IgnorePointer(child: AnimatedOpacity(opacity: widget.openingGame ? 0 : 1, duration: duration, child: DecoratedBox(key: const ValueKey('futuristic-fixed-slot'), decoration: BoxDecoration(borderRadius: BorderRadius.circular(25), border: Border.all(color: FuturisticPalette.pearl, width: 2), boxShadow: const [BoxShadow(color: Color(0x608D70D8), blurRadius: 20)]))))),
-                                                                      ])))),
-                                            ]))),
+                                                      color: Colors.white70,
+                                                      fontSize: 12,
+                                                      fontFamily: 'Oxanium')),
+                                            ],
+                                          ),
+                                        ),
+                                        const SizedBox(height: 14),
+                                        Expanded(
+                                          child: widget.items.isEmpty
+                                              ? const Center(
+                                                  child: Icon(
+                                                      Icons.water_rounded,
+                                                      color: Colors.white38,
+                                                      size: 52))
+                                              : _gamesGrid(compact, duration),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ] else ...[
+                                  const Spacer(),
+                                  FuturisticViewBox(
+                                      glass: false,
+                                      page: widget.category,
+                                      child: Padding(
+                                          padding: EdgeInsets.only(
+                                              left: compact ? 14 : 22,
+                                              top: compact ? 14 : 22),
+                                          child: Column(
+                                              mainAxisSize: MainAxisSize.min,
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                Text(
+                                                    labels[widget.category]
+                                                        .toUpperCase(),
+                                                    style: const TextStyle(
+                                                        color:
+                                                            Color(0xFFB6DDDB),
+                                                        fontSize: 12,
+                                                        fontFamily: 'Oxanium',
+                                                        letterSpacing: 3)),
+                                                const SizedBox(height: 10),
+                                                AnimatedSwitcher(
+                                                    duration: duration,
+                                                    child: Align(
+                                                        key: ValueKey(
+                                                            selected?.name),
+                                                        alignment: Alignment
+                                                            .centerLeft,
+                                                        child: Text(
+                                                            selected?.name ??
+                                                                'Sua próxima descoberta',
+                                                            maxLines: 1,
+                                                            overflow:
+                                                                TextOverflow
+                                                                    .ellipsis,
+                                                            style: TextStyle(
+                                                                color: Colors
+                                                                    .white,
+                                                                fontSize:
+                                                                    compact
+                                                                        ? 28
+                                                                        : 42,
+                                                                fontFamily:
+                                                                    'Oxanium',
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .w500,
+                                                                shadows: const [
+                                                                  Shadow(
+                                                                      color: Colors
+                                                                          .black54,
+                                                                      blurRadius:
+                                                                          16)
+                                                                ])))),
+                                                const SizedBox(height: 24),
+                                                SizedBox(
+                                                    height:
+                                                        cardHeight * 1.5 + 22,
+                                                    child: FocusScope(
+                                                        node:
+                                                            widget.itemScope,
+                                                        child: widget
+                                                                .items.isEmpty
+                                                            ? const Center(
+                                                                child: Icon(
+                                                                    Icons
+                                                                        .water_rounded,
+                                                                    color: Colors
+                                                                        .white38,
+                                                                    size: 52))
+                                                            : _cardRail(
+                                                                duration,
+                                                                cardHeight))),
+                                              ]))),
+                                ],
                               ]))),
-                  if (widget.category == 0 && widget.items.isNotEmpty)
+                  if (widget.category == 0 &&
+                      !widget.gridMode &&
+                      widget.items.isNotEmpty)
                     Positioned(
                         left: 0,
                         right: 0,
@@ -614,6 +681,141 @@ class _FuturisticHomeState extends State<FuturisticHome>
                                               size: 22),
                                         ]))))),
                 ])));
+      });
+
+  Widget _gamesGrid(bool compact, Duration duration) => FocusScope(
+        node: widget.itemScope,
+        child: GridView.builder(
+          key: const ValueKey('futuristic-games-grid'),
+          padding: EdgeInsets.fromLTRB(
+              compact ? 14 : 22, 2, compact ? 14 : 56, 20),
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 5,
+            crossAxisSpacing: compact ? 8 : 12,
+            mainAxisSpacing: compact ? 8 : 12,
+            childAspectRatio: 14 / 9,
+          ),
+          itemCount: widget.items.length,
+          itemBuilder: (_, index) => _gridCard(index, duration),
+        ),
+      );
+
+  Widget _gridCard(int index, Duration duration) {
+    final item = widget.items[index];
+    final selected = index == widget.selected;
+    return Builder(
+      builder: (cardContext) => Focus(
+        focusNode: widget.itemNodes[index],
+        onFocusChange: (focused) {
+          if (!focused || !widget.enabled) return;
+          widget.onSelect(index);
+          unawaited(Scrollable.ensureVisible(
+            cardContext,
+            alignment: .45,
+            duration: duration,
+            curve: Curves.easeOutCubic,
+          ));
+        },
+        child: Builder(builder: (context) {
+          final focused = Focus.of(context).hasFocus;
+          return Semantics(
+            label: item.name,
+            selected: selected,
+            button: true,
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: !widget.enabled
+                  ? null
+                  : () {
+                      widget.onSelect(index);
+                      widget.onOpen();
+                    },
+              child: AnimatedContainer(
+                duration: duration,
+                curve: Curves.easeOutCubic,
+                padding: const EdgeInsets.all(3),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(23),
+                  boxShadow: focused
+                      ? const [
+                          BoxShadow(
+                              color: Color(0x70A9EEE4), blurRadius: 20)
+                        ]
+                      : null,
+                ),
+                child: GlassPanel(
+                  radius: 20,
+                  focused: focused,
+                  child: Padding(
+                    padding: const EdgeInsets.all(7),
+                    child: _cardFace(item),
+                  ),
+                ),
+              ),
+            ),
+          );
+        }),
+      ),
+    );
+  }
+
+  Widget _cardRail(Duration duration, double cardSize) =>
+      LayoutBuilder(builder: (_, rail) {
+        final lastCardWidth = _cardVisualWidth(widget.items.length - 1);
+        final trailingSpace =
+            (rail.maxWidth - lastCardWidth - _cardGap)
+                .clamp(0.0, double.infinity)
+                .toDouble();
+        final fadeWidth = ((cardSize * .8 + _cardGap) * 4)
+            .clamp(0.0, rail.maxWidth)
+            .toDouble();
+        final fadeStart = rail.maxWidth <= 0
+            ? 1.0
+            : (1 - fadeWidth / rail.maxWidth).clamp(0.0, 1.0).toDouble();
+        return Stack(children: [
+          ShaderMask(
+            blendMode: BlendMode.dstIn,
+            shaderCallback: (bounds) => LinearGradient(
+              begin: Alignment.centerLeft,
+              end: Alignment.centerRight,
+              colors: const [Colors.white, Colors.transparent],
+              stops: [fadeStart, 1],
+            ).createShader(bounds),
+            child: ListView.builder(
+              key: ValueKey(widget.category),
+              controller: _scroll,
+              scrollDirection: Axis.horizontal,
+              padding: EdgeInsets.only(right: trailingSpace),
+              itemCount: widget.items.length,
+              physics: const NeverScrollableScrollPhysics(),
+              itemBuilder: (context, index) => _card(index, duration),
+            ),
+          ),
+          Positioned(
+            left: 0,
+            top: 8,
+            width: cardSize,
+            height: cardSize,
+            child: IgnorePointer(
+              child: AnimatedOpacity(
+                opacity: widget.openingGame ? 0 : 1,
+                duration: duration,
+                child: DecoratedBox(
+                  key: const ValueKey('futuristic-fixed-slot'),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(25),
+                    border: Border.all(
+                        color: FuturisticPalette.pearl, width: 2),
+                    boxShadow: const [
+                      BoxShadow(
+                          color: Color(0x608D70D8), blurRadius: 20)
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ]);
       });
 
   Widget _categories(bool compact, Duration duration) {
@@ -725,6 +927,9 @@ class _FuturisticHomeState extends State<FuturisticHome>
   Widget _card(int index, Duration duration) {
     final item = widget.items[index];
     final selected = index == widget.selected;
+    final cardSize = _extent - _cardGap;
+    final cardHeight = cardSize * 1.5 + 22;
+    final visualWidth = cardSize * (selected ? 1 : .8);
     return Focus(
         focusNode: widget.itemNodes[index],
         onFocusChange: (focused) {
@@ -735,6 +940,53 @@ class _FuturisticHomeState extends State<FuturisticHome>
         },
         child: Builder(builder: (context) {
           final focused = Focus.of(context).hasFocus;
+          final card = SizedBox(
+            width: cardSize,
+            height: cardSize,
+            child: AnimatedScale(
+              scale: selected ? 1 : .8,
+              alignment: Alignment.bottomLeft,
+              duration: duration,
+              curve: Curves.easeOutCubic,
+              child: FuturisticCardFold(
+                opening: selected && widget.openingGame,
+                child: ValueListenableBuilder<int>(
+                  valueListenable: _settled,
+                  builder: (_, revision, child) => FuturisticCardEffect(
+                    selected: selected,
+                    focused: focused,
+                    settledRevision: revision,
+                    child: child!,
+                  ),
+                  child: GlassPanel(
+                    radius: 25,
+                    focused: focused,
+                    child: Padding(
+                      padding: const EdgeInsets.all(9),
+                      child: _cardFace(item),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          );
+          final reflection = AnimatedOpacity(
+            opacity: selected && widget.openingGame ? 0 : 1,
+            duration: duration,
+            child: AnimatedScale(
+              scale: selected ? 1 : .8,
+              alignment: Alignment.topLeft,
+              duration: duration,
+              curve: Curves.easeOutCubic,
+              child: FuturisticCardMirror(
+                size: cardSize,
+                child: Padding(
+                  padding: const EdgeInsets.all(9),
+                  child: _cardFace(item),
+                ),
+              ),
+            ),
+          );
           return Semantics(
               label: item.name,
               selected: selected,
@@ -746,49 +998,24 @@ class _FuturisticHomeState extends State<FuturisticHome>
                           widget.onSelect(index);
                           widget.onOpen();
                         },
-                  child: Padding(
-                      padding: const EdgeInsets.fromLTRB(0, 8, 24, 8),
-                      child: Column(mainAxisSize: MainAxisSize.min, children: [
-                        SizedBox(
-                            width: _extent - 24,
-                            height: _extent - 24,
-                            child: AnimatedScale(
-                                scale: selected ? 1 : .8,
-                                alignment: Alignment.bottomLeft,
-                                duration: duration,
-                                curve: Curves.easeOutCubic,
-                                child: FuturisticCardFold(
-                                    opening: selected && widget.openingGame,
-                                    child: ValueListenableBuilder<int>(
-                                        valueListenable: _settled,
-                                        builder: (_, revision, child) =>
-                                            FuturisticCardEffect(
-                                                selected: selected,
-                                                focused: focused,
-                                                settledRevision: revision,
-                                                child: child!),
-                                        child: GlassPanel(
-                                            radius: 25,
-                                            focused: focused,
-                                            child: Padding(
-                                                padding:
-                                                    const EdgeInsets.all(9),
-                                                child: _cardFace(item))))))),
-                        const SizedBox(height: 6),
-                        AnimatedOpacity(
-                            opacity: selected && widget.openingGame ? 0 : 1,
-                            duration: duration,
-                            child: AnimatedScale(
-                                scale: selected ? 1 : .8,
-                                alignment: Alignment.topLeft,
-                                duration: duration,
-                                curve: Curves.easeOutCubic,
-                                child: FuturisticCardMirror(
-                                    size: _extent - 24,
-                                    child: Padding(
-                                        padding: const EdgeInsets.all(9),
-                                        child: _cardFace(item))))),
-                      ]))));
+                  child: SizedBox(
+                      width: visualWidth + _cardGap,
+                      height: cardHeight,
+                      child: OverflowBox(
+                          alignment: Alignment.topLeft,
+                          minWidth: cardSize,
+                          maxWidth: cardSize,
+                          minHeight: cardHeight,
+                          maxHeight: cardHeight,
+                          child: Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 8),
+                              child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    card,
+                                    const SizedBox(height: 6),
+                                    reflection,
+                                  ]))))));
         }));
   }
 

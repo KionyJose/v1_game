@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/physics.dart';
@@ -24,7 +25,7 @@ class FuturisticGameBackdrop extends StatefulWidget {
 
 class _FuturisticGameBackdropState extends State<FuturisticGameBackdrop>
     with TickerProviderStateMixin {
-  late final AnimationController _follow, _fade;
+  late final AnimationController _follow, _fade, _ambient;
   late final Ticker _followTicker;
   Duration? _lastTick;
   double _target = 0, _velocity = 0;
@@ -39,6 +40,9 @@ class _FuturisticGameBackdropState extends State<FuturisticGameBackdrop>
         vsync: this, value: widget.position.value);
     _target = widget.position.value;
     _followTicker = createTicker(_advanceFollow);
+    _ambient = AnimationController(
+        vsync: this, duration: const Duration(seconds: 8))
+      ..repeat();
     _fade = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 1300), value: 1)
       ..addStatusListener((status) {
@@ -103,9 +107,13 @@ class _FuturisticGameBackdropState extends State<FuturisticGameBackdrop>
     if (_reduce) {
       _delay?.cancel();
       _delay = null;
+      _ambient.stop();
+      _ambient.value = .5;
       _resetFollow(widget.position.value);
       _fade.value = 1;
       _previousImage = null;
+    } else if (!_ambient.isAnimating) {
+      _ambient.repeat();
     }
   }
 
@@ -124,6 +132,8 @@ class _FuturisticGameBackdropState extends State<FuturisticGameBackdrop>
     _delay?.cancel();
     _delay = null;
     if (_reduce) {
+      _ambient.stop();
+      _ambient.value = .5;
       _previousImage = null;
       _resetFollow(widget.position.value);
       _fade.value = 1;
@@ -155,6 +165,7 @@ class _FuturisticGameBackdropState extends State<FuturisticGameBackdrop>
     _followTicker.dispose();
     _follow.dispose();
     _fade.dispose();
+    _ambient.dispose();
     super.dispose();
   }
 
@@ -206,19 +217,18 @@ class _FuturisticGameBackdropState extends State<FuturisticGameBackdrop>
   Widget build(BuildContext context) =>
       ClipRect(child: LayoutBuilder(builder: (_, constraints) {
         final span = constraints.maxWidth * .035;
-        final devicePixelRatio = MediaQuery.devicePixelRatioOf(context);
         final current = _parallaxArtwork(widget.image, constraints);
         final previous = _previousImage == null
             ? null
             : _parallaxArtwork(_previousImage!, constraints);
         Widget layer(Widget child, int index, String key) {
-          final translated =
-              ((index - _follow.value) * span).clamp(-span * 1.3, span * 1.3);
-          final pixelAligned = (translated * devicePixelRatio).roundToDouble() /
-              devicePixelRatio;
+          final ambientDrift =
+              math.sin(_ambient.value * math.pi * 2) * span * .32;
+          final translated = ((index - _follow.value) * span + ambientDrift)
+              .clamp(-span * 1.3, span * 1.3);
           return Transform.translate(
               key: ValueKey(key),
-              offset: Offset(pixelAligned, 0),
+              offset: Offset(translated, 0),
               child: OverflowBox(
                   alignment: Alignment.center,
                   minWidth: constraints.maxWidth * 3,
@@ -229,7 +239,7 @@ class _FuturisticGameBackdropState extends State<FuturisticGameBackdrop>
         }
 
         return AnimatedBuilder(
-            animation: Listenable.merge([_follow, _fade]),
+            animation: Listenable.merge([_follow, _fade, _ambient]),
             builder: (_, __) {
               final opacity = Curves.easeInOutCubic.transform(_fade.value);
               return Stack(fit: StackFit.expand, children: [

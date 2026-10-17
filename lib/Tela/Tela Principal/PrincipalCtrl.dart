@@ -299,14 +299,26 @@ class PrincipalCtrl with ChangeNotifier{
       return true;
     }
     final barra = focusScopeAbaGuias.hasFocus;
+    final gradeJogos = futuristicMode &&
+        cardGamesGrid &&
+        selectedIndexAbaGuias == 0 &&
+        !barra;
     switch (event) {
       case 'START': futuristicMode ? btnMais() : abrirMenuSlim();
       case 'LB': selecionarCategoriaSlim(selectedIndexAbaGuias - 1);
       case 'RB': selecionarCategoriaSlim(selectedIndexAbaGuias + 1);
       case 'CIMA':
+        if (gradeJogos && slimItemIndex >= 5) {
+          selecionarItemSlim(slimItemIndex - 5);
+        } else {
+          focarCategoriaSlim(barra: true, playSound: true);
+        }
       case '3': focarCategoriaSlim(barra: true, playSound: true);
       case 'BAIXO':
-        if (futuristicMode && !barra && selectedIndexAbaGuias == 0) {
+        if (gradeJogos) {
+          final destino = slimItemIndex + 5;
+          if (destino < slimItemNodes.length) selecionarItemSlim(destino);
+        } else if (futuristicMode && !barra && selectedIndexAbaGuias == 0) {
           abrirItemSlim();
         } else {
           focarCategoriaSlim(playSound: true);
@@ -316,8 +328,18 @@ class PrincipalCtrl with ChangeNotifier{
         final delta = event == 'DIREITA' ? 1 : -1;
         if (barra) {
           selecionarCategoriaSlim(selectedIndexAbaGuias + delta, barra: true);
+        } else if (gradeJogos && slimItemNodes.isNotEmpty) {
+          final primeiraColuna = (slimItemIndex ~/ 5) * 5;
+          final ultimaColuna =
+              (primeiraColuna + 4).clamp(0, slimItemNodes.length - 1);
+          selecionarItemSlim(
+              (slimItemIndex + delta).clamp(primeiraColuna, ultimaColuna));
         } else if (slimItemNodes.isNotEmpty) {
           selecionarItemSlim((slimItemIndex + delta).clamp(0, slimItemNodes.length - 1));
+        }
+      case 'SELECT':
+        if (futuristicMode && selectedIndexAbaGuias == 0) {
+          trocaViewIcones();
         }
       case '2':
         if (barra) {
