@@ -14,6 +14,43 @@ import 'dart:convert';
 import '../Modelos/videoYT.dart';
 
 class WebScrap{
+
+  static Map<String, String> noticiaImageHeaders(String articleUrl) {
+    final headers = <String, String>{
+      'User-Agent':
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
+          'Chrome/124.0.0.0 Safari/537.36',
+      'Accept': 'image/avif,image/webp,image/apng,image/*,*/*;q=0.8',
+    };
+    final article = Uri.tryParse(articleUrl);
+    if (article != null &&
+        (article.scheme == 'http' || article.scheme == 'https') &&
+        article.host.isNotEmpty) {
+      headers['Referer'] = article.toString();
+    }
+    return headers;
+  }
+
+  static String _normalizarUrlImagem(String raw, {Uri? base}) {
+    final decoded = _limpaHtml(raw)
+        .replaceAll(RegExp(r'&#0*38;', caseSensitive: false), '&')
+        .replaceAll(RegExp(r'&#x0*26;', caseSensitive: false), '&');
+    if (decoded.isEmpty) return '';
+    try {
+      final candidate = Uri.tryParse(decoded);
+      final resolved = candidate?.hasScheme == true
+          ? candidate
+          : base?.resolve(decoded);
+      if (resolved == null ||
+          (resolved.scheme != 'http' && resolved.scheme != 'https') ||
+          resolved.host.isEmpty) {
+        return '';
+      }
+      return resolved.toString();
+    } catch (_) {
+      return '';
+    }
+  }
  
   
   // Função para pegar os links das imagens com base no nome do jogo
@@ -360,19 +397,41 @@ class WebScrap{
 
         // Imagem do RSS: media:thumbnail > media:content > img no description
         final mediaThumbnail = RegExp(
-          r'<media:thumbnail[^>]+url="(https?://[^"]+)"',
-        ).firstMatch(s)?.group(1) ?? '';
-        final mediaContent = RegExp(
-          r'<media:content[^>]+url="(https?://[^"]+\.(?:jpg|jpeg|png|webp))"',
+          r'''<media:thumbnail\b[^>]*\burl\s*=\s*["']([^"']+)["']''',
           caseSensitive: false,
         ).firstMatch(s)?.group(1) ?? '';
+        final mediaContentTag = RegExp(
+          r'<media:content\b([^>]*)>',
+          caseSensitive: false,
+        ).firstMatch(s)?.group(1) ?? '';
+        final mediaContentUrl = RegExp(
+          r'''\burl\s*=\s*["']([^"']+)["']''',
+          caseSensitive: false,
+        ).firstMatch(mediaContentTag)?.group(1) ?? '';
+        final mediaContentType = RegExp(
+          r'''\btype\s*=\s*["']([^"']+)["']''',
+          caseSensitive: false,
+        ).firstMatch(mediaContentTag)?.group(1) ?? '';
+        final mediaContentMedium = RegExp(
+          r'''\bmedium\s*=\s*["']([^"']+)["']''',
+          caseSensitive: false,
+        ).firstMatch(mediaContentTag)?.group(1) ?? '';
+        final mediaContentUri = Uri.tryParse(
+            _limpaHtml(mediaContentUrl));
+        final hasImageMedia = mediaContentType.toLowerCase().startsWith('image/') ||
+            mediaContentMedium.toLowerCase() == 'image' ||
+            RegExp(r'\.(?:jpe?g|png|webp)$', caseSensitive: false)
+                .hasMatch(mediaContentUri?.path ?? '');
+        final mediaContent = hasImageMedia ? mediaContentUrl : '';
         final imgNoDesc = RegExp(
-          r'<img[^>]+src="(https?://[^"]+)"',
+          r'''<img\b[^>]*\bsrc\s*=\s*["']([^"']+)["']''',
+          caseSensitive: false,
         ).firstMatch(descRaw)?.group(1) ?? '';
 
-        final imgRss = mediaThumbnail.isNotEmpty
+        final imgRaw = mediaThumbnail.isNotEmpty
             ? mediaThumbnail
             : (mediaContent.isNotEmpty ? mediaContent : imgNoDesc);
+        final imgRss = _normalizarUrlImagem(imgRaw, base: Uri.tryParse(url));
 
         noticias.add(NoticiaGame(
           titulo: titulo,
@@ -395,13 +454,16 @@ class WebScrap{
       // Busca og:image de cada artigo em paralelo
       // Se o RSS já trouxe imagem, pula o fetch do artigo
       final imgFutures = noticias.map((n) async {
-        if (n.imgUrl.startsWith('http')) return n.imgUrl;
+        final rssImage = _normalizarUrlImagem(n.imgUrl);
+        if (rssImage.isNotEmpty) return rssImage;
         return _buscarOgImage(n.url);
       }).toList();
       final imgs = await Future.wait(imgFutures);
 
       return List.generate(noticias.length, (i) {
-        final img = imgs[i].isNotEmpty ? imgs[i] : (noticias[i].imgUrl.startsWith('http') ? noticias[i].imgUrl : '');
+        final img = _normalizarUrlImagem(imgs[i]).isNotEmpty
+            ? _normalizarUrlImagem(imgs[i])
+            : _normalizarUrlImagem(noticias[i].imgUrl);
         return NoticiaGame(
           titulo: noticias[i].titulo,
           veiculo: noticias[i].veiculo,
@@ -447,17 +509,19 @@ class WebScrap{
 
       // 1ª: HTML parser
       final doc = html.parse(snippet);
+      final base = Uri.tryParse(urlInicial);
       for (final meta in doc.querySelectorAll('meta')) {
         final prop    = meta.attributes['property'] ?? '';
         final name    = meta.attributes['name']     ?? '';
         final content = meta.attributes['content']  ?? '';
+        final imageUrl = _normalizarUrlImagem(content, base: base);
         if ((prop == 'og:image' ||
                 prop == 'og:image:url' ||
                 name == 'twitter:image' ||
                 name == 'twitter:image:src') &&
-            content.startsWith('http')) {
-          debugPrint('=== ogImage OK (parser): $content');
-          return content;
+            imageUrl.isNotEmpty) {
+          debugPrint('=== ogImage OK (parser): $imageUrl');
+          return imageUrl;
         }
       }
 
@@ -478,8 +542,9 @@ class WebScrap{
       ];
 
       for (final pattern in patterns) {
-        final url = pattern.firstMatch(snippet)?.group(1) ?? '';
-        if (url.startsWith('http')) {
+        final rawUrl = pattern.firstMatch(snippet)?.group(1) ?? '';
+        final url = _normalizarUrlImagem(rawUrl, base: base);
+        if (url.isNotEmpty) {
           debugPrint('=== ogImage OK (regex): $url');
           return url;
         }
@@ -490,11 +555,12 @@ class WebScrap{
         r'''<img\s[^>]*src=["'](https?://[^"']+\.(?:jpg|jpeg|png|webp))["']''',
         caseSensitive: false,
       ).firstMatch(snippet)?.group(1) ?? '';
-      if (imgSrc.isNotEmpty &&
-          !imgSrc.contains('logo') &&
-          !imgSrc.contains('icon')) {
-        debugPrint('=== ogImage OK (img): $imgSrc');
-        return imgSrc;
+      final imageUrl = _normalizarUrlImagem(imgSrc, base: base);
+      if (imageUrl.isNotEmpty &&
+          !imageUrl.contains('logo') &&
+          !imageUrl.contains('icon')) {
+        debugPrint('=== ogImage OK (img): $imageUrl');
+        return imageUrl;
       }
 
       debugPrint('=== ogImage: nenhuma encontrada');
@@ -527,4 +593,6 @@ class WebScrap{
     if (t.contains('novo') || t.contains('novo jogo') || t.contains('anúnciou') || t.contains('anuncia')) return '🌟';
     return '🎮';
   }
+
+  static String emojiParaTitulo(String titulo) => _emojiParaTitulo(titulo);
 }

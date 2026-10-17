@@ -32,6 +32,7 @@ import '../../Modelos/IconeInicial.dart';
 import '../SeletorImagens/SeletorImagens.dart';
 import '../../Widgets/Pops/Pops.dart';
 import '../../Interface/launcher_routes.dart';
+import '../../Interface/futuristic_game_feed.dart';
 import '../../Downloads/downloads_tela.dart';
 import '../../Downloads/installed_game_library.dart';
 import '../Tela loja/scrap_loja.dart';
@@ -545,6 +546,7 @@ class PrincipalCtrl with ChangeNotifier{
     final icons = await db.leituraDeDados();
     if (_disposed) return;
     listIconsInicial = icons;
+    _prepareFuturisticGameFeed();
     if(listIconsInicial.isNotEmpty){
       try {
         for (final f in focusNodeIcones) {
@@ -567,6 +569,16 @@ class PrincipalCtrl with ChangeNotifier{
       selectedIndexIcone = 0;
       focusNodeIcones = [FocusNode()];
     }
+  }
+
+  void _prepareFuturisticGameFeed() {
+    if (!futuristicMode) return;
+    final games = listIconsInicial;
+    final selected = games.isEmpty
+        ? null
+        : games[selectedIndexIcone.clamp(0, games.length - 1)].nome;
+    unawaited(FuturisticGameFeed.prepareLibrary(
+        games.map((game) => game.nome), priorityName: selected));
   }
 
   @override
@@ -1249,6 +1261,7 @@ class PrincipalCtrl with ChangeNotifier{
       await db.attDados(updated);
       if (_disposed || !ctx.mounted) return;
       listIconsInicial = updated;
+      _prepareFuturisticGameFeed();
       final removedFocus = focusNodeIcones.removeAt(index);
       if (videosIndexYT.length > index) videosIndexYT.removeAt(index);
       selectedIndexIcone = updated.isEmpty ? 0 : index.clamp(0, updated.length - 1);

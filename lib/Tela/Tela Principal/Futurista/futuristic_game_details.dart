@@ -1,4 +1,5 @@
 import 'dart:ui' as ui;
+import '../../../Class/WebScrap.dart';
 import '../../../Class/game_video_tags.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -499,8 +500,7 @@ class _FuturisticGameDetailsState extends State<FuturisticGameDetails> {
                   child: Padding(
                       padding: const EdgeInsets.all(18),
                       child: Row(children: [
-                        const Icon(Icons.article_outlined,
-                            color: FuturisticPalette.water),
+                        _newsImage(_content.news[index], 124, 76),
                         const SizedBox(width: 16),
                         Expanded(
                             child: Column(
@@ -522,6 +522,10 @@ class _FuturisticGameDetailsState extends State<FuturisticGameDetails> {
                             color: Colors.white54, size: 18),
                       ])))),
       ]);
+
+  Widget _newsImage(NoticiaGame news, double width, double height) =>
+      _FuturisticNewsImage(news: news, width: width, height: height);
+
   @override
   Widget build(BuildContext context) => LauncherPadScope(
       revealInitialFocus: false,
@@ -655,6 +659,15 @@ class _NewsDialog extends StatelessWidget {
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        if (_hasNewsImage)
+                          Padding(
+                              padding: const EdgeInsets.only(bottom: 24),
+                              child: AspectRatio(
+                                  aspectRatio: 16 / 9,
+                                  child: _FuturisticNewsImage(
+                                      news: news,
+                                      width: double.infinity,
+                                      height: 300))),
                         Text(news.veiculo.toUpperCase(),
                             style: const TextStyle(
                                 color: FuturisticPalette.water,
@@ -696,4 +709,50 @@ class _NewsDialog extends StatelessWidget {
                               child: const Text('Fechar')),
                         ]),
                       ])))));
+
+  bool get _hasNewsImage {
+    final uri = Uri.tryParse(news.imgUrl);
+    return uri != null &&
+        (uri.scheme == 'https' || uri.scheme == 'http') &&
+        uri.host.isNotEmpty;
+  }
+}
+
+class _FuturisticNewsImage extends StatelessWidget {
+  const _FuturisticNewsImage(
+      {required this.news, required this.width, required this.height});
+  final NoticiaGame news;
+  final double width, height;
+
+  @override
+  Widget build(BuildContext context) {
+    final uri = Uri.tryParse(news.imgUrl);
+    final hasImage = uri != null &&
+        (uri.scheme == 'https' || uri.scheme == 'http') &&
+        uri.host.isNotEmpty;
+    return ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: SizedBox(
+            width: width,
+            height: height,
+            child: hasImage
+                ? Image.network(news.imgUrl,
+                    fit: BoxFit.cover,
+                    filterQuality: FilterQuality.medium,
+                    headers: WebScrap.noticiaImageHeaders(news.url),
+                    errorBuilder: (_, __, ___) => _fallback())
+                : _fallback()));
+  }
+
+  Widget _fallback() => DecoratedBox(
+      decoration: const BoxDecoration(
+          gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color(0xFF203947), Color(0xFF101022)])),
+      child: Center(
+          child: news.imgUrl.isNotEmpty && !news.imgUrl.startsWith('http')
+              ? Text(news.imgUrl, style: const TextStyle(fontSize: 30))
+              : Text(WebScrap.emojiParaTitulo(news.titulo),
+                  style: const TextStyle(fontSize: 30))));
 }

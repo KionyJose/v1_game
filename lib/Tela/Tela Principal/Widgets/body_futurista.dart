@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -16,6 +17,7 @@ import '../../../Interface/futuristic_view_box.dart';
 import 'package:flutter_soloud/flutter_soloud.dart';
 import 'package:window_manager/window_manager.dart';
 import '../../../Interface/futuristic_window_controls.dart';
+import '../../../Interface/futuristic_game_feed.dart';
 
 import '../../../Controllers/SonsSistema.dart';
 import '../../../Interface/launcher_pad_scope.dart';
@@ -43,6 +45,15 @@ class _BodyFuturistaState extends State<BodyFuturista> with WindowListener {
     super.initState();
     _detailsHandler = _openGameDetails;
     widget.ctrl.abrirDetalhesFuturista = _detailsHandler;
+    final games = widget.ctrl.listIconsInicial;
+    unawaited(FuturisticGameFeed.prepareLibrary(
+      games.map((game) => game.nome),
+      priorityName: games.isEmpty
+          ? null
+          : games[widget.ctrl.selectedIndexIcone
+                  .clamp(0, games.length - 1)]
+              .nome,
+    ));
     windowManager.addListener(this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) widget.ctrl.focarCategoriaSlim();
@@ -453,6 +464,7 @@ class _FuturisticHomeState extends State<FuturisticHome>
   Widget build(BuildContext context) =>
       LayoutBuilder(builder: (context, constraints) {
         final compact = constraints.maxWidth < 800;
+        final blurBackdrop = _showGameGrid || widget.category == 3;
         final padding = compact ? 24.0 : 56.0;
         final height = constraints.maxHeight;
         final extent =
@@ -471,11 +483,29 @@ class _FuturisticHomeState extends State<FuturisticHome>
         return GlassScene(
             child: GlassBackdrop(
                 background: RepaintBoundary(
-                    child: FuturisticGameBackdrop(
-                        category: widget.category,
-                        selected: widget.selected,
-                        image: selected?.image ?? '',
-                        position: _railPosition)),
+                    child: Stack(fit: StackFit.expand, children: [
+                      ImageFiltered(
+                          imageFilter: ui.ImageFilter.blur(
+                              sigmaX: blurBackdrop ? 28 : 0,
+                              sigmaY: blurBackdrop ? 28 : 0,
+                              tileMode: ui.TileMode.mirror),
+                          child: FuturisticGameBackdrop(
+                              category: widget.category,
+                              selected: widget.selected,
+                              image: selected?.image ?? '',
+                              position: _railPosition)),
+                      if (blurBackdrop)
+                        const DecoratedBox(
+                            decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                    colors: [
+                              Color(0xE6060710),
+                              Color(0xB0080B18),
+                              Color(0xF2060710)
+                            ]))),
+                    ])),
                 child: Stack(fit: StackFit.expand, children: [
                   FuturisticParticles(position: _railPosition),
                   Positioned(

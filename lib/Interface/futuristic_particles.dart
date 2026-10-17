@@ -27,8 +27,8 @@ class FuturisticParticleMotion extends ChangeNotifier {
     if (seconds <= 0) return;
     time += seconds;
     final decay = math.exp(-5 * seconds);
-    // Integrate the gust analytically for matching motion at 30/60/120 Hz.
-    drift += .006 * seconds + gust * (1 - decay) / 5;
+    // Integrate the navigation impulse analytically and stop at its final pose.
+    drift += gust * (1 - decay) / 5;
     gust *= decay;
     notifyListeners();
   }
@@ -59,6 +59,11 @@ class _FuturisticParticlesState extends State<FuturisticParticles>
       if (previous != null) {
         _motion.advance(
             ((elapsed - previous).inMicroseconds / 1000000).clamp(0, .067));
+        if (_motion.gust.abs() < .002) {
+          _motion.gust = 0;
+          _ticker.stop();
+          _lastTick = null;
+        }
       }
     });
     WidgetsBinding.instance.addObserver(this);
@@ -66,12 +71,15 @@ class _FuturisticParticlesState extends State<FuturisticParticles>
 
   void _onNavigation() {
     final position = widget.position.value;
-    if (_animate && _resumed) _motion.impulse(position - _lastPosition);
+    if (_animate && _resumed) {
+      _motion.impulse(position - _lastPosition);
+      _syncTicker();
+    }
     _lastPosition = position;
   }
 
   void _syncTicker() {
-    if (_animate && _resumed) {
+    if (_animate && _resumed && _motion.gust.abs() >= .002) {
       if (!_ticker.isActive) {
         _lastTick = null;
         _ticker.start();

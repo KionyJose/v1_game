@@ -583,7 +583,9 @@ class _PrincipalPageState extends State<PrincipalPage> with WindowListener {
               opacity: ctrl.showNewImage ? 1.0 : 0.0,
               duration: ctrl.showNewImage ? const Duration(seconds: 1) : const Duration(milliseconds: 350),
               child: Transform.scale(
-                scale: ctrl.scaleAnimation.value,
+                scale: ctrl.selectedIndexAbaGuias == 3
+                    ? 1.0
+                    : ctrl.scaleAnimation.value,
                 child: imagemFundo(ctrl),
               ),
             ),
@@ -605,10 +607,10 @@ class _PrincipalPageState extends State<PrincipalPage> with WindowListener {
   }
   
   imagemFundo(PrincipalCtrl ctrl) {
-    final item = BoxDecoration( image: DecorationImage( fit: BoxFit.cover, image: FileImage(File("${assetsPath}BGdefault.jpeg"),scale: 5)));
+    final item = BoxDecoration( image: DecorationImage( fit: BoxFit.cover, filterQuality: FilterQuality.high, image: FileImage(File("${assetsPath}BGdefault.jpeg"))));
     return SizedBox.expand(
       child: DecoratedBox(
-      decoration: ctrl.imgFundoStr.isNotEmpty ? File(ctrl.imgFundoStr).existsSync() ? BoxDecoration( image: DecorationImage(fit: BoxFit.cover, image 
+      decoration: ctrl.imgFundoStr.isNotEmpty ? File(ctrl.imgFundoStr).existsSync() ? BoxDecoration( image: DecorationImage(fit: BoxFit.cover, filterQuality: FilterQuality.high, image 
       : FileImage( File(ctrl.imgFundoStr),)))
       : item : item,
       ),

@@ -540,7 +540,9 @@ class _BodyIconesJogosModernoState extends State<BodyIconesJogosModerno> {
     final index = ctrl.selectedIndexNoticia.clamp(0, ctrl.noticias.length - 1).toInt();
     final n = ctrl.noticias[index];
     final temImg = n.imgUrl.startsWith('http');
-    final emoji = !temImg && n.imgUrl.isNotEmpty ? n.imgUrl : '🎮';
+    final emoji = !temImg && n.imgUrl.isNotEmpty
+        ? n.imgUrl
+        : WebScrap.emojiParaTitulo(n.titulo);
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 36),
       child: AnimatedSwitcher(
@@ -569,6 +571,7 @@ class _BodyIconesJogosModernoState extends State<BodyIconesJogosModerno> {
                   Image.network(
                     n.imgUrl,
                     fit: BoxFit.cover,
+                    headers: WebScrap.noticiaImageHeaders(n.url),
                     errorBuilder: (_, __, ___) => _noticiaImgFallback(emoji),
                   )
                 else
@@ -707,7 +710,9 @@ class _BodyIconesJogosModernoState extends State<BodyIconesJogosModerno> {
     final n = ctrl.noticias[i];
     final foco = ctrl.selectedIndexNoticia == i;
     final temImg = n.imgUrl.startsWith('http');
-    final emoji = !temImg && n.imgUrl.isNotEmpty ? n.imgUrl : null;
+    final emoji = !temImg && n.imgUrl.isNotEmpty
+        ? n.imgUrl
+        : WebScrap.emojiParaTitulo(n.titulo);
 
     return Focus(
       focusNode: ctrl.focusNodeNoticias.length > i ? ctrl.focusNodeNoticias[i] : FocusNode(),
@@ -750,9 +755,10 @@ class _BodyIconesJogosModernoState extends State<BodyIconesJogosModerno> {
                   Image.network(
                     n.imgUrl,
                     fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Container(color: const Color(0xFF0E0B24)),
+                    headers: WebScrap.noticiaImageHeaders(n.url),
+                    errorBuilder: (_, __, ___) => _noticiaImgFallback(emoji),
                   )
-                else if (emoji != null)
+                else
                   Container(
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
@@ -771,9 +777,7 @@ class _BodyIconesJogosModernoState extends State<BodyIconesJogosModerno> {
                         style: const TextStyle(fontSize: 60),
                       ),
                     ),
-                  )
-                else
-                  Container(color: const Color(0xFF0E0B24)),
+                  ),
                 // Gradiente escuro sobre a imagem para legibilidade
                 Container(
                   decoration: BoxDecoration(
@@ -1210,15 +1214,11 @@ class _PopupNoticiaState extends State<_PopupNoticia> {
     }
     if (_imgBuscada == null) {
       // Sem imagem: mostra emoji centralizado na área da capa
-      final emoji = widget.noticia.imgUrl.isNotEmpty &&
-              !widget.noticia.imgUrl.startsWith('http')
-          ? widget.noticia.imgUrl
-          : '🎮';
       return SizedBox(
         height: 190,
         width: double.infinity,
         child: Center(
-          child: Text(emoji, style: const TextStyle(fontSize: 80)),
+          child: Text(_emojiFallback(), style: const TextStyle(fontSize: 80)),
         ),
       );
     }
@@ -1233,10 +1233,21 @@ class _PopupNoticiaState extends State<_PopupNoticia> {
           child: Image.network(
             url,
             fit: BoxFit.cover,
-            errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+            headers: WebScrap.noticiaImageHeaders(widget.noticia.url),
+            errorBuilder: (_, __, ___) => Center(
+              child: Text(_emojiFallback(),
+                  style: const TextStyle(fontSize: 80)),
+            ),
           ),
         ),
       );
+
+  String _emojiFallback() {
+    final image = widget.noticia.imgUrl;
+    return image.isNotEmpty && !image.startsWith('http')
+        ? image
+        : WebScrap.emojiParaTitulo(widget.noticia.titulo);
+  }
 
   Widget _corpo() => SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(30, 26, 30, 10),
