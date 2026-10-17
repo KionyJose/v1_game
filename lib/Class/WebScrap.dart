@@ -1,5 +1,6 @@
 // ignore_for_file: file_names
 
+import 'dart:async';
 import 'dart:io';
 import 'package:path/path.dart' as p;
 import '../System/app_storage.dart';
@@ -14,6 +15,10 @@ import 'dart:convert';
 import '../Modelos/videoYT.dart';
 
 class WebScrap{
+  static final Map<String, Future<String>> _noticiaImageSearchCache = {};
+  static final List<Completer<void>> _imageSearchWaiters = [];
+  static int _activeImageSearches = 0;
+
 
   static Map<String, String> noticiaImageHeaders(String articleUrl) {
     final headers = <String, String>{
@@ -260,15 +265,16 @@ class WebScrap{
     return s.trim();
   }
 
-  /// Busca a primeira imagem válida (jpg/png/webp) via Google Images
-  /// Busca a primeira imagem útil via pesquisa normal do Google (sem tbm=isch).
-  /// Estratégia: abre a página de resultados e extrai a primeira og:image / src
-  /// de imagem que aparecer nos links de notícias embarcados no HTML.
+  /// Busca uma imagem de reserva no Google Images quando o feed não fornece
+  /// uma URL utilizável.
   static Future<String> buscaImagemGoogle(String query) async {
     try {
-      final q = Uri.encodeComponent(query);
-      // Busca normal do Google — traz snippets de notícias com thumbs
-      final searchUrl = 'https://www.google.com/search?q=$q&hl=pt-BR&gl=BR&num=5';
+      final searchUrl = Uri.https('www.google.com', '/search', {
+        'q': query,
+        'tbm': 'isch',
+        'hl': 'pt-BR',
+        'gl': 'BR',
+      }).toString();
       debugPrint('=== buscaImagemGoogle URL: $searchUrl');
 
       final client = HttpClient()
@@ -283,43 +289,53 @@ class WebScrap{
       final resp = await req.close().timeout(const Duration(seconds: 10));
 
       debugPrint('=== buscaImagemGoogle status: ${resp.statusCode}');
+      if (resp.statusCode != 200) {
+        client.close(force: true);
+        return '';
+      }
 
       final bytes = <int>[];
       await for (final chunk in resp) {
         bytes.addAll(chunk);
-        if (bytes.length >= 32768) break; // 32KB — suficiente para snippets
+        if (bytes.length >= 98304) break;
       }
-      client.close();
+      client.close(force: true);
 
       final body = utf8.decode(bytes, allowMalformed: true);
 
-      // 1ª tentativa: URLs de imagem embutidas nos dados JSON do Google
-      // O Google embute thumbs como: "ou":"https://...jpg"  ou  s="https://...jpg"
+      // Google Images inclui a URL original no campo "ou". Ela pode ter
+      // escapes JSON e parâmetros depois da extensão do arquivo.
       final jsonImgMatches = RegExp(
-        r'"(?:ou|ru|src)"\s*:\s*"(https?://[^"]+\.(?:jpg|jpeg|png|webp))"',
+        r'"ou"\s*:\s*"((?:\\.|[^"\\])*)"',
         caseSensitive: false,
       ).allMatches(body);
 
       String? thumb;
       for (final m in jsonImgMatches) {
-        final url = m.group(1) ?? '';
-        final isThumb = url.contains('encrypted-tbn') || url.contains('gstatic.com/images');
-        if (!isThumb) {
+        final raw = m.group(1) ?? '';
+        final url = _normalizarUrlImagem(_decodeJsonString(raw));
+        if (url.isEmpty) continue;
+        final host = Uri.tryParse(url)?.host.toLowerCase() ?? '';
+        final isGoogleThumbnail = host.contains('google') || host.contains('gstatic');
+        if (!isGoogleThumbnail) {
           debugPrint('=== buscaImagemGoogle JSON ESCOLHIDA: $url');
           return url;
         }
         thumb ??= url;
       }
 
-      // 2ª tentativa: qualquer src de <img> no HTML com extensão conhecida
+      // Alguns resultados expõem apenas o src da miniatura; use-o como reserva.
       final imgTagMatches = RegExp(
-        r"""<img[^>]+src=["'](https?://[^"']+\.(?:jpg|jpeg|png|webp))["']""",
+        r"""<(?:img|source)\b[^>]*(?:src|data-src)=["']([^"']+)["']""",
         caseSensitive: false,
       ).allMatches(body);
 
       for (final m in imgTagMatches) {
-        final url = m.group(1) ?? '';
-        if (!url.contains('google.com') && !url.contains('gstatic')) {
+        final raw = m.group(1) ?? '';
+        final url = _normalizarUrlImagem(_decodeJsonString(raw));
+        if (url.isEmpty) continue;
+        final host = Uri.tryParse(url)?.host.toLowerCase() ?? '';
+        if (!host.contains('google') && !host.contains('gstatic')) {
           debugPrint('=== buscaImagemGoogle IMG TAG: $url');
           return url;
         }
@@ -338,6 +354,61 @@ class WebScrap{
       debugPrint('=== buscaImagemGoogle ERRO: $e');
       return '';
     }
+  }
+
+  static Future<String> buscaImagemAlternativaNoticia(
+      String titulo, String veiculo) {
+    final query = [titulo.trim(), veiculo.trim()]
+        .where((part) => part.isNotEmpty)
+        .join(' ');
+    final key = query.toLowerCase();
+    if (key.isEmpty) return Future.value('');
+    final cached = _noticiaImageSearchCache[key];
+    if (cached != null) return cached;
+    if (_noticiaImageSearchCache.length >= 256) {
+      _noticiaImageSearchCache.remove(_noticiaImageSearchCache.keys.first);
+    }
+    final search = () async {
+      await _acquireImageSearchSlot();
+      try {
+        return await buscaImagemGoogle(query);
+      } finally {
+        _releaseImageSearchSlot();
+      }
+    }();
+    _noticiaImageSearchCache[key] = search;
+    return search.then((url) {
+      if (url.isEmpty && identical(_noticiaImageSearchCache[key], search)) {
+        _noticiaImageSearchCache.remove(key);
+      }
+      return url;
+    });
+  }
+
+  static Future<void> _acquireImageSearchSlot() {
+    if (_activeImageSearches < 3) {
+      _activeImageSearches++;
+      return Future.value();
+    }
+    final waiter = Completer<void>();
+    _imageSearchWaiters.add(waiter);
+    return waiter.future;
+  }
+
+  static void _releaseImageSearchSlot() {
+    if (_imageSearchWaiters.isNotEmpty) {
+      _imageSearchWaiters.removeAt(0).complete();
+    } else {
+      _activeImageSearches--;
+    }
+  }
+
+  static String _decodeJsonString(String value) {
+    try {
+      final decoded = jsonDecode('"$value"');
+      if (decoded is String) return decoded;
+    } catch (_) {}
+    return value.replaceAll(r'\/', '/');
   }
 
   /// Busca notícias sobre um jogo via Google News RSS (em português)
@@ -470,7 +541,7 @@ class WebScrap{
           descricao: noticias[i].descricao,
           url: noticias[i].url,
           dataStr: noticias[i].dataStr,
-          imgUrl: img.isNotEmpty ? img : _emojiParaTitulo(noticias[i].titulo),
+          imgUrl: img,
         );
       });
     } catch (e) {

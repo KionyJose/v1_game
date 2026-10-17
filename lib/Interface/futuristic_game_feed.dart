@@ -211,7 +211,17 @@ class PersonalizedGameFeed {
   }
 
   bool _needsRefresh(_CachedFeed? feed) =>
-      feed == null || DateTime.now().difference(feed.savedAt) >= _cacheLifetime;
+      feed == null ||
+      DateTime.now().difference(feed.savedAt) >= _cacheLifetime ||
+      feed.content.news.any((news) =>
+          news.imgUrl.isNotEmpty && !_isHttpImageUrl(news.imgUrl));
+
+  bool _isHttpImageUrl(String value) {
+    final uri = Uri.tryParse(value.trim());
+    return uri != null &&
+        (uri.scheme == 'http' || uri.scheme == 'https') &&
+        uri.host.isNotEmpty;
+  }
 
   Future<FuturisticGameContent> _requestFresh(
       String name, String gameKey, List<String> choices,

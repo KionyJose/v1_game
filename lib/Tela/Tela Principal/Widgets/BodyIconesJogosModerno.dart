@@ -9,6 +9,7 @@ import 'package:flutter/services.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart' as mkv;
 import 'package:v1_game/Class/WebScrap.dart';
+import 'package:v1_game/Interface/noticia_game_artwork.dart';
 import 'package:v1_game/Modelos/NoticiaGame.dart';
 import 'package:v1_game/Tela/Tela Principal/PrincipalCtrl.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart';
@@ -539,10 +540,6 @@ class _BodyIconesJogosModernoState extends State<BodyIconesJogosModerno> {
   Widget _noticiaCompacta(Size size) {
     final index = ctrl.selectedIndexNoticia.clamp(0, ctrl.noticias.length - 1).toInt();
     final n = ctrl.noticias[index];
-    final temImg = n.imgUrl.startsWith('http');
-    final emoji = !temImg && n.imgUrl.isNotEmpty
-        ? n.imgUrl
-        : WebScrap.emojiParaTitulo(n.titulo);
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 36),
       child: AnimatedSwitcher(
@@ -567,15 +564,12 @@ class _BodyIconesJogosModernoState extends State<BodyIconesJogosModerno> {
             child: Stack(
               fit: StackFit.expand,
               children: [
-                if (temImg)
-                  Image.network(
-                    n.imgUrl,
-                    fit: BoxFit.cover,
-                    headers: WebScrap.noticiaImageHeaders(n.url),
-                    errorBuilder: (_, __, ___) => _noticiaImgFallback(emoji),
-                  )
-                else
-                  _noticiaImgFallback(emoji),
+                NoticiaGameArtwork(
+                  news: n,
+                  accentColor: _corP,
+                  placeholderIconSize: 72,
+                  borderRadius: BorderRadius.zero,
+                ),
                 Container(
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
@@ -585,19 +579,6 @@ class _BodyIconesJogosModernoState extends State<BodyIconesJogosModerno> {
                         const Color(0xFF06040F).withValues(alpha: 0.96),
                         const Color(0xFF06040F).withValues(alpha: 0.76),
                         const Color(0xFF06040F).withValues(alpha: 0.28),
-                      ],
-                    ),
-                  ),
-                ),
-                Positioned(
-                  right: 26,
-                  top: 10,
-                  child: Text(
-                    emoji,
-                    style: TextStyle(
-                      fontSize: 74,
-                      shadows: [
-                        Shadow(color: Colors.black.withValues(alpha: 0.75), blurRadius: 24),
                       ],
                     ),
                   ),
@@ -657,34 +638,6 @@ class _BodyIconesJogosModernoState extends State<BodyIconesJogosModerno> {
     );
   }
 
-  Widget _noticiaImgFallback(String emoji) => Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              _corP.withValues(alpha: 0.50),
-              const Color(0xFF121033),
-              const Color(0xFF06040F),
-            ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-        ),
-        child: Align(
-          alignment: Alignment.centerRight,
-          child: Padding(
-            padding: const EdgeInsets.only(right: 80),
-            child: Text(
-              emoji,
-              style: TextStyle(
-                fontSize: 104,
-                color: Colors.white.withValues(alpha: 0.92),
-                shadows: [Shadow(color: Colors.black.withValues(alpha: 0.45), blurRadius: 30)],
-              ),
-            ),
-          ),
-        ),
-      );
-
   Widget _cardNoticiaVazio() => Container(
         width: 230,
         margin: const EdgeInsets.only(right: 14, bottom: 8, top: 4),
@@ -709,10 +662,6 @@ class _BodyIconesJogosModernoState extends State<BodyIconesJogosModerno> {
   Widget _cardNoticia(int i) {
     final n = ctrl.noticias[i];
     final foco = ctrl.selectedIndexNoticia == i;
-    final temImg = n.imgUrl.startsWith('http');
-    final emoji = !temImg && n.imgUrl.isNotEmpty
-        ? n.imgUrl
-        : WebScrap.emojiParaTitulo(n.titulo);
 
     return Focus(
       focusNode: ctrl.focusNodeNoticias.length > i ? ctrl.focusNodeNoticias[i] : FocusNode(),
@@ -750,48 +699,24 @@ class _BodyIconesJogosModernoState extends State<BodyIconesJogosModerno> {
             child: Stack(
               fit: StackFit.expand,
               children: [
-                // Fundo: imagem HTTP, emoji grande ou escuro sólido
-                if (temImg)
-                  Image.network(
-                    n.imgUrl,
-                    fit: BoxFit.cover,
-                    headers: WebScrap.noticiaImageHeaders(n.url),
-                    errorBuilder: (_, __, ___) => _noticiaImgFallback(emoji),
-                  )
-                else
-                  Container(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          _corP.withValues(alpha: 0.30),
-                          const Color(0xFF06040F),
-                        ],
-                      ),
-                    ),
-                    child: Align(
-                      alignment: Alignment.topCenter,
-                      child: Text(
-                        emoji,
-                        style: const TextStyle(fontSize: 60),
-                      ),
-                    ),
-                  ),
+                NoticiaGameArtwork(
+                  news: n,
+                  accentColor: _corP,
+                  placeholderIconSize: 40,
+                  borderRadius: BorderRadius.zero,
+                ),
                 // Gradiente escuro sobre a imagem para legibilidade
                 Container(
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       begin: Alignment.topCenter,
                       end: Alignment.bottomCenter,
-                      colors: temImg
-                          ? [
-                              Colors.black.withValues(alpha: 0.05),
-                              Colors.black.withValues(alpha: 0.72),
-                              Colors.black.withValues(alpha: 0.92),
-                            ]
-                          : [Colors.transparent, Colors.transparent],
-                      stops: temImg ? const [0.0, 0.45, 1.0] : const [0.0, 1.0],
+                      colors: [
+                        Colors.black.withValues(alpha: 0.05),
+                        Colors.black.withValues(alpha: 0.72),
+                        Colors.black.withValues(alpha: 0.92),
+                      ],
+                      stops: const [0.0, 0.45, 1.0],
                     ),
                   ),
                 ),
@@ -836,7 +761,8 @@ class _BodyIconesJogosModernoState extends State<BodyIconesJogosModerno> {
                           shadows: const [Shadow(color: Colors.black, blurRadius: 8)],
                         ),
                       ),
-                      if (!temImg && n.descricao.isNotEmpty) ...[
+                      if (!n.imgUrl.startsWith('http') &&
+                          n.descricao.isNotEmpty) ...[
                         const SizedBox(height: 5),
                         Text(
                           n.descricao,
@@ -1095,8 +1021,6 @@ class _PopupNoticia extends StatefulWidget {
 
 class _PopupNoticiaState extends State<_PopupNoticia> {
   final FocusNode _focusNode = FocusNode();
-  String? _imgBuscada;      // imagem buscada via Bing ao abrir
-  bool _loadingImg = true;
 
   @override
   void initState() {
@@ -1105,19 +1029,7 @@ class _PopupNoticiaState extends State<_PopupNoticia> {
     widget.ctrl.fecharNoticiaPopup = _fechar;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _focusNode.requestFocus();
-      _buscarImagem();
     });
-  }
-
-  Future<void> _buscarImagem() async {
-    // Usa imagem já disponível se for HTTP
-    if (widget.noticia.imgUrl.startsWith('http')) {
-      if (mounted) setState(() { _imgBuscada = widget.noticia.imgUrl; _loadingImg = false; });
-      return;
-    }
-    // Busca via Bing com o título da notícia
-    final url = await WebScrap.buscaImagemGoogle(widget.noticia.titulo);
-    if (mounted) setState(() { _imgBuscada = url.isNotEmpty ? url : null; _loadingImg = false; });
   }
 
   @override
@@ -1198,56 +1110,17 @@ class _PopupNoticiaState extends State<_PopupNoticia> {
         ),
       );
 
-  Widget _imgCapaOuLoader() {
-    if (_loadingImg) {
-      return const SizedBox(
+  Widget _imgCapaOuLoader() => SizedBox(
         height: 190,
         width: double.infinity,
-        child: Center(
-          child: SizedBox(
-            width: 28,
-            height: 28,
-            child: CircularProgressIndicator(strokeWidth: 2, color: _corP),
-          ),
+        child: NoticiaGameArtwork(
+          news: widget.noticia,
+          accentColor: _corP,
+          placeholderIconSize: 48,
+          borderRadius:
+              const BorderRadius.vertical(top: Radius.circular(24)),
         ),
       );
-    }
-    if (_imgBuscada == null) {
-      // Sem imagem: mostra emoji centralizado na área da capa
-      return SizedBox(
-        height: 190,
-        width: double.infinity,
-        child: Center(
-          child: Text(_emojiFallback(), style: const TextStyle(fontSize: 80)),
-        ),
-      );
-    }
-    return _imgCapa(_imgBuscada!);
-  }
-
-  Widget _imgCapa(String url) => ClipRRect(
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-        child: SizedBox(
-          height: 190,
-          width: double.infinity,
-          child: Image.network(
-            url,
-            fit: BoxFit.cover,
-            headers: WebScrap.noticiaImageHeaders(widget.noticia.url),
-            errorBuilder: (_, __, ___) => Center(
-              child: Text(_emojiFallback(),
-                  style: const TextStyle(fontSize: 80)),
-            ),
-          ),
-        ),
-      );
-
-  String _emojiFallback() {
-    final image = widget.noticia.imgUrl;
-    return image.isNotEmpty && !image.startsWith('http')
-        ? image
-        : WebScrap.emojiParaTitulo(widget.noticia.titulo);
-  }
 
   Widget _corpo() => SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(30, 26, 30, 10),
