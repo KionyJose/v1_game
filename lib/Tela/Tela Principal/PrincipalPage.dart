@@ -27,6 +27,8 @@ import 'Widgets/ListVideosWidget.dart';
 import 'Widgets/BodySlim.dart';
 import 'Widgets/body_futurista.dart';
 import '../../Widgets/launcher_window_controls.dart';
+import '../../Interface/modern_startup_intro.dart';
+import '../../Controllers/slim_mode_config_controller.dart';
 
 class SafeCurve extends Curve {
   final Curve _inner;
@@ -49,6 +51,8 @@ class _PrincipalPageState extends State<PrincipalPage> with WindowListener {
   late PrincipalCtrl ctrlOff;
   bool naTela = false;
   bool _maximizeInicialAgendado = false;
+  late final bool _modernStartup =
+      configSistema.viewType == 'moderno' && !SlimModeConfigController.active.value;
   
 
   @override
@@ -79,7 +83,18 @@ class _PrincipalPageState extends State<PrincipalPage> with WindowListener {
               });
             });
           }
-          return scaffold(ctrl);
+          return ModernStartupIntro(
+            enabled: _modernStartup,
+            onFinished: () {
+              if (!mounted || !ctrl.telaIniciada) return;
+              ctrl.keyboradEscutaNode.requestFocus();
+              if (ctrl.focusNodeIcones.isNotEmpty) {
+                ctrl.focusNodeIcones[ctrl.selectedIndexIcone
+                    .clamp(0, ctrl.focusNodeIcones.length - 1)].requestFocus();
+              }
+            },
+            child: scaffold(ctrl),
+          );
           
           
         },
