@@ -507,7 +507,10 @@ class _FuturisticHomeState extends State<FuturisticHome>
                             ]))),
                     ])),
                 child: Stack(fit: StackFit.expand, children: [
-                  FuturisticParticles(position: _railPosition),
+                  FuturisticParticles(
+                    position: _railPosition,
+                    ambientMotion: widget.category == 0,
+                  ),
                   Positioned(
                       left: 0,
                       right: 0,

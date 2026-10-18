@@ -25,7 +25,10 @@ class FuturisticParticleMotion extends ChangeNotifier {
 
   void advance(double seconds) {
     if (seconds <= 0) return;
-    time += seconds;
+    // Keep particles gently drifting at rest, then let navigation impulses
+    // speed that drift up and decay smoothly back to the idle pace.
+    final activity = gust.abs().clamp(0.0, 1.0);
+    time += seconds * (.32 + .68 * activity);
     final decay = math.exp(-5 * seconds);
     // Integrate the navigation impulse analytically and stop at its final pose.
     drift += gust * (1 - decay) / 5;
@@ -35,8 +38,13 @@ class FuturisticParticleMotion extends ChangeNotifier {
 }
 
 class FuturisticParticles extends StatefulWidget {
-  const FuturisticParticles({super.key, required this.position});
+  const FuturisticParticles({
+    super.key,
+    required this.position,
+    this.ambientMotion = false,
+  });
   final ValueListenable<double> position;
+  final bool ambientMotion;
   @override
   State<FuturisticParticles> createState() => _FuturisticParticlesState();
 }
@@ -61,8 +69,10 @@ class _FuturisticParticlesState extends State<FuturisticParticles>
             ((elapsed - previous).inMicroseconds / 1000000).clamp(0, .067));
         if (_motion.gust.abs() < .002) {
           _motion.gust = 0;
-          _ticker.stop();
-          _lastTick = null;
+          if (!widget.ambientMotion) {
+            _ticker.stop();
+            _lastTick = null;
+          }
         }
       }
     });
@@ -79,7 +89,9 @@ class _FuturisticParticlesState extends State<FuturisticParticles>
   }
 
   void _syncTicker() {
-    if (_animate && _resumed && _motion.gust.abs() >= .002) {
+    if (_animate &&
+        _resumed &&
+        (widget.ambientMotion || _motion.gust.abs() >= .002)) {
       if (!_ticker.isActive) {
         _lastTick = null;
         _ticker.start();
@@ -113,6 +125,7 @@ class _FuturisticParticlesState extends State<FuturisticParticles>
       _lastPosition = widget.position.value;
       widget.position.addListener(_onNavigation);
     }
+    if (oldWidget.ambientMotion != widget.ambientMotion) _syncTicker();
   }
 
   @override
@@ -139,7 +152,14 @@ class _ParticlePainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     if (size.isEmpty) return;
     for (final particle in motion.particles) {
-      final x = (particle.x + motion.drift * particle.depth) % 1 * size.width;
+      final x = (particle.x +
+              motion.drift * particle.depth +
+              motion.time * .006 * particle.depth +
+              math.sin(motion.time * .22 + particle.phase) *
+                  .006 *
+                  particle.depth) %
+          1 *
+          size.width;
       final y =
           (particle.y + math.sin(motion.time * .35 + particle.phase) * .012) *
               size.height;
