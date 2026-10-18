@@ -149,6 +149,11 @@ class _BodyTransversalState extends State<BodyTransversal>
   @override
   Widget build(BuildContext context) {
     final games = widget.ctrl.listIconsInicial;
+    final selectedGameIndex = games.isEmpty
+        ? 0
+        : widget.ctrl.selectedIndexIcone.clamp(0, games.length - 1).toInt();
+    final selectedImagePath =
+        games.isEmpty ? '' : games[selectedGameIndex].imgStr.trim();
     final selectionFloor = _visualPosition.floor();
     final scrollProgress = _visualPosition - selectionFloor;
     final firstAtStart = _firstRawIndex(selectionFloor, games.length);
@@ -172,66 +177,82 @@ class _BodyTransversalState extends State<BodyTransversal>
           final selectionEnd =
               _layoutSelection(selectionFloor + 1, games.length);
 
-          return Stack(
-            clipBehavior: Clip.hardEdge,
-            children: [
-              const Positioned.fill(
-                child: ColoredBox(color: Color(0xFF050811)),
-              ),
-              for (final rawIndex in paintOrder)
-                _buildPanel(
-                  games: games,
-                  rawIndex: rawIndex,
-                  gameIndex: _gameIndexForRaw(rawIndex, games.length),
-                  edges: _PanelEdges.lerp(
-                    _edgesForSelection(
-                      selectionFloor,
-                      rawIndex,
-                      selectionStart,
-                      width,
-                      games.length,
-                    ),
-                    _edgesForSelection(
-                      selectionFloor + 1,
-                      rawIndex,
-                      selectionEnd,
-                      width,
-                      games.length,
-                    ),
-                    scrollProgress,
-                  ),
-                  emphasis: (1 - (rawIndex - _visualPosition).abs())
-                      .clamp(0.0, 1.0)
-                      .toDouble(),
-                  isFocusedRaw: rawIndex == _targetVisualIndex.round(),
-                  height: height,
+          return SizedBox.expand(
+            child: Stack(
+              clipBehavior: Clip.hardEdge,
+              children: [
+                const Positioned.fill(
+                  child: ColoredBox(color: Color(0xFF0C1220)),
                 ),
-              Positioned(
-                top: 118,
-                left: 42,
-                child: _sectionLabel(),
-              ),
-              Positioned(
-                left: 42,
-                right: 42,
-                bottom: 24,
-                child: _controlsHint(),
-              ),
-              Positioned.fill(
-                child: IgnorePointer(
-                  child: AnimatedBuilder(
-                    animation: _barsController,
-                    builder: (context, _) => CustomPaint(
-                      painter: _TransversalBarsPainter(
-                        progress: _barsController.value,
-                        direction: _barDirection,
-                        accent: _accent,
+                if (selectedImagePath.isNotEmpty)
+                  Positioned.fill(
+                    child: Opacity(
+                      opacity: 0.72,
+                      child: Image.file(
+                        File(selectedImagePath),
+                        fit: BoxFit.cover,
+                        filterQuality: FilterQuality.high,
+                        errorBuilder: (_, __, ___) => const ColoredBox(
+                          color: Color(0xFF0C1220),
+                        ),
+                      ),
+                    ),
+                  ),
+                for (final rawIndex in paintOrder)
+                  _buildPanel(
+                    games: games,
+                    rawIndex: rawIndex,
+                    gameIndex: _gameIndexForRaw(rawIndex, games.length),
+                    edges: _PanelEdges.lerp(
+                      _edgesForSelection(
+                        selectionFloor,
+                        rawIndex,
+                        selectionStart,
+                        width,
+                        games.length,
+                      ),
+                      _edgesForSelection(
+                        selectionFloor + 1,
+                        rawIndex,
+                        selectionEnd,
+                        width,
+                        games.length,
+                      ),
+                      scrollProgress,
+                    ),
+                    emphasis: (1 - (rawIndex - _visualPosition).abs())
+                        .clamp(0.0, 1.0)
+                        .toDouble(),
+                    isFocusedRaw: rawIndex == _targetVisualIndex.round(),
+                    height: height,
+                  ),
+                Positioned(
+                  top: 118,
+                  left: 42,
+                  child: _sectionLabel(),
+                ),
+                Positioned(
+                  left: 42,
+                  right: 42,
+                  bottom: 24,
+                  child: _controlsHint(),
+                ),
+                Positioned.fill(
+                  child: IgnorePointer(
+                    child: AnimatedBuilder(
+                      animation: _barsController,
+                      builder: (context, _) => CustomPaint(
+                        painter: _TransversalBarsPainter(
+                          progress: _barsController.value,
+                          direction: _barDirection,
+                          accent: _accent,
+                        ),
                       ),
                     ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           );
         },
       ),

@@ -26,7 +26,7 @@ class _LauncherMoreGridState extends State<LauncherMoreGrid> {
     ('Buscar imagens', 'Imagem da Download', Icons.image_search_rounded),
     ('Atalhos', 'Atalhos', Icons.shortcut_rounded),
     ('Excluir card', 'Excluir Card', Icons.delete_outline_rounded),
-    ('Voltar', '', Icons.arrow_back_rounded),
+    ('Suspender', 'Suspender', Icons.bedtime_rounded),
   ];
   final _nodes = List.generate(items.length, (_) => FocusNode());
   final _scroll = ScrollController();

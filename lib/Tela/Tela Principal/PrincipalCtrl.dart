@@ -2,6 +2,7 @@ import '../../Class/game_video_tags.dart';
 // ignore_for_file: file_names, use_build_context_synchronously
 
 import 'dart:async';
+import 'dart:io';
 import 'dart:math';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:flutter/material.dart';
@@ -1337,6 +1338,27 @@ class PrincipalCtrl with ChangeNotifier{
           await abrirTelaInterna(const DownloadsTela());
           return;
         }
+
+        case 'Suspender': {
+          final confirmacao =
+              await Pops().msgSN(ctx, 'Deseja suspender o computador?');
+          if (_disposed || !ctx.mounted) return;
+
+          _retomarFocoAposMenuMais(
+              categoriaEstavaEmFoco: categoriaEstavaEmFoco);
+          if (confirmacao != 'Sim') return;
+
+          await Future.delayed(const Duration(milliseconds: 300));
+          try {
+            await _suspenderComputador();
+          } catch (error) {
+            if (!_disposed && ctx.mounted) {
+              ScaffoldMessenger.maybeOf(ctx)?.showSnackBar(SnackBar(
+                  content: Text('Não foi possível suspender o computador: $error')));
+            }
+          }
+          return;
+        }
         
         case "Caminho do game" || "Caminho de Imagem" || "Add": {
           debugPrint("Entrei navPasta");
@@ -1481,6 +1503,40 @@ class PrincipalCtrl with ChangeNotifier{
       if (_disposed || !ctx.mounted || !stateTela || !futuristicMode) return;
       focarCategoriaSlim(barra: categoriaEstavaEmFoco);
     });
+  }
+
+  Future<void> _suspenderComputador() async {
+    if (!Platform.isWindows) {
+      throw UnsupportedError('A suspensão está disponível somente no Windows.');
+    }
+
+    const script = r'''
+$ErrorActionPreference = 'Stop'
+Add-Type -TypeDefinition @'
+using System.Runtime.InteropServices;
+public static class WindowsPower {
+  [DllImport("powrprof.dll", SetLastError = true)]
+  [return: MarshalAs(UnmanagedType.U1)]
+  public static extern bool SetSuspendState(
+    [MarshalAs(UnmanagedType.U1)] bool hibernate,
+    [MarshalAs(UnmanagedType.U1)] bool forceCritical,
+    [MarshalAs(UnmanagedType.U1)] bool disableWakeEvent);
+}
+'@
+if (-not [WindowsPower]::SetSuspendState($false, $false, $false)) { exit 1 }
+''';
+    final result = await Process.run('powershell.exe', [
+      '-NoLogo',
+      '-NoProfile',
+      '-NonInteractive',
+      '-WindowStyle',
+      'Hidden',
+      '-Command',
+      script,
+    ]);
+    if (result.exitCode != 0) {
+      throw StateError('O Windows não aceitou a solicitação.');
+    }
   }
 
   void limparClickPad({int delayMs = 450}) {
