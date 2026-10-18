@@ -27,10 +27,16 @@ class GamesTorrentsScraper implements CatalogoScraper {
   Uri get catalogo =>
       Uri.parse('https://www.gamestorrents.app/pt-br/jogos-pc/');
 
+  /// A busca do site devolve a mesma grade de `article.game-card` do catálogo,
+  /// então [interpretar] serve para as duas sem mudança.
+  @override
+  Uri busca(String termo) => Uri.https(
+      catalogo.host, '/pt-br/buscar/', {'q': termo.trim()});
+
   bool _paginaPermitida(Uri uri) =>
       uri.scheme == 'https' &&
       uri.host == catalogo.host &&
-      uri.path == catalogo.path;
+      (uri.path == catalogo.path || uri.path == busca('').path);
 
   @override
   Future<PaginaCatalogo> carregar(Uri pagina) async {

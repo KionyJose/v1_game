@@ -23,13 +23,33 @@ class CatalogoController extends ChangeNotifier {
     }
   }
 
+  /// Termo pesquisado no site; vazio quando a tela mostra o catálogo.
+  String termo = '';
+
   Future<void> atualizar({String? filtroGenero}) async {
     if (carregando) return;
     genero = filtroGenero ?? genero;
+    // Escolher um gênero volta ao catálogo: o site não cruza busca e filtro.
+    termo = '';
     await _carregar(
         scraper.catalogo
             .replace(queryParameters: genero.isEmpty ? {} : {'genre': genero}),
         reiniciar: true);
+  }
+
+  /// Pergunta ao site, em vez de filtrar o que já está em memória. Um termo
+  /// vazio devolve a tela ao catálogo.
+  Future<void> buscar(String texto) async {
+    if (carregando) return;
+    final procurado = texto.trim();
+    if (procurado.isEmpty) {
+      termo = '';
+      await atualizar();
+      return;
+    }
+    termo = procurado;
+    genero = '';
+    await _carregar(scraper.busca(procurado), reiniciar: true);
   }
 
   Future<void> carregarMais() async {

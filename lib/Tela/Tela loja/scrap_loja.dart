@@ -94,8 +94,18 @@ class _ScrapLojaState extends State<ScrapLoja> {
     if (value != null) {
       _buscaController.text = value;
       setState(() => _busca = value);
+      await _buscarNoSite();
+      if (!mounted) return;
     }
     _buscaFocus.requestFocus();
+  }
+
+  /// Digitar filtra o que já está na tela; confirmar pergunta ao site, que é
+  /// a única forma de achar um jogo ainda não carregado.
+  Future<void> _buscarNoSite() async {
+    _focoInicialDefinido = false;
+    await _catalogo.buscar(_buscaController.text);
+    if (mounted) setState(() => _busca = '');
   }
 
   @override
@@ -167,12 +177,12 @@ class _ScrapLojaState extends State<ScrapLoja> {
                                         busca: TextField(
                                             controller: _buscaController,
                                             focusNode: _buscaFocus,
-                                            onSubmitted: (_) => _teclado(),
+                                            onSubmitted: (_) => _buscarNoSite(),
                                             onChanged: (valor) =>
                                                 setState(() => _busca = valor),
                                             decoration: InputDecoration(
                                                 hintText:
-                                                    'Buscar nos jogos carregados',
+                                                    'Buscar no site · Enter para pesquisar',
                                                 prefixIcon:
                                                     const Icon(Icons.search),
                                                 suffixIcon: IconButton(

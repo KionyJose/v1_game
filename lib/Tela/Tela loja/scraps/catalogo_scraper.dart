@@ -2,6 +2,11 @@
 abstract class CatalogoScraper {
   String get nome;
   Uri get catalogo;
+
+  /// Endereço da busca do próprio site. Sem isso a tela só conseguiria
+  /// filtrar as páginas já carregadas, e um jogo que existe no catálogo mas
+  /// ainda não foi baixado nunca apareceria.
+  Uri busca(String termo);
   Future<PaginaCatalogo> carregar(Uri pagina);
   void dispose();
 }
