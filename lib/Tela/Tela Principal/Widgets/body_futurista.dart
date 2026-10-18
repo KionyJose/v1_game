@@ -382,6 +382,15 @@ class _FuturisticHomeState extends State<FuturisticHome>
   late final AnimationController _motion;
   double _extent = 200;
   static const _cardGap = 26.4;
+
+  /// Respiro antes do primeiro card, como fração do tamanho do card: o card
+  /// que rola para a esquerda tem onde sumir em vez de ser cortado na borda.
+  /// Sai proporcional porque o card acompanha a altura da janela — em pixel
+  /// fixo ele ficaria largo demais numa tela pequena e apertado numa grande.
+  static const _fracaoRespiro = .025;
+
+  /// Cerca de 5 px num card de tamanho usual.
+  double _respiroEsquerdo(double cardSize) => cardSize * _fracaoRespiro;
   int _revision = 0;
   Timer? _focusSettle;
   static const labels = ['Jogos', 'Cinema', 'Música', 'Lojas'];
@@ -915,8 +924,11 @@ class _FuturisticHomeState extends State<FuturisticHome>
   Widget _cardRail(Duration duration, double cardSize) =>
       LayoutBuilder(builder: (_, rail) {
         final lastCardWidth = _cardVisualWidth(widget.items.length - 1);
+        final respiro = _respiroEsquerdo(cardSize);
+        // O espaço à direita encolhe junto com o respiro, para o último card
+        // ainda alcançar exatamente a vaga iluminada.
         final trailingSpace =
-            (rail.maxWidth - lastCardWidth - _cardGap)
+            (rail.maxWidth - respiro - lastCardWidth - _cardGap)
                 .clamp(0.0, double.infinity)
                 .toDouble();
         final fadeWidth = ((cardSize * .8 + _cardGap) * 4)
@@ -938,14 +950,17 @@ class _FuturisticHomeState extends State<FuturisticHome>
               key: ValueKey(widget.category),
               controller: _scroll,
               scrollDirection: Axis.horizontal,
-              padding: EdgeInsets.only(right: trailingSpace),
+              padding: EdgeInsets.only(
+                  left: respiro, right: trailingSpace),
               itemCount: widget.items.length,
               physics: const NeverScrollableScrollPhysics(),
               itemBuilder: (context, index) => _card(index, duration),
             ),
           ),
           Positioned(
-            left: 0,
+            // Acompanha o respiro: a vaga iluminada marca onde o card
+            // selecionado para, e ele agora para depois da margem.
+            left: respiro,
             top: 8,
             width: cardSize,
             height: cardSize,
