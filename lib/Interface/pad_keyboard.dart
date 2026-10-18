@@ -57,9 +57,21 @@ class _PadKeyboardState extends State<PadKeyboard> {
     setState(() {});
   }
 
-  void _done() => Navigator.pop(context, _text.text);
+  /// O gatilho continua repetindo enquanto está pressionado, então sair tem de
+  /// ser uma coisa só: sem isso, segurar RT fecharia também a tela de trás.
+  bool _closed = false;
 
-  void _cancel() => Navigator.pop(context);
+  void _done() {
+    if (_closed) return;
+    _closed = true;
+    Navigator.pop(context, _text.text);
+  }
+
+  void _cancel() {
+    if (_closed) return;
+    _closed = true;
+    Navigator.pop(context);
+  }
 
   @override
   void dispose() {
@@ -177,7 +189,14 @@ class _PadKeyboardState extends State<PadKeyboard> {
   Widget build(BuildContext context) => LauncherPadScope(
         menu: false,
         onCommand: (command) {
-          if (command == 'START') {
+          // O gatilho direito chega como `RT-<força>`, já passado o deadzone
+          // do próprio pacote; `RT`/`R2` cobrem os nomes usados nas outras
+          // telas e no controle de PlayStation.
+          if (command == 'START' ||
+              command == 'RT' ||
+              command == 'R2' ||
+              command.startsWith('RT-') ||
+              command.startsWith('R2-')) {
             _done();
             return true;
           }
@@ -391,7 +410,7 @@ class _PadKeyboardState extends State<PadKeyboard> {
                             _commandHint('A', 'digitar'),
                             _commandHint('X', 'apagar'),
                             _commandHint('Y', 'espaço'),
-                            _commandHint('Start', 'concluir'),
+                            _commandHint('RT / Start', 'concluir'),
                             _commandHint('B', 'voltar'),
                           ]),
                       const SizedBox(height: 16),

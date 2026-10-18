@@ -6,6 +6,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/physics.dart';
 import '../../../Interface/futuristic_card_effect.dart';
+import '../../../Interface/futuristic_warmup.dart';
+import '../../../Interface/futuristic_card_entrance.dart';
 import '../../../Interface/futuristic_details_transition.dart';
 import '../../../Interface/futuristic_launch.dart';
 import '../../../Interface/futuristic_game_backdrop.dart';
@@ -55,10 +57,56 @@ class _BodyFuturistaState extends State<BodyFuturista> with WindowListener {
               .nome,
     ));
     windowManager.addListener(this);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) widget.ctrl.focarCategoriaSlim();
-    });
+    WidgetsBinding.instance.addPostFrameCallback((_) => _agendarEntrada());
     _startAudio();
+  }
+
+  bool _focoInicialFeito = false;
+  bool _entradaAgendada = false;
+  bool _entradaLiberada = false;
+  bool _entradaConcluida = false;
+  Timer? _entradaTimer;
+
+  /// Respiro entre a tela ficar pronta e a cascata começar: dá tempo de as
+  /// capas aparecerem e dos primeiros quadros pesados passarem.
+  static const _respiroEntrada = Duration(milliseconds: 450);
+
+  /// A cascata só começa com o launcher pronto e a tela já desenhada.
+  /// Rodando em cima da carga inicial ela saía truncada — o jogador via um
+  /// tranco no lugar da entrada.
+  void _agendarEntrada() {
+    if (_entradaAgendada || !mounted) return;
+    final ctrl = widget.ctrl;
+    if (!ctrl.telaIniciada || !ctrl.stateTela || ctrl.slimItemNodes.isEmpty) {
+      return;
+    }
+    if (!(_route?.isCurrent ?? true)) return;
+    _entradaAgendada = true;
+    _entradaTimer = Timer(_respiroEntrada, () {
+      if (mounted) setState(() => _entradaLiberada = true);
+    });
+  }
+
+  /// O foco de entrada é dos cards. `focarCategoriaSlim` cai na barra de abas
+  /// quando a lista ainda está vazia — o que acontece se a tela montar antes
+  /// de a biblioteca chegar — e nada depois trazia o foco de volta. Por isso o
+  /// foco só é pousado quando a cascata de cards termina, e aí já há card.
+  void _focoInicial() {
+    if (!mounted || _focoInicialFeito || !_entradaConcluida) return;
+    final ctrl = widget.ctrl;
+    if (!ctrl.telaIniciada || !ctrl.stateTela || ctrl.slimItemNodes.isEmpty) {
+      return;
+    }
+    if (!(_route?.isCurrent ?? true)) return;
+    _focoInicialFeito = true;
+    ctrl.focarCategoriaSlim();
+  }
+
+  /// Fim da cascata: devolve o movimento ao jogador e pousa o foco no card.
+  void _entradaTerminou() {
+    if (!mounted || _entradaConcluida) return;
+    setState(() => _entradaConcluida = true);
+    _focoInicial();
   }
 
   Future<void> _startAudio() async {
@@ -184,6 +232,7 @@ class _BodyFuturistaState extends State<BodyFuturista> with WindowListener {
       widget.ctrl.abrirDetalhesFuturista = null;
     }
     _audioTimer?.cancel();
+    _entradaTimer?.cancel();
     windowManager.removeListener(this);
     final handle = _ambience;
     if (handle != null) unawaited(SonsSistema.stopWaterAmbience(handle));
@@ -193,6 +242,11 @@ class _BodyFuturistaState extends State<BodyFuturista> with WindowListener {
   @override
   Widget build(BuildContext context) {
     final ctrl = widget.ctrl;
+    // O launcher pode ficar pronto depois da montagem; quando ficar, a cascata
+    // é liberada no quadro seguinte.
+    if (!_entradaAgendada) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _agendarEntrada());
+    }
     final category = ctrl.selectedIndexAbaGuias;
     final items = List.generate(
         ctrl.slimItemNodes.length,
@@ -209,7 +263,9 @@ class _BodyFuturistaState extends State<BodyFuturista> with WindowListener {
                   Icons.sports_esports_rounded),
             });
     return LauncherPadScope(
-      enabled: !ctrl.mouseBloqueado && !_launchingGame,
+      // Durante a cascata de entrada o Pad fica quieto: mover um card que
+      // ainda está chegando deixaria a esteira e o foco fora de sincronia.
+      enabled: !ctrl.mouseBloqueado && !_launchingGame && _entradaConcluida,
       revealInitialFocus: false,
       revealFocus: false,
       onCommand: ctrl.comandoSlim,
@@ -253,8 +309,11 @@ class _BodyFuturistaState extends State<BodyFuturista> with WindowListener {
           categoryNodes: ctrl.focusNodeAbaGuias,
           itemScope: ctrl.slimItemScope,
           categoryScope: ctrl.focusScopeAbaGuias,
-          enabled: !ctrl.mouseBloqueado && !_launchingGame,
+          enabled:
+              !ctrl.mouseBloqueado && !_launchingGame && _entradaConcluida,
           openingGame: _openingGame,
+          startEntrance: _entradaLiberada,
+          onEntranceDone: _entradaTerminou,
           onSelect: ctrl.selecionarItemSlim,
           onCategory: (index) =>
               ctrl.selecionarCategoriaSlim(index, barra: true),
@@ -290,6 +349,8 @@ class FuturisticHome extends StatefulWidget {
       required this.onOpen,
       required this.onMenu,
       this.windowControls,
+      this.onEntranceDone,
+      this.startEntrance = true,
       this.enabled = true,
       this.openingGame = false});
   final bool openingGame, gridMode;
@@ -300,13 +361,21 @@ class FuturisticHome extends StatefulWidget {
   final FocusScopeNode itemScope, categoryScope;
   final ValueChanged<int> onSelect, onCategory;
   final VoidCallback onOpen, onMenu;
+
+  /// Avisa quando a entrada em cascata terminou e o controle pode ser
+  /// devolvido ao jogador.
+  final VoidCallback? onEntranceDone;
+
+  /// Libera a cascata. Quem monta a tela segura isso até o launcher estar
+  /// pronto e desenhado; usada sozinha, a tela anima na própria montagem.
+  final bool startEntrance;
   final bool enabled;
   @override
   State<FuturisticHome> createState() => _FuturisticHomeState();
 }
 
 class _FuturisticHomeState extends State<FuturisticHome>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   final _scroll = ScrollController();
   final _settled = ValueNotifier<int>(0);
   late final ValueNotifier<double> _railPosition;
@@ -422,12 +491,38 @@ class _FuturisticHomeState extends State<FuturisticHome>
     });
   }
 
+  /// Entrada em cascata: roda uma vez, quando os primeiros cards existem.
+  late final AnimationController _entrance = AnimationController(
+      vsync: this, duration: FuturisticCardEntrance.duracao);
+  bool _entranceStarted = false;
+
+  /// Enquanto a esteira se monta, o movimento fica travado; a liberação vem
+  /// junto com o fim da animação, pelo [FuturisticHome.onEntranceDone].
+  void _startEntrance() {
+    if (_entranceStarted ||
+        !mounted ||
+        !widget.startEntrance ||
+        widget.items.isEmpty) {
+      return;
+    }
+    _entranceStarted = true;
+    if (MediaQuery.disableAnimationsOf(context)) {
+      _entrance.value = 1;
+      widget.onEntranceDone?.call();
+      return;
+    }
+    _entrance.forward(from: 0).whenCompleteOrCancel(() {
+      if (mounted) widget.onEntranceDone?.call();
+    });
+  }
+
   @override
   void initState() {
     super.initState();
     _railPosition = ValueNotifier(widget.selected.toDouble());
     _motion = AnimationController.unbounded(vsync: this)..addListener(_tick);
     _reveal(categoryChanged: true);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _startEntrance());
   }
 
   @override
@@ -447,6 +542,11 @@ class _FuturisticHomeState extends State<FuturisticHome>
         oldWidget.items.length != widget.items.length) {
       _reveal(categoryChanged: oldWidget.category != widget.category);
     }
+    // A cascata espera a liberação de quem monta a tela e os primeiros cards.
+    if ((!oldWidget.startEntrance && widget.startEntrance) ||
+        (oldWidget.items.isEmpty && widget.items.isNotEmpty)) {
+      _startEntrance();
+    }
   }
 
   @override
@@ -454,6 +554,7 @@ class _FuturisticHomeState extends State<FuturisticHome>
     ++_revision;
     _focusSettle?.cancel();
     _motion.dispose();
+    _entrance.dispose();
     _railPosition.dispose();
     _scroll.dispose();
     _settled.dispose();
@@ -507,6 +608,8 @@ class _FuturisticHomeState extends State<FuturisticHome>
                             ]))),
                     ])),
                 child: Stack(fit: StackFit.expand, children: [
+                  // Compila o brilho do card antes do primeiro movimento.
+                  const Positioned(left: 0, top: 0, child: FuturisticWarmup()),
                   FuturisticParticles(
                     position: _railPosition,
                     ambientMotion: widget.category == 0,
@@ -974,7 +1077,10 @@ class _FuturisticHomeState extends State<FuturisticHome>
                             ]))))));
   }
 
-  Widget _card(int index, Duration duration) {
+  Widget _card(int index, Duration duration) => FuturisticCardEntrance(
+      animation: _entrance, index: index, child: _cardCorpo(index, duration));
+
+  Widget _cardCorpo(int index, Duration duration) {
     final item = widget.items[index];
     final selected = index == widget.selected;
     final cardSize = _extent - _cardGap;

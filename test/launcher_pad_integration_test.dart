@@ -740,6 +740,36 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('RT conclui o teclado, e segurar o gatilho não fecha a tela atrás',
+      (tester) async {
+    String? result;
+    await tester.pumpWidget(app(LauncherPadScope(
+        child: Scaffold(
+            body: Builder(
+                builder: (context) => FilledButton(
+                    autofocus: true,
+                    onPressed: () async {
+                      result = await abrirTecladoPad(context);
+                    },
+                    child: const Text('Digitar')))))));
+    await tester.pumpAndSettle();
+    pad.interfaceRouter.dispatch('2');
+    await tester.pumpAndSettle();
+    expect(find.text('Teclado interno'), findsOneWidget);
+    pad.interfaceRouter.dispatch('2');
+    await tester.pumpAndSettle();
+    // O gatilho chega com a força e repete enquanto está pressionado.
+    pad.interfaceRouter.dispatch('RT-180');
+    pad.interfaceRouter.dispatch('RT-200');
+    pad.interfaceRouter.dispatch('RT-255');
+    await tester.pumpAndSettle();
+    expect(result, '1');
+    expect(find.text('Teclado interno'), findsNothing);
+    // A tela de trás continua de pé: as repetições não empilharam saídas.
+    expect(find.text('Digitar'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets(
       'Busca da Loja Interna abre teclado com A e B fecha apenas o diálogo',
       (tester) async {
