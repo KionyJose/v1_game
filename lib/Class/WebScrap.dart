@@ -11,6 +11,7 @@ import 'package:v1_game/Modelos/NoticiaGame.dart';
 import 'package:v1_game/Class/wallpapercave_image_cache.dart';
 import 'package:http/http.dart' as http;
 import 'package:html/parser.dart' as html;
+import 'package:html/dom.dart' as dom;
 import 'dart:convert';
 
 import '../Modelos/videoYT.dart';
@@ -61,15 +62,20 @@ class WebScrap{
  
   
   // Função para pegar os links das imagens com base no nome do jogo
-  /// Miniatura e original moram em pastas irmãs no wallpapercave: `w400` é a
-  /// prévia de `wp`, e `fuwp` a de `uwp`.
-  static const _miniaturaParaOriginal = {'w400': 'wp', 'fuwp': 'uwp'};
+  /// O nome do arquivo carrega o identificador do wallpaper — `wp123` para os
+  /// oficiais, `uwp123` para os de usuário — em qualquer tamanho. O que muda é
+  /// só a pasta: `wp`, `uwp`, `w400`, `wpt`, `mwp`, `dwp1x`, `fuwp`,
+  /// `fuwp-255`, `fuwp-510`… e cada tipo de página usa um conjunto diferente.
+  /// Por isso o original se deduz do nome, e não de uma lista de pastas: essa
+  /// lista deixava páginas inteiras de busca voltarem vazias.
+  static final _nomeDeWallpaper =
+      RegExp(r'^(u?wp)\d+\.[a-z0-9]+$', caseSensitive: false);
 
-  /// Versão em tamanho cheio quando [raw] é um wallpaper do site, ou vazio
-  /// para qualquer outra imagem da página. Logo, ícones de menu, avatares e
-  /// botões de rede social ficam fora das pastas de wallpaper, e é só por isso
-  /// que somem da lista — sem depender de uma lista de exclusões.
-  static String _wallpaperEmTamanhoCheio(String raw) {
+  /// Endereço do wallpaper quando [raw] é um deles, ou vazio para qualquer
+  /// outra imagem da página — logo, ícones de menu, avatares e botões de rede
+  /// social não têm esse nome, e somem sem precisar de lista de exclusões.
+  /// Com [tamanhoCheio], devolve o arquivo original em vez da miniatura.
+  static String _wallpaper(String raw, {required bool tamanhoCheio}) {
     final uri = Uri.tryParse(raw);
     if (uri == null ||
         !(uri.host == 'wallpapercave.com' ||
@@ -77,18 +83,40 @@ class WebScrap{
         uri.pathSegments.length != 2) {
       return '';
     }
-    final pasta = uri.pathSegments.first.toLowerCase();
     final arquivo = uri.pathSegments[1];
-    if (RegExp(r'\.(?:webm|mp4)$', caseSensitive: false).hasMatch(arquivo)) {
+    final marca = _nomeDeWallpaper.firstMatch(arquivo);
+    if (marca == null ||
+        RegExp(r'\.(?:webm|mp4)$', caseSensitive: false).hasMatch(arquivo)) {
       return '';
     }
-    final destino = pasta == 'wp' || pasta == 'uwp'
-        ? pasta
-        : _miniaturaParaOriginal[pasta];
-    if (destino == null) return '';
-    return Uri(
-            scheme: uri.scheme, host: uri.host, pathSegments: [destino, arquivo])
-        .toString();
+    return Uri(scheme: uri.scheme, host: uri.host, pathSegments: [
+      tamanhoCheio ? marca[1]!.toLowerCase() : uri.pathSegments.first,
+      arquivo,
+    ]).toString();
+  }
+
+  /// Toda página do site termina com um bloco "Recent Wallpapers by Our
+  /// Community": 28 imagens recentes que nada têm a ver com o que foi buscado.
+  /// Elas precisam ficar de fora por dois motivos: enchiam a grade de
+  /// resultados alheios, e faziam qualquer busca parecer bem-sucedida — o que
+  /// impedia o seletor de encurtar o nome palavra a palavra até achar um
+  /// resultado de verdade. Seções como "Related Wallpapers" continuam valendo.
+  static final _secaoDaComunidade =
+      RegExp(r'recent wallpapers by our community', caseSensitive: false);
+
+  static Set<dom.Element> _imagensDePreenchimento(dom.Document document) {
+    final descartadas = <dom.Element>{};
+    for (final titulo in document.querySelectorAll('h2')) {
+      if (!_secaoDaComunidade.hasMatch(titulo.text)) continue;
+      var secao = titulo.parent;
+      while (secao != null &&
+          !(secao.localName == 'div' && secao.classes.contains('imgrow'))) {
+        secao = secao.parent;
+      }
+      descartadas.addAll((secao ?? titulo.parent)?.querySelectorAll('img') ??
+          const <dom.Element>[]);
+    }
+    return descartadas;
   }
 
   /// Página que abre aquele wallpaper, quando a miniatura está dentro de um
@@ -115,24 +143,33 @@ class WebScrap{
   }
 
   /// Wallpapers de qualquer página do site. A classe do `<img>` muda conforme
-  /// a página — `wimg` nas listagens, `wpimg` na página de uma imagem e nada
-  /// nas miniaturas das vizinhas —, então o que identifica um wallpaper aqui é
-  /// a pasta do arquivo. Filtrar por uma classe só fazia as páginas de imagem
-  /// abrirem vazias, mesmo tendo imagens.
-  static List<ImgWebScrap> wallpapersDaPagina(String body, Uri base) {
+  /// a página — `wimg` nas listagens, `wpimg` na página de uma imagem,
+  /// `thumbnail` nas capas de álbum e nada nas miniaturas das vizinhas —,
+  /// então o que identifica um wallpaper aqui é o nome do arquivo. Filtrar por
+  /// uma classe só fazia as páginas de imagem abrirem vazias, mesmo tendo
+  /// imagens.
+  ///
+  /// A listagem fica com as miniaturas que a página entrega, que é o que a
+  /// grade precisa; [tamanhoCheio] é para a visão de dentro da pasta, onde a
+  /// escolha vai virar a capa do jogo e precisa do arquivo original.
+  static List<ImgWebScrap> wallpapersDaPagina(String body, Uri base,
+      {bool tamanhoCheio = false}) {
     final document = html.parse(body);
+    final preenchimento = _imagensDePreenchimento(document);
     final vistos = <String>{};
     final lista = <ImgWebScrap>[];
     for (final element in document.querySelectorAll('img')) {
+      if (preenchimento.contains(element)) continue;
       final imagem = ImgWebScrap()
         ..fromMapImgFinal(
           element.attributes
               .map((key, value) => MapEntry(key.toString(), value)),
           baseUrl: base.toString(),
         );
-      final cheia = _wallpaperEmTamanhoCheio(imagem.imageUrl);
-      if (cheia.isEmpty || !vistos.add(cheia)) continue;
-      imagem.imageUrl = cheia;
+      final endereco =
+          _wallpaper(imagem.imageUrl, tamanhoCheio: tamanhoCheio);
+      if (endereco.isEmpty || !vistos.add(endereco)) continue;
+      imagem.imageUrl = endereco;
       imagem.folderUrl = _pastaDoWallpaper(element, base);
       lista.add(imagem);
     }
@@ -177,7 +214,8 @@ class WebScrap{
       );
       if (response.statusCode == 200) {
         list = wallpapersDaPagina(
-            utf8.decode(response.bodyBytes, allowMalformed: true), url);
+            utf8.decode(response.bodyBytes, allowMalformed: true), url,
+            tamanhoCheio: true);
         content = list.isEmpty
             ? 'Nenhuma imagem encontrada para "$gameId".'
             : 'Imagens encontradas: ${list.length}';

@@ -156,10 +156,11 @@ class _DownloadsTelaState extends State<DownloadsTela> with WindowListener {
     await _controller.setInstalledCover(executable, saved);
   }
 
-  /// Mesmo seletor de imagens da tela principal, já baixando a escolha.
+  /// Mesmo seletor de imagens da tela principal, já baixando a escolha. Aqui
+  /// nada é liberado para o mouse: o seletor se navega pelo Pad, e mexer na
+  /// fixação da janela ou no mouse do sistema só atrapalharia quem está de
+  /// controle na mão.
   Future<String?> _pickCoverImage(String name) async {
-    await _releaseScreenForMouse();
-    if (!mounted) return null;
     final chosen = await Pops.popTela(context, SeletorImagens(nome: name));
     if (!mounted || chosen is! String || chosen.isEmpty) return null;
     final saved = await WebScrap.downloadImage(chosen, name);

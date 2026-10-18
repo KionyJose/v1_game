@@ -199,7 +199,8 @@ sem alterar a biblioteca real.
   não se navega pelo Pad, então o botão libera a tela antes de abrir: a janela
   deixa de ficar presa à frente e `Paad.ativaMouse` entrega o mouse do sistema.
   Ao voltar o foco ao launcher, `onWindowFocus` restaura a fixação anterior.
-  O seletor de capa usa a mesma liberação.
+  Só o Explorer recebe esse tratamento: o seletor de capa se navega pelo Pad e
+  roda sem liberar mouse nem mexer na fixação da janela.
 
   A reposição da fixação sai sempre em `addPostFrameCallback`: `dispose` roda
   com a árvore de widgets travada e `telaPresaReverse` notifica o provider do
