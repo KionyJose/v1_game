@@ -88,17 +88,24 @@ class _GlassSceneState extends State<GlassScene> {
 
 class GlassPanel extends StatelessWidget {
   const GlassPanel(
-      {super.key, required this.child, this.radius = 24, this.focused = false});
+      {super.key,
+      required this.child,
+      this.radius = 24,
+      this.focused = false,
+      this.borderWidth,
+      this.refractionWidth = 24});
   final Widget child;
   final double radius;
   final bool focused;
+  final double? borderWidth;
+  final double refractionWidth;
   @override
   Widget build(BuildContext context) => LiquidGlassLens(
       useImpellerBackdrop: ui.ImageFilter.isShaderFilterSupported,
       style: LiquidGlassStyle(
           shape: LiquidGlassShape.continuousRoundedRectangle(
               cornerRadius: radius,
-              borderWidth: focused ? 1.8 : 1.2,
+              borderWidth: borderWidth ?? (focused ? 1.8 : 1.2),
               lightIntensity: focused ? 2.6 : 1.8,
               lightDirection: 125,
               lightColor: FuturisticPalette.pearl,
@@ -113,9 +120,9 @@ class GlassPanel extends StatelessWidget {
               blur: const LiquidGlassBlur(sigmaX: 5, sigmaY: 5),
               shadow: const LiquidGlassShadow(
                   blur: 10, opacity: .3, offset: Offset(0, 7))),
-          refraction: const LiquidGlassRefraction(
+          refraction: LiquidGlassRefraction(
               distortion: .16,
-              distortionWidth: 24,
+              distortionWidth: refractionWidth,
               magnification: 1.04,
               chromaticAberration: .004)),
       child: DecoratedBox(

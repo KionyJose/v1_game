@@ -188,26 +188,17 @@ class PrincipalCtrl with ChangeNotifier{
     cardGamesGrid = !slimMode && configSistema.viewType == 'grid';
     cardGamesModerno = !slimMode && configSistema.viewType == 'moderno';
     cardGamesRetro = !slimMode && configSistema.viewType == 'retro';
-    if (!telaIniciada) { interfaceChanging = false; return; }
+    if (!telaIniciada) {
+      interfaceChanging = false;
+      attTela();
+      return;
+    }
     cardInf = false;
     imersao = false;
     imersaoVideos = false;
     videoAtivo = false;
     showBgVideo = false;
     ++_fundoCardVersao;
-    timerImersao?.cancel();
-    timerImersaoVideos?.cancel();
-    timerLoadVideos?.cancel();
-    timerFundoCard?.cancel();
-    mediaPlayer.stop();
-    bgMediaPlayer.stop();
-    SonsSistema.clickRetroAtivo = false;
-    if (compactNavigation) {
-      ctrlAnimeBgFundo.stop();
-    } else {
-      ctrlAnimeBgFundo.repeat(reverse: true);
-      if (listIconsInicial.isNotEmpty && !transversalMode) carregaVideosDoGame();
-    }
     attTela();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_disposed || revision != interfaceRevision) return;
@@ -222,6 +213,20 @@ class PrincipalCtrl with ChangeNotifier{
         focarCategoriaSlim();
       });
     });
+
+    timerImersao?.cancel();
+    timerImersaoVideos?.cancel();
+    timerLoadVideos?.cancel();
+    timerFundoCard?.cancel();
+    mediaPlayer.stop();
+    bgMediaPlayer.stop();
+    SonsSistema.clickRetroAtivo = false;
+    if (compactNavigation) {
+      ctrlAnimeBgFundo.stop();
+    } else {
+      ctrlAnimeBgFundo.repeat(reverse: true);
+      if (listIconsInicial.isNotEmpty && !transversalMode) carregaVideosDoGame();
+    }
   }
 
   List<FocusNode> get slimItemNodes => switch (selectedIndexAbaGuias) {

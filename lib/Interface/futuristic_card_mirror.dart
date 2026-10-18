@@ -1,11 +1,16 @@
 import 'package:flutter/material.dart';
+import 'futuristic_material.dart';
 
 /// A vertically mirrored card face; no input or extra glass capture.
 class FuturisticCardMirror extends StatelessWidget {
   const FuturisticCardMirror(
-      {super.key, required this.size, required this.child});
+      {super.key,
+      required this.size,
+      required this.child,
+      this.focused = false});
   final double size;
   final Widget child;
+  final bool focused;
   @override
   Widget build(BuildContext context) => ExcludeSemantics(
       child: IgnorePointer(
@@ -35,6 +40,13 @@ class FuturisticCardMirror extends StatelessWidget {
                           child: Transform.flip(
                               flipY: true,
                               child: DecoratedBox(
-                                  decoration: BoxDecoration(borderRadius: BorderRadius.circular(25), border: Border.all(color: const Color(0x80F4F0FF), width: 1.2)),
+                                      decoration: BoxDecoration(
+                                          borderRadius:
+                                              BorderRadius.circular(25),
+                                          border: Border.all(
+                                              color: FuturisticPalette.pearl
+                                                  .withValues(
+                                                      alpha: focused ? .85 : .5),
+                                              width: 5)),
                                   child: child))))))));
 }

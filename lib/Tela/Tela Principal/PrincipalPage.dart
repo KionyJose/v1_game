@@ -28,6 +28,7 @@ import 'Widgets/ListVideosWidget.dart';
 import 'Widgets/BodySlim.dart';
 import 'Widgets/body_futurista.dart';
 import '../../Widgets/launcher_window_controls.dart';
+import '../../Interface/futuristic_artwork.dart';
 import '../../Interface/modern_startup_intro.dart';
 import '../../Controllers/slim_mode_config_controller.dart';
 
@@ -104,7 +105,41 @@ class _PrincipalPageState extends State<PrincipalPage> with WindowListener {
   }
   scaffold(PrincipalCtrl ctrl){   
     if (ctrl.interfaceChanging) {
-      return const Scaffold(backgroundColor: Color(0xFF071C24));
+      final selectedGame = ctrl.listIconsInicial.isEmpty
+          ? null
+          : ctrl.listIconsInicial[
+              ctrl.selectedIndexIcone.clamp(0, ctrl.listIconsInicial.length - 1)];
+      return Scaffold(
+        backgroundColor: const Color(0xFF071C24),
+        body: Stack(fit: StackFit.expand, children: [
+          const ColoredBox(color: Color(0xFF071C24)),
+          if (selectedGame != null && selectedGame.imgStr.isNotEmpty)
+            Opacity(
+              opacity: .36,
+              child: FuturisticArtwork(
+                  image: selectedGame.imgStr, fit: BoxFit.cover),
+            ),
+          const DecoratedBox(
+              decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                Color(0xB3070B18),
+                Color(0x88071C24),
+                Color(0xD9070B18),
+              ]))),
+          Center(
+            child: Image.asset('assets/IconeAppV1.png',
+                width: 52,
+                height: 52,
+                errorBuilder: (_, __, ___) => const Icon(
+                    Icons.sports_esports_rounded,
+                    color: Color(0xFFA9EEE4),
+                    size: 48)),
+          ),
+        ]),
+      );
     }
     if (ctrl.futuristicMode) {
       return Scaffold(

@@ -520,7 +520,7 @@ class _FuturisticHomeState extends State<FuturisticHome>
                                       begin: Alignment.bottomCenter,
                                       end: Alignment.topCenter,
                                       colors: [
-                            Color(0xB3000000),
+                            Color(0xD7000000),
                             Colors.transparent,
                           ]))))),
                   SafeArea(
@@ -776,9 +776,11 @@ class _FuturisticHomeState extends State<FuturisticHome>
                 child: GlassPanel(
                   radius: 20,
                   focused: focused,
+                  borderWidth: 5,
+                  refractionWidth: 28,
                   child: Padding(
-                    padding: const EdgeInsets.all(7),
-                    child: _cardFace(item),
+                    padding: const EdgeInsets.all(3),
+                    child: _cardFace(item, borderRadius: 17),
                   ),
                 ),
               ),
@@ -991,9 +993,11 @@ class _FuturisticHomeState extends State<FuturisticHome>
                   child: GlassPanel(
                     radius: 25,
                     focused: focused,
+                    borderWidth: 5,
+                    refractionWidth: 28,
                     child: Padding(
-                      padding: const EdgeInsets.all(9),
-                      child: _cardFace(item),
+                      padding: const EdgeInsets.all(3),
+                      child: _cardFace(item, borderRadius: 22),
                     ),
                   ),
                 ),
@@ -1010,9 +1014,10 @@ class _FuturisticHomeState extends State<FuturisticHome>
               curve: Curves.easeOutCubic,
               child: FuturisticCardMirror(
                 size: cardSize,
+                focused: focused,
                 child: Padding(
-                  padding: const EdgeInsets.all(9),
-                  child: _cardFace(item),
+                  padding: const EdgeInsets.all(3),
+                  child: _cardFace(item, borderRadius: 22),
                 ),
               ),
             ),
@@ -1049,29 +1054,31 @@ class _FuturisticHomeState extends State<FuturisticHome>
         }));
   }
 
-  Widget _cardFace(FuturisticItem item) => ClipRRect(
-      borderRadius: BorderRadius.circular(20),
-      child: Stack(fit: StackFit.expand, children: [
-        _cover(item),
-        const DecoratedBox(
-            decoration: BoxDecoration(
-                gradient: LinearGradient(
-                    begin: Alignment.center,
-                    end: Alignment.bottomCenter,
-                    colors: [Colors.transparent, Color(0xDD051B24)]))),
-        Positioned(
-            left: 12,
-            right: 12,
-            bottom: 12,
-            child: Text(item.name,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 14,
-                    fontFamily: 'Oxanium',
-                    fontWeight: FontWeight.w500))),
-      ]));
+  Widget _cardFace(FuturisticItem item, {double borderRadius = 20}) =>
+      ClipRRect(
+        borderRadius: BorderRadius.circular(borderRadius),
+        child: Stack(fit: StackFit.expand, children: [
+          _cover(item),
+          const DecoratedBox(
+              decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                      begin: Alignment.center,
+                      end: Alignment.bottomCenter,
+                      colors: [Colors.transparent, Color(0xDD051B24)]))),
+          Positioned(
+              left: 12,
+              right: 12,
+              bottom: 12,
+              child: Text(item.name,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                      fontFamily: 'Oxanium',
+                      fontWeight: FontWeight.w500))),
+        ]),
+      );
 
   Widget _cover(FuturisticItem item) {
     final fallback = ColoredBox(
