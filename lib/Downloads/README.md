@@ -253,17 +253,25 @@ O primeiro **Jogar** de um jogo ainda não cadastrado descompacta, cadastra e
 **para aí**: o jogo não abre nessa vez, e o cartão avisa que o Jogar seguinte
 pede a capa.
 
-**Um jogo sem capa própria não inicia.** Antes de abrir, o Jogar consulta
+**Um jogo sem capa própria não sai da fila.** O Jogar consulta
 `InstalledGameLibrary.hasCover`: enquanto a entrada guardar o ícone padrão
-(`BGICOdefault.png`), o seletor de imagens da tela principal é aberto, a
-escolha é gravada só naquela entrada (`setCover`) e aí o jogo abre e a fila de
-downloads fecha. Desistir do seletor mantém o jogo fechado, com o aviso de que
-ele abre depois da capa. Assim o jogo nunca chega ao início sem identidade.
+(`BGICOdefault.png`), o seletor de imagens da tela principal é aberto e a
+escolha é gravada só naquela entrada (`setCover`). Desistir do seletor mantém a
+tela aberta, com o aviso de que falta a capa. Assim o jogo nunca chega ao
+início sem identidade.
+
+**A fila nunca executa o jogo.** Com a capa pronta, a tela de Downloads apenas
+fecha: quem dá play é o jogador, na tela principal. O cadastro já aconteceu
+dentro de `prepareForPlay`, que chama `registerInstalledGame` e leva o jogo
+para o primeiro card; ao voltar da rota, `PrincipalCtrl.abrirTelaInterna` nota
+a mudança de revisão da biblioteca, recarrega a lista e seleciona o índice 0.
+Por isso a tela não tem mais um caminho de execução — `DB().openFile` e o
+parâmetro `onLaunchGame` saíram daqui.
 
 A condição é a capa, não o instante da instalação: se a extração terminar
 enquanto o jogador está em outra tela, o Jogar seguinte ainda pede a capa. O
 aviso no cartão é da visita à tela e não vai para o JSON; a capa, sim, fica no
-catálogo. Um jogo que já tem capa abre direto.
+catálogo. Um jogo que já tem capa fecha a fila de primeira.
 
 `chooseCover` é a costura de teste que substitui seletor e download da imagem.
 

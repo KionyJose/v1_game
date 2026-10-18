@@ -6,8 +6,6 @@ import 'download_record.dart';
 import 'downloads_controller.dart';
 import '../Interface/launcher_pad_scope.dart';
 import '../Interface/pad_scroll_target.dart';
-import '../Bando de Dados/db.dart';
-import 'package:path/path.dart' as p;
 import 'download_game_launcher.dart';
 import 'download_destination.dart';
 import 'game_preparation.dart';
@@ -23,7 +21,6 @@ import 'installed_game_library.dart';
 class DownloadsTela extends StatefulWidget {
   final DownloadsController? controller;
   final bool enablePad;
-  final Future<void> Function(String)? onLaunchGame;
   final Future<void> Function(String)? onOpenFolder;
   final Future<List<String>> Function()? loadDrives;
 
@@ -34,7 +31,6 @@ class DownloadsTela extends StatefulWidget {
       {super.key,
       this.controller,
       this.enablePad = true,
-      this.onLaunchGame,
       this.onOpenFolder,
       this.loadDrives,
       this.chooseCover});
@@ -176,18 +172,6 @@ class _DownloadsTelaState extends State<DownloadsTela> with WindowListener {
     return saved;
   }
 
-  Future<void> _launch(String path) async {
-    if (widget.onLaunchGame != null) {
-      await widget.onLaunchGame!(path);
-      return;
-    }
-    _gameWindow = Provider.of<JanelaCtrl?>(context, listen: false);
-    _wasPinned = _gameWindow?.telaPresa ?? false;
-    _gameWindow?.telaPresaReverse(usarEstado: true, estado: false);
-    await DB().openFile(path,
-        workingDirectory: p.dirname(path), throwOnError: true);
-  }
-
   Future<void> _play(DownloadRecord item) async {
     try {
       if (item.state != DownloadState.completed) return;
@@ -227,8 +211,8 @@ class _DownloadsTelaState extends State<DownloadsTela> with WindowListener {
                 'Instalação concluída. Toque em Jogar de novo para escolher a capa e abrir o jogo.')));
         return;
       }
-      // Sem capa própria o jogo não inicia: ele entraria no início sem
-      // identidade. A capa é pedida aqui, e só então o jogo abre.
+      // Sem capa própria o jogo não vai para a biblioteca: ele entraria no
+      // início sem identidade. A capa é pedida aqui, e só então ele segue.
       if (!await _controller.hasInstalledCover(path)) {
         if (!mounted) return;
         await _chooseCover(item, path);
@@ -238,21 +222,28 @@ class _DownloadsTelaState extends State<DownloadsTela> with WindowListener {
           setState(() => _awaitingCover.add(item.id));
           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
               content: Text(
-                  'O jogo abre depois de escolher a capa. Toque em Jogar para escolher.')));
+                  'O jogo vai para a biblioteca depois de escolher a capa. Toque em Jogar para escolher.')));
           return;
         }
         if (!mounted) return;
         setState(() => _awaitingCover.remove(item.id));
       }
-      await _launch(path);
-      if (mounted) Navigator.of(context).maybePop();
+      if (!mounted) return;
+      // A fila não abre o jogo. O cadastro já aconteceu em `prepareForPlay`,
+      // que coloca o jogo no primeiro card da biblioteca; aqui a tela só se
+      // fecha. Ao voltar, a tela principal recarrega a lista já no primeiro
+      // item, com o play nas mãos do jogador.
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text(
+              'Jogo pronto no primeiro card da biblioteca. É só dar play.')));
+      Navigator.of(context).maybePop();
     } catch (_) {
       _restoreWindowPin();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
             content: Text(item.sourceType != ReleaseSource.fitGirl
                 ? 'Não foi possível abrir a pasta do download. Verifique se ela existe e está acessível.'
-                : 'Não foi possível abrir o jogo. Verifique o executável e a instalação.')));
+                : 'Não foi possível deixar o jogo pronto. Verifique o executável e a instalação.')));
       }
     }
   }

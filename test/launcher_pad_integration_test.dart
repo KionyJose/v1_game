@@ -250,10 +250,7 @@ void main() {
       ..destination = root.path
       ..state = DownloadState.completed
       ..downloadedBytes = 100;
-    String? launched;
-    await tester.pumpWidget(app(DownloadsTela(
-        controller: controller,
-        onLaunchGame: (path) async => launched = path)));
+    await tester.pumpWidget(app(DownloadsTela(controller: controller)));
     await tester.pumpAndSettle();
     expect(find.text('Jogar'), findsOneWidget);
     pad.interfaceRouter.dispatch('2');
@@ -269,8 +266,7 @@ void main() {
     }
     await tester.pumpAndSettle();
     expect(controller.records.first.launchPath, game.path);
-    // Cadastro novo: o jogo só abre no Jogar seguinte, depois da capa.
-    expect(launched, isNull);
+    // Cadastro novo: falta a capa, então a fila continua aberta.
     expect(find.textContaining('Jogar agora pede a capa'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
@@ -390,9 +386,7 @@ void main() {
       controller.dispose();
     });
     controller.records.first.state = DownloadState.completed;
-    var launched = false;
-    await tester.pumpWidget(app(DownloadsTela(
-        controller: controller, onLaunchGame: (_) async => launched = true)));
+    await tester.pumpWidget(app(DownloadsTela(controller: controller)));
     await tester.pumpAndSettle();
     pad.interfaceRouter.dispatch('2');
     await tester.pumpAndSettle();
@@ -411,7 +405,6 @@ void main() {
     expect(controller.records.first.busy, isFalse);
     expect(find.text('Preparação cancelada'), findsOneWidget);
     expect(find.text('Selecionar executável do jogo'), findsNothing);
-    expect(launched, isFalse);
     expect(controller.registered, isEmpty);
     expect(tester.takeException(), isNull);
   });
@@ -425,9 +418,7 @@ void main() {
       controller.dispose();
     });
     controller.records.first.state = DownloadState.completed;
-    String? launched;
-    await tester.pumpWidget(app(DownloadsTela(
-        controller: controller, onLaunchGame: (path) async => launched = path)));
+    await tester.pumpWidget(app(DownloadsTela(controller: controller)));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Jogar'));
     await tester.pump();
@@ -435,9 +426,8 @@ void main() {
     await tester.pumpAndSettle();
     expect(controller.registered, ['D:\\V1 Jogos\\Teste\\Jogo\\Game.exe']);
     expect(controller.records.first.installationState, 'ready');
-    // O cadastro vem primeiro; abrir o jogo fica para o Jogar seguinte, que é
+    // O cadastro vem primeiro; a fila só fecha no Jogar seguinte, que é
     // quando a capa é escolhida.
-    expect(launched, isNull);
     expect(find.textContaining('Jogar agora pede a capa'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });

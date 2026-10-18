@@ -61,6 +61,84 @@ class WebScrap{
  
   
   // Função para pegar os links das imagens com base no nome do jogo
+  /// Miniatura e original moram em pastas irmãs no wallpapercave: `w400` é a
+  /// prévia de `wp`, e `fuwp` a de `uwp`.
+  static const _miniaturaParaOriginal = {'w400': 'wp', 'fuwp': 'uwp'};
+
+  /// Versão em tamanho cheio quando [raw] é um wallpaper do site, ou vazio
+  /// para qualquer outra imagem da página. Logo, ícones de menu, avatares e
+  /// botões de rede social ficam fora das pastas de wallpaper, e é só por isso
+  /// que somem da lista — sem depender de uma lista de exclusões.
+  static String _wallpaperEmTamanhoCheio(String raw) {
+    final uri = Uri.tryParse(raw);
+    if (uri == null ||
+        !(uri.host == 'wallpapercave.com' ||
+            uri.host.endsWith('.wallpapercave.com')) ||
+        uri.pathSegments.length != 2) {
+      return '';
+    }
+    final pasta = uri.pathSegments.first.toLowerCase();
+    final arquivo = uri.pathSegments[1];
+    if (RegExp(r'\.(?:webm|mp4)$', caseSensitive: false).hasMatch(arquivo)) {
+      return '';
+    }
+    final destino = pasta == 'wp' || pasta == 'uwp'
+        ? pasta
+        : _miniaturaParaOriginal[pasta];
+    if (destino == null) return '';
+    return Uri(
+            scheme: uri.scheme, host: uri.host, pathSegments: [destino, arquivo])
+        .toString();
+  }
+
+  /// Página que abre aquele wallpaper, quando a miniatura está dentro de um
+  /// link. É o que a tela chama de "pasta".
+  static String _pastaDoWallpaper(dynamic element, Uri base) {
+    var parent = element.parent;
+    while (parent != null && parent.localName != 'a') {
+      parent = parent.parent;
+    }
+    final href = parent?.attributes['href']?.trim() ?? '';
+    if (href.isEmpty ||
+        RegExp(r'\.(?:jpe?g|png|webp|gif|bmp)(?:[?#].*)?$', caseSensitive: false)
+            .hasMatch(href)) {
+      return '';
+    }
+    final pasta = Uri.tryParse(href);
+    final resolvida = pasta?.hasScheme == true ? pasta : base.resolve(href);
+    if (resolvida == null ||
+        (resolvida.scheme != 'http' && resolvida.scheme != 'https') ||
+        resolvida.host.isEmpty) {
+      return '';
+    }
+    return resolvida.toString();
+  }
+
+  /// Wallpapers de qualquer página do site. A classe do `<img>` muda conforme
+  /// a página — `wimg` nas listagens, `wpimg` na página de uma imagem e nada
+  /// nas miniaturas das vizinhas —, então o que identifica um wallpaper aqui é
+  /// a pasta do arquivo. Filtrar por uma classe só fazia as páginas de imagem
+  /// abrirem vazias, mesmo tendo imagens.
+  static List<ImgWebScrap> wallpapersDaPagina(String body, Uri base) {
+    final document = html.parse(body);
+    final vistos = <String>{};
+    final lista = <ImgWebScrap>[];
+    for (final element in document.querySelectorAll('img')) {
+      final imagem = ImgWebScrap()
+        ..fromMapImgFinal(
+          element.attributes
+              .map((key, value) => MapEntry(key.toString(), value)),
+          baseUrl: base.toString(),
+        );
+      final cheia = _wallpaperEmTamanhoCheio(imagem.imageUrl);
+      if (cheia.isEmpty || !vistos.add(cheia)) continue;
+      imagem.imageUrl = cheia;
+      imagem.folderUrl = _pastaDoWallpaper(element, base);
+      lista.add(imagem);
+    }
+    return lista;
+  }
+
   static Future<List<dynamic>> buscaUsersWalpaperCave(String gameName) async {
     final url = Uri.https('wallpapercave.com', '/search', {'q': gameName.trim()});
     try {
@@ -71,35 +149,8 @@ class WebScrap{
         return ['Erro ao buscar dados. Status: ${response.statusCode}', <ImgWebScrap>[]];
       }
 
-      final document = html.parse(utf8.decode(response.bodyBytes, allowMalformed: true));
-      final seenUrls = <String>{};
-      final list = <ImgWebScrap>[];
-      for (final element in document.querySelectorAll('img')) {
-        final image = ImgWebScrap()
-          ..fromMapImgFinal(
-            element.attributes.map((key, value) => MapEntry(key.toString(), value)),
-            baseUrl: url.toString(),
-          );
-        if (image.imageUrl.isEmpty || !seenUrls.add(image.imageUrl)) continue;
-
-        var parent = element.parent;
-        while (parent != null && parent.localName != 'a') {
-          parent = parent.parent;
-        }
-        final href = parent?.attributes['href']?.trim() ?? '';
-        if (href.isNotEmpty &&
-            !RegExp(r'\.(?:jpe?g|png|webp|gif|bmp)(?:[?#].*)?$', caseSensitive: false).hasMatch(href)) {
-          final folderUri = Uri.tryParse(href);
-          final resolved = folderUri?.hasScheme == true ? folderUri : url.resolve(href);
-          if (resolved != null &&
-              (resolved.scheme == 'http' || resolved.scheme == 'https') &&
-              resolved.host.isNotEmpty) {
-            image.folderUrl = resolved.toString();
-          }
-        }
-        list.add(image);
-      }
-
+      final list = wallpapersDaPagina(
+          utf8.decode(response.bodyBytes, allowMalformed: true), url);
       final content = list.isEmpty
           ? 'Nenhuma imagem encontrada para "$gameName".'
           : 'Imagens encontradas: ${list.length}';
@@ -120,64 +171,23 @@ class WebScrap{
             rawPath.startsWith('/') ? rawPath : '/$rawPath',
           );
     
-    debugPrint('========================================');
-    debugPrint('WEBSCRAP - BUSCA DE IMAGENS');
-    debugPrint('URL Completa: ${url.toString()}');
-    debugPrint('GameId: $gameId');
-    
     try {
       final response = await WallpapercaveImageCache.get(url).timeout(
         const Duration(seconds: 20),
       );
-      debugPrint('Status Code: ${response.statusCode}');
-      
       if (response.statusCode == 200) {
-        final bodyStr = utf8.decode(response.bodyBytes, allowMalformed: true);
-        final document = html.parse(bodyStr);
-        // Seleciona todas as tags <img> e filtra os links das imagens
-        final arquivo = document.querySelectorAll('img');
-        debugPrint('Total de tags <img> encontradas: ${arquivo.length}');
-        
-        final seenImageUrls = <String>{};
-        list = arquivo.map((e) {
-          ImgWebScrap imgDados = ImgWebScrap();
-          imgDados.fromMapImgFinal(
-            e.attributes.map((key, value) => MapEntry(key.toString(), value)),
-            baseUrl: url.toString(),
-          );
-          return imgDados;
-        }).where((item) {
-          bool valido = item.imageUrl.isNotEmpty && 
-                       item.tipo.split(RegExp(r'\s+')).contains("wimg") &&
-                       !item.imageUrl.contains(".webm") &&
-                       seenImageUrls.add(item.imageUrl);
-          
-          if (!valido && item.imageUrl.isNotEmpty) {
-            debugPrint('Imagem filtrada - URL: ${item.imageUrl}, Tipo: ${item.tipo}');
-          }
-          
-          return valido;
-        }).toList();
-        
-        if (list.isEmpty) {
-          content = 'Nenhuma imagem encontrada para "$gameId".';
-          debugPrint('AVISO: Nenhuma imagem válida após filtragem');
-        } else {
-          content = 'Imagens encontradas: ${list.length}';
-          debugPrint('Imagens válidas encontradas: ${list.length}');
-          debugPrint('Exemplo de URL: ${list.first.imageUrl}');
-        }
-
+        list = wallpapersDaPagina(
+            utf8.decode(response.bodyBytes, allowMalformed: true), url);
+        content = list.isEmpty
+            ? 'Nenhuma imagem encontrada para "$gameId".'
+            : 'Imagens encontradas: ${list.length}';
       } else {
         content = 'Erro ao buscar dados. Status: ${response.statusCode}';
-        debugPrint('ERRO: Status code diferente de 200');
       }
     } catch (e) {
       content = 'Exceção ao buscar dados: $e';
-      debugPrint('EXCEÇÃO durante busca: $e');
     }
-    
-    debugPrint('========================================');
+    debugPrint('Wallpapers em $url: $content');
     return [content, list];
   }
 

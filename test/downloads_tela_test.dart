@@ -95,6 +95,18 @@ class TelaController extends DownloadsController {
   }
 }
 
+/// Abre a tela como rota empilhada, para que o fechamento seja observável.
+Future<void> abrirComoRota(WidgetTester tester, Widget tela) async {
+  await tester.pumpWidget(MaterialApp(
+      home: Builder(
+          builder: (context) => FilledButton(
+              onPressed: () => Navigator.of(context)
+                  .push(MaterialPageRoute<void>(builder: (_) => tela)),
+              child: const Text('Abrir fila')))));
+  await tester.tap(find.text('Abrir fila'));
+  await tester.pumpAndSettle();
+}
+
 void main() {
   for (final source in ['DODI Repacks', 'ElAmigos', 'Outro release', '']) {
     testWidgets('Release "$source" avisa e abre só a pasta', (tester) async {
@@ -108,13 +120,11 @@ void main() {
         ..state = DownloadState.completed
         ..launchPath = 'executavel-salvo.exe';
       String? opened;
-      var launched = false;
       await tester.pumpWidget(MaterialApp(
           home: DownloadsTela(
               controller: controller,
               enablePad: false,
-              onOpenFolder: (path) async => opened = path,
-              onLaunchGame: (_) async => launched = true)));
+              onOpenFolder: (path) async => opened = path)));
       await tester.pumpAndSettle();
       // Sem protocolo automático o cartão não oferece Jogar: só Abrir pasta,
       // com o aviso fixo no próprio cartão.
@@ -124,7 +134,6 @@ void main() {
       await tester.tap(find.text('Abrir pasta'));
       await tester.pumpAndSettle();
       expect(opened, item.destination);
-      expect(launched, isFalse);
       expect(item.launchPath, 'executavel-salvo.exe');
       expect(find.text('Selecionar executável do jogo'), findsNothing);
       expect(tester.takeException(), isNull);
@@ -219,27 +228,20 @@ void main() {
       controller.dispose();
     });
     controller.records.first.state = DownloadState.completed;
-    final launched = <String>[];
-    await tester.pumpWidget(MaterialApp(
-        home: DownloadsTela(
-            controller: controller,
-            enablePad: false,
-            onLaunchGame: (path) async => launched.add(path))));
-    await tester.pumpAndSettle();
+    await abrirComoRota(
+        tester, DownloadsTela(controller: controller, enablePad: false));
     await tester.tap(find.text('Jogar'));
     await tester.pump();
     preparation.result.complete('jogo.exe');
     await tester.pumpAndSettle();
-    // Instalou e cadastrou, mas não abriu: o jogador precisa clicar de novo.
+    // Descompactou e cadastrou, mas a fila segue aberta: falta a capa.
     expect(controller.registered, ['jogo.exe']);
-    expect(launched, isEmpty);
+    expect(find.byType(DownloadsTela), findsOneWidget);
     expect(find.textContaining('Jogar agora pede a capa'), findsOneWidget);
-    expect(find.textContaining('escolher a capa e abrir o jogo'),
-        findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('Jogo com capa própria abre direto, sem passar pelo seletor',
+  testWidgets('Jogo com capa vai para a biblioteca e fecha a fila, sem abrir',
       (tester) async {
     final preparation = ControlledPreparation();
     final controller = TelaController(preparation: preparation);
@@ -252,29 +254,30 @@ void main() {
       ..installationState = 'ready'
       ..launchPath = 'jogo.exe';
     controller.covers['jogo.exe'] = 'capa-escolhida.png';
-    final launched = <String>[];
     var asked = 0;
-    await tester.pumpWidget(MaterialApp(
-        home: DownloadsTela(
+    await abrirComoRota(
+        tester,
+        DownloadsTela(
             controller: controller,
             enablePad: false,
             chooseCover: (_) async {
               asked++;
               return 'outra.png';
-            },
-            onLaunchGame: (path) async => launched.add(path))));
-    await tester.pumpAndSettle();
+            }));
     await tester.tap(find.text('Jogar'));
     await tester.pump();
     preparation.result.complete('jogo.exe');
     await tester.pumpAndSettle();
-    expect(launched, ['jogo.exe']);
+    // Com capa, o seletor não aparece: o jogo é cadastrado no primeiro card e
+    // a tela fecha, sem abrir o executável.
     expect(asked, 0);
+    expect(controller.registered, ['jogo.exe']);
     expect(controller.covers['jogo.exe'], 'capa-escolhida.png');
+    expect(find.byType(DownloadsTela), findsNothing);
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('Jogo pronto sem capa só abre depois de escolher a capa',
+  testWidgets('Sem capa a fila não fecha; com a capa escolhida, fecha',
       (tester) async {
     final preparation = ControlledPreparation();
     final controller = TelaController(preparation: preparation);
@@ -286,25 +289,22 @@ void main() {
       ..state = DownloadState.completed
       ..installationState = 'ready'
       ..launchPath = 'jogo.exe';
-    final launched = <String>[];
     String? chosen;
-    await tester.pumpWidget(MaterialApp(
-        home: DownloadsTela(
+    await abrirComoRota(
+        tester,
+        DownloadsTela(
             controller: controller,
             enablePad: false,
-            chooseCover: (_) async => chosen,
-            onLaunchGame: (path) async => launched.add(path))));
-    await tester.pumpAndSettle();
-    // Jogador desiste do seletor: sem capa, o jogo não abre.
+            chooseCover: (_) async => chosen));
+    // Jogador desiste do seletor: sem capa, a tela continua aberta.
     await tester.tap(find.text('Jogar'));
     await tester.pump();
     preparation.result.complete('jogo.exe');
     await tester.pumpAndSettle();
-    expect(launched, isEmpty);
     expect(controller.covers, isEmpty);
-    expect(find.textContaining('abre depois de escolher a capa'),
-        findsOneWidget);
-    // Com a capa escolhida, o Jogar seguinte grava e abre o jogo. O aviso sai
+    expect(find.byType(DownloadsTela), findsOneWidget);
+    expect(find.textContaining('depois de escolher a capa'), findsOneWidget);
+    // Com a capa escolhida, o Jogar seguinte grava e fecha a fila. O aviso sai
     // da frente e o cartão, agora mais alto, volta para dentro da rolagem.
     chosen = 'capa.png';
     await tester.pump(const Duration(seconds: 5));
@@ -314,7 +314,8 @@ void main() {
     await tester.tap(find.text('Jogar'));
     await tester.pumpAndSettle();
     expect(controller.covers['jogo.exe'], 'capa.png');
-    expect(launched, ['jogo.exe']);
+    expect(controller.registered, ['jogo.exe', 'jogo.exe']);
+    expect(find.byType(DownloadsTela), findsNothing);
     expect(tester.takeException(), isNull);
   });
 

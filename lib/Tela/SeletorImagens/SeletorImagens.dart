@@ -114,7 +114,9 @@ class _SeletorImagensState extends State<SeletorImagens> {
           margin: const EdgeInsets.only(top: 10, bottom: 3),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(15),
-            color: Colors.white,
+            // O texto é branco, então o campo acompanha o fundo escuro da tela
+            // em vez do branco de antes, que o deixaria ilegível.
+            color: const Color(0xFF20242C),
           ),
           // height: MediaQuery.of(context).size.height * 0.1,
           width: MediaQuery.of(context).size.width * 0.2,
@@ -124,6 +126,17 @@ class _SeletorImagensState extends State<SeletorImagens> {
               border: OutlineInputBorder(
                 gapPadding: 3,
                 borderRadius: BorderRadius.circular(15),
+                borderSide: const BorderSide(color: Colors.white24),
+              ),
+              enabledBorder: OutlineInputBorder(
+                gapPadding: 3,
+                borderRadius: BorderRadius.circular(15),
+                borderSide: const BorderSide(color: Colors.white24),
+              ),
+              focusedBorder: OutlineInputBorder(
+                gapPadding: 3,
+                borderRadius: BorderRadius.circular(15),
+                borderSide: const BorderSide(color: Colors.amber, width: 3),
               ),
             ),
             focusNode: ctrl.txtFoco,
@@ -138,7 +151,7 @@ class _SeletorImagensState extends State<SeletorImagens> {
             onEditingComplete: () {},
             controller: ctrl.txtNome,
             textAlign: TextAlign.center,
-            style: const TextStyle(color: Colors.black),
+            style: const TextStyle(color: Colors.white),
           ),
         ),
         if (ctrl.txtFoco.hasFocus || ctrl.buscaFocos.hasFocus) ...[
