@@ -20,6 +20,7 @@ import 'Widgets/BodyIconesCinema.dart';
 import 'Widgets/BodyIconesMusica.dart';
 import 'Widgets/BodyIconesJogosGrid.dart';
 import 'Widgets/BodyIconesJogosModerno.dart';
+import 'Widgets/body_transversal.dart';
 import 'Widgets/BodyIconesLoja.dart';
 import 'Widgets/bodyIconesJogosRetro.dart';
 import 'Widgets/CardInfWidget.dart';
@@ -165,7 +166,7 @@ class _PrincipalPageState extends State<PrincipalPage> with WindowListener {
     return Stack(
       children: [
       backGroundAnimado(ctrl), // Fundo animado
-      cabeca(ctrl),
+      if (!ctrl.transversalMode) cabeca(ctrl),
       desfoqueTela(desfocarFundo),
       if (ctrl.telaIniciada) bodyPageView(ctrl),// Ícones horizontais
       abaGuias(ctrl),
@@ -370,6 +371,8 @@ class _PrincipalPageState extends State<PrincipalPage> with WindowListener {
     double tamanhoBloco = 120;
     final jogosPage = ctrl.cardGamesGrid
         ? gridAnimado(ctrl, tamanhoBloco)
+        : ctrl.transversalMode
+            ? BodyTransversal(ctrl: ctrl)
         : !ctrl.cardGamesGrid && ctrl.cardGamesModerno
             ? BodyIconesJogosModerno(
                 ctrl: ctrl,

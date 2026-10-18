@@ -15,7 +15,8 @@ import 'dart:convert';
 import '../Modelos/videoYT.dart';
 
 class WebScrap{
-  static final Map<String, Future<String>> _noticiaImageSearchCache = {};
+  static final Map<String, Future<List<String>>> _noticiaImageCandidatesCache = {};
+  static final Map<String, Future<List<String>>> _articleImageCandidatesCache = {};
   static final List<Completer<void>> _imageSearchWaiters = [];
   static int _activeImageSearches = 0;
 
@@ -268,6 +269,50 @@ class WebScrap{
   /// Busca uma imagem de reserva no Google Images quando o feed não fornece
   /// uma URL utilizável.
   static Future<String> buscaImagemGoogle(String query) async {
+    final images = await _buscarImagensGoogle(query);
+    return images.isEmpty ? '' : images.first;
+  }
+
+  /// Reúne várias imagens do artigo e da busca para tentar alternativas se
+  /// algum servidor bloquear a primeira URL.
+  static Future<List<String>> buscarCandidatasImagemNoticia(
+      NoticiaGame noticia) {
+    final key = '${noticia.url.trim()}|${noticia.titulo.trim()}|${noticia.veiculo.trim()}'
+        .toLowerCase();
+    if (key == '||') return Future.value(const []);
+    final cached = _noticiaImageCandidatesCache[key];
+    if (cached != null) return cached;
+    if (_noticiaImageCandidatesCache.length >= 256) {
+      _noticiaImageCandidatesCache.remove(_noticiaImageCandidatesCache.keys.first);
+    }
+
+    final lookup = () async {
+      final articleImages =
+          (await _buscarImagensArtigoCache(noticia.url)).take(6).toList();
+      final query = [noticia.titulo.trim(), noticia.veiculo.trim()]
+          .where((part) => part.isNotEmpty)
+          .join(' ');
+      var searchImages = <String>[];
+      if (query.isNotEmpty) {
+        await _acquireImageSearchSlot();
+        try {
+          searchImages = await _buscarImagensGoogle(query);
+        } finally {
+          _releaseImageSearchSlot();
+        }
+      }
+      return {...articleImages, ...searchImages}.take(12).toList();
+    }();
+    _noticiaImageCandidatesCache[key] = lookup;
+    return lookup.then((images) {
+      if (images.isEmpty && identical(_noticiaImageCandidatesCache[key], lookup)) {
+        _noticiaImageCandidatesCache.remove(key);
+      }
+      return images;
+    });
+  }
+
+  static Future<List<String>> _buscarImagensGoogle(String query) async {
     try {
       final searchUrl = Uri.https('www.google.com', '/search', {
         'q': query,
@@ -291,13 +336,13 @@ class WebScrap{
       debugPrint('=== buscaImagemGoogle status: ${resp.statusCode}');
       if (resp.statusCode != 200) {
         client.close(force: true);
-        return '';
+        return const [];
       }
 
       final bytes = <int>[];
       await for (final chunk in resp) {
         bytes.addAll(chunk);
-        if (bytes.length >= 98304) break;
+        if (bytes.length >= 262144) break;
       }
       client.close(force: true);
 
@@ -310,18 +355,18 @@ class WebScrap{
         caseSensitive: false,
       ).allMatches(body);
 
-      String? thumb;
+      final originals = <String>[];
+      final thumbnails = <String>[];
       for (final m in jsonImgMatches) {
         final raw = m.group(1) ?? '';
         final url = _normalizarUrlImagem(_decodeJsonString(raw));
         if (url.isEmpty) continue;
         final host = Uri.tryParse(url)?.host.toLowerCase() ?? '';
-        final isGoogleThumbnail = host.contains('google') || host.contains('gstatic');
-        if (!isGoogleThumbnail) {
-          debugPrint('=== buscaImagemGoogle JSON ESCOLHIDA: $url');
-          return url;
+        if (host.contains('google') || host.contains('gstatic')) {
+          thumbnails.add(url);
+        } else {
+          originals.add(url);
         }
-        thumb ??= url;
       }
 
       // Alguns resultados expõem apenas o src da miniatura; use-o como reserva.
@@ -335,54 +380,172 @@ class WebScrap{
         final url = _normalizarUrlImagem(_decodeJsonString(raw));
         if (url.isEmpty) continue;
         final host = Uri.tryParse(url)?.host.toLowerCase() ?? '';
-        if (!host.contains('google') && !host.contains('gstatic')) {
-          debugPrint('=== buscaImagemGoogle IMG TAG: $url');
-          return url;
+        if (host.contains('google') || host.contains('gstatic')) {
+          thumbnails.add(url);
+        } else {
+          originals.add(url);
         }
-        thumb ??= url;
       }
 
-      // 3ª tentativa: encrypted-tbn (thumb do Google) como último recurso
-      if (thumb != null) {
-        debugPrint('=== buscaImagemGoogle THUMB: $thumb');
-        return thumb;
-      }
-
-      debugPrint('=== buscaImagemGoogle: nenhuma imagem encontrada');
-      return '';
+      final candidates = {...originals, ...thumbnails}.take(12).toList();
+      debugPrint('=== buscaImagemGoogle candidatas: ${candidates.length}');
+      return candidates;
     } catch (e) {
       debugPrint('=== buscaImagemGoogle ERRO: $e');
-      return '';
+      return const [];
     }
   }
 
   static Future<String> buscaImagemAlternativaNoticia(
       String titulo, String veiculo) {
-    final query = [titulo.trim(), veiculo.trim()]
-        .where((part) => part.isNotEmpty)
-        .join(' ');
-    final key = query.toLowerCase();
-    if (key.isEmpty) return Future.value('');
-    final cached = _noticiaImageSearchCache[key];
+    return buscarCandidatasImagemNoticia(NoticiaGame(
+      titulo: titulo,
+      veiculo: veiculo,
+    )).then((images) => images.isEmpty ? '' : images.first);
+  }
+
+  static Future<List<String>> _buscarImagensArtigoCache(String url) {
+    final key = url.trim();
+    if (key.isEmpty) return Future.value(const []);
+    final cached = _articleImageCandidatesCache[key];
     if (cached != null) return cached;
-    if (_noticiaImageSearchCache.length >= 256) {
-      _noticiaImageSearchCache.remove(_noticiaImageSearchCache.keys.first);
+    if (_articleImageCandidatesCache.length >= 256) {
+      _articleImageCandidatesCache.remove(_articleImageCandidatesCache.keys.first);
     }
-    final search = () async {
-      await _acquireImageSearchSlot();
-      try {
-        return await buscaImagemGoogle(query);
-      } finally {
-        _releaseImageSearchSlot();
+    final lookup = _buscarImagensArtigo(key);
+    _articleImageCandidatesCache[key] = lookup;
+    return lookup.then((images) {
+      if (images.isEmpty && identical(_articleImageCandidatesCache[key], lookup)) {
+        _articleImageCandidatesCache.remove(key);
       }
-    }();
-    _noticiaImageSearchCache[key] = search;
-    return search.then((url) {
-      if (url.isEmpty && identical(_noticiaImageSearchCache[key], search)) {
-        _noticiaImageSearchCache.remove(key);
-      }
-      return url;
+      return images;
     });
+  }
+
+  static Future<List<String>> _buscarImagensArtigo(String articleUrl) async {
+    try {
+      final response = await http.get(Uri.parse(articleUrl), headers: {
+        'User-Agent':
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
+            'Chrome/124.0.0.0 Safari/537.36',
+        'Accept-Language': 'pt-BR,pt;q=0.9',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+      }).timeout(const Duration(seconds: 10));
+      if (response.statusCode != 200) return const [];
+
+      final bytes = response.bodyBytes;
+      final source = utf8.decode(
+          bytes.length > 524288 ? bytes.sublist(0, 524288) : bytes,
+          allowMalformed: true);
+      final document = html.parse(source);
+      var base = response.request?.url ?? Uri.tryParse(articleUrl);
+      final metadata = <String>[];
+      final inlineImages = <({String url, int score})>[];
+      void addMetadata(String raw) {
+        final url = _normalizarUrlImagem(raw, base: base);
+        if (url.isNotEmpty) metadata.add(url);
+      }
+
+      for (final link in document.querySelectorAll('link[href]')) {
+        final rel = (link.attributes['rel'] ?? '').toLowerCase().split(RegExp(r'\s+'));
+        if (!rel.contains('canonical')) continue;
+        final canonical = _normalizarUrlImagem(link.attributes['href'] ?? '', base: base);
+        if (canonical.isNotEmpty) {
+          base = Uri.tryParse(canonical) ?? base;
+          break;
+        }
+      }
+
+      for (final meta in document.querySelectorAll('meta')) {
+        final property = (meta.attributes['property'] ?? '').toLowerCase();
+        final name = (meta.attributes['name'] ?? '').toLowerCase();
+        final itemprop = (meta.attributes['itemprop'] ?? '').toLowerCase();
+        if (const {'og:image', 'og:image:url', 'og:image:secure_url'}
+                .contains(property) ||
+            const {'twitter:image', 'twitter:image:src'}.contains(name) ||
+            itemprop == 'image') {
+          addMetadata(meta.attributes['content'] ?? '');
+        }
+      }
+      for (final link in document.querySelectorAll('link[href]')) {
+        final rel = (link.attributes['rel'] ?? '').toLowerCase().split(RegExp(r'\s+'));
+        if (rel.contains('image_src')) addMetadata(link.attributes['href'] ?? '');
+      }
+      for (final script in document.querySelectorAll('script[type="application/ld+json"]')) {
+        try {
+          _collectStructuredImages(jsonDecode(script.text), addMetadata);
+        } catch (_) {}
+      }
+
+      for (final image in document.querySelectorAll('img, picture source')) {
+        final attributes = image.attributes;
+        final alt = [attributes['alt'] ?? '', attributes['title'] ?? '',
+          attributes['class'] ?? '', attributes['id'] ?? ''].join(' ').toLowerCase();
+        if (RegExp(r'logo|avatar|icon|sprite|tracking|pixel|advert|share').hasMatch(alt)) continue;
+        final width = int.tryParse(attributes['width'] ?? '') ?? 0;
+        final height = int.tryParse(attributes['height'] ?? '') ?? 0;
+        if ((width > 0 && width < 200) || (height > 0 && height < 120)) continue;
+        final score = (width * height).clamp(0, 20000000) +
+            (alt.contains('article') || alt.contains('news') ? 100000 : 0);
+        final sources = [attributes['src'] ?? '', attributes['data-src'] ?? '',
+          attributes['data-original'] ?? '', attributes['data-lazy-src'] ?? '',
+          _largestSrcset(attributes['srcset'] ?? '')];
+        for (final raw in sources) {
+          final url = _normalizarUrlImagem(raw, base: base);
+          if (url.isNotEmpty) inlineImages.add((url: url, score: score));
+        }
+      }
+      inlineImages.sort((a, b) => b.score.compareTo(a.score));
+      return {
+        ...metadata,
+        ...inlineImages.map((image) => image.url).where(_looksLikeUsableImageUrl),
+      }.where(_looksLikeUsableImageUrl).take(10).toList();
+    } catch (error) {
+      debugPrint('=== busca de imagens no artigo falhou: $error');
+      return const [];
+    }
+  }
+
+  static void _collectStructuredImages(Object? value, void Function(String) add) {
+    if (value is List) {
+      for (final item in value) { _collectStructuredImages(item, add); }
+    } else if (value is Map) {
+      for (final entry in value.entries) {
+        final key = entry.key.toString().toLowerCase();
+        final candidate = entry.value;
+        if (key == 'image' || key == 'thumbnailurl') {
+          if (candidate is String) add(candidate);
+          if (candidate is Map) {
+            final imageUrl = candidate['url'] ?? candidate['contentUrl'];
+            if (imageUrl is String) add(imageUrl);
+          }
+          if (candidate is List) _collectStructuredImages(candidate, add);
+        } else if (candidate is Map || candidate is List) {
+          _collectStructuredImages(candidate, add);
+        }
+      }
+    }
+  }
+
+  static String _largestSrcset(String srcset) {
+    if (srcset.trim().isEmpty) return '';
+    final options = srcset.split(',').map((option) {
+      final parts = option.trim().split(RegExp(r'\s+'));
+      final width = parts.length > 1
+          ? int.tryParse(parts.last.replaceAll(RegExp(r'\D'), '')) ?? 0
+          : 0;
+      return (url: parts.isEmpty ? '' : parts.first, width: width);
+    }).toList()..sort((a, b) => b.width.compareTo(a.width));
+    return options.first.url;
+  }
+
+  static bool _looksLikeUsableImageUrl(String value) {
+    final uri = Uri.tryParse(value);
+    if (uri == null || uri.host.isEmpty) return false;
+    final host = uri.host.toLowerCase();
+    return !host.contains('doubleclick') &&
+        !host.contains('googlesyndication') &&
+        !RegExp(r'\.svg$').hasMatch(uri.path.toLowerCase());
   }
 
   static Future<void> _acquireImageSearchSlot() {
@@ -450,12 +613,24 @@ class WebScrap{
 
         final descRaw = ext('description');
         final cleanDesc = _limpaHtml(descRaw);
+        final descMarkup = RegExp(r'&lt;|&#x0*3c;', caseSensitive: false)
+                .hasMatch(descRaw)
+            ? html.parseFragment(descRaw).text
+            : descRaw;
+        final descriptionDocument = html.parseFragment(descMarkup);
 
         // Extrai URL real do artigo a partir dos links dentro do <description>
         // O Google News RSS embute: <a href="https://site.com/artigo">
-        final linkNoDesc = RegExp(
-          r'href="(https?://(?!news\.google\.com)[^"]+)"',
-        ).firstMatch(descRaw)?.group(1) ?? '';
+        final linkNoDesc = descriptionDocument
+            .querySelectorAll('a[href]')
+            .map((anchor) => anchor.attributes['href'] ?? '')
+            .firstWhere((href) {
+              final parsed = Uri.tryParse(href);
+              return parsed != null &&
+                  (parsed.scheme == 'http' || parsed.scheme == 'https') &&
+                  parsed.host.isNotEmpty &&
+                  parsed.host.toLowerCase() != 'news.google.com';
+            }, orElse: () => '');
 
         final linkRaw = RegExp(r'<link[^>]*>([^<]+)</link>').firstMatch(s)?.group(1)?.trim() ?? '';
         final guid    = ext('guid');
@@ -494,10 +669,10 @@ class WebScrap{
             RegExp(r'\.(?:jpe?g|png|webp)$', caseSensitive: false)
                 .hasMatch(mediaContentUri?.path ?? '');
         final mediaContent = hasImageMedia ? mediaContentUrl : '';
-        final imgNoDesc = RegExp(
-          r'''<img\b[^>]*\bsrc\s*=\s*["']([^"']+)["']''',
-          caseSensitive: false,
-        ).firstMatch(descRaw)?.group(1) ?? '';
+        final descriptionImage = descriptionDocument.querySelector('img');
+        final imgNoDesc = descriptionImage?.attributes['src'] ??
+            descriptionImage?.attributes['data-src'] ??
+            '';
 
         final imgRaw = mediaThumbnail.isNotEmpty
             ? mediaThumbnail
@@ -552,94 +727,8 @@ class WebScrap{
 
   /// Acessa o artigo e extrai og:image / twitter:image do HTML
   static Future<String> _buscarOgImage(String urlInicial) async {
-    if (urlInicial.isEmpty) return '';
-    try {
-      // http package segue redirects automaticamente (até 5 saltos)
-      final resp = await http.get(
-        Uri.parse(urlInicial),
-        headers: {
-          'User-Agent':
-              'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
-              'Chrome/124.0.0.0 Safari/537.36',
-          'Accept-Language': 'pt-BR,pt;q=0.9',
-          'Accept':
-              'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-        },
-      ).timeout(const Duration(seconds: 10));
-
-      debugPrint('=== ogImage [${resp.statusCode}] $urlInicial');
-      if (resp.statusCode != 200) return '';
-
-      // Lê apenas os primeiros 16KB — o <head> sempre está no início
-      final snippet = utf8.decode(
-        resp.bodyBytes.length > 16384
-            ? resp.bodyBytes.sublist(0, 16384)
-            : resp.bodyBytes,
-        allowMalformed: true,
-      );
-
-      // 1ª: HTML parser
-      final doc = html.parse(snippet);
-      final base = Uri.tryParse(urlInicial);
-      for (final meta in doc.querySelectorAll('meta')) {
-        final prop    = meta.attributes['property'] ?? '';
-        final name    = meta.attributes['name']     ?? '';
-        final content = meta.attributes['content']  ?? '';
-        final imageUrl = _normalizarUrlImagem(content, base: base);
-        if ((prop == 'og:image' ||
-                prop == 'og:image:url' ||
-                name == 'twitter:image' ||
-                name == 'twitter:image:src') &&
-            imageUrl.isNotEmpty) {
-          debugPrint('=== ogImage OK (parser): $imageUrl');
-          return imageUrl;
-        }
-      }
-
-      // 2ª: regex — property/name antes ou depois de content
-      final patterns = [
-        RegExp(
-            r'''<meta\s[^>]*property=["']og:image["'][^>]*content=["'](https?://[^"']+)["']''',
-            caseSensitive: false),
-        RegExp(
-            r'''<meta\s[^>]*content=["'](https?://[^"']+)["'][^>]*property=["']og:image["']''',
-            caseSensitive: false),
-        RegExp(
-            r'''<meta\s[^>]*name=["']twitter:image[^"']*["'][^>]*content=["'](https?://[^"']+)["']''',
-            caseSensitive: false),
-        RegExp(
-            r'''<meta\s[^>]*content=["'](https?://[^"']+)["'][^>]*name=["']twitter:image''',
-            caseSensitive: false),
-      ];
-
-      for (final pattern in patterns) {
-        final rawUrl = pattern.firstMatch(snippet)?.group(1) ?? '';
-        final url = _normalizarUrlImagem(rawUrl, base: base);
-        if (url.isNotEmpty) {
-          debugPrint('=== ogImage OK (regex): $url');
-          return url;
-        }
-      }
-
-      // 3ª: primeira <img> no corpo com extensão de imagem conhecida
-      final imgSrc = RegExp(
-        r'''<img\s[^>]*src=["'](https?://[^"']+\.(?:jpg|jpeg|png|webp))["']''',
-        caseSensitive: false,
-      ).firstMatch(snippet)?.group(1) ?? '';
-      final imageUrl = _normalizarUrlImagem(imgSrc, base: base);
-      if (imageUrl.isNotEmpty &&
-          !imageUrl.contains('logo') &&
-          !imageUrl.contains('icon')) {
-        debugPrint('=== ogImage OK (img): $imageUrl');
-        return imageUrl;
-      }
-
-      debugPrint('=== ogImage: nenhuma encontrada');
-      return '';
-    } catch (e) {
-      debugPrint('=== ogImage ERRO: $e');
-      return '';
-    }
+    final candidates = await _buscarImagensArtigoCache(urlInicial);
+    return candidates.isEmpty ? '' : candidates.first;
   }
 
   /// Retorna um emoji condizente com o conteúdo do título

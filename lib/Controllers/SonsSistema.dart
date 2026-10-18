@@ -29,6 +29,11 @@ class SonsSistema {
   static void futuristicMove() => _playSound('Sons/Futurista/move.wav');
   static void futuristicOpen() => _playSound('Sons/Futurista/open.wav');
   static void futuristicLaunch() => _playSound('Sons/Futurista/launch.wav');
+  static void transversalMove({required bool toRight}) => _playSound(
+        toRight
+            ? 'Sons/Transversal/wind_slap_right.wav'
+            : 'Sons/Transversal/wind_slap_left.wav',
+      );
   static Future<SoundHandle?> startWaterAmbience() async {
     await preload('Sons/Futurista/water_ambient.wav');
     final source = _loadedSounds['Sons/Futurista/water_ambient.wav'];
@@ -141,6 +146,8 @@ class SonsSistema {
       preload('Sons/Futurista/move.wav'),
       preload('Sons/Futurista/open.wav'),
       preload('Sons/Futurista/launch.wav'),
+      preload('Sons/Transversal/wind_slap_right.wav'),
+      preload('Sons/Transversal/wind_slap_left.wav'),
     ]);
     debugPrint('✓ Todos os sons carregados e prontos para uso instantâneo');
   }

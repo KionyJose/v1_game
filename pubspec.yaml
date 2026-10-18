@@ -106,6 +106,7 @@ flutter:
     - assets/Sons/Intro.mp3
     - assets/Sons/Slim/
     - assets/Sons/Futurista/
+    - assets/Sons/Transversal/
     - assets/somClickRetro.MP3
     # Scripts ===================
     - assets/Scripts/disable_xbox_steam.ps1

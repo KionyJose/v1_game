@@ -45,6 +45,8 @@ class PrincipalCtrl with ChangeNotifier{
   bool _disposed = false;
   bool get slimMode => SlimModeConfigController.active.value;
   bool get futuristicMode => !slimMode && configSistema.viewType == 'futurista';
+  bool get transversalMode =>
+      !slimMode && !cardGamesGrid && configSistema.viewType == 'transversal';
   bool get compactNavigation => slimMode || futuristicMode;
   bool interfaceChanging = false;
   int interfaceRevision = 0;
@@ -203,7 +205,7 @@ class PrincipalCtrl with ChangeNotifier{
       ctrlAnimeBgFundo.stop();
     } else {
       ctrlAnimeBgFundo.repeat(reverse: true);
-      if (listIconsInicial.isNotEmpty) carregaVideosDoGame();
+      if (listIconsInicial.isNotEmpty && !transversalMode) carregaVideosDoGame();
     }
     attTela();
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -460,7 +462,8 @@ class PrincipalCtrl with ChangeNotifier{
     selectedIndexAbaGuias == 0 &&
     !cardGamesGrid &&
     !cardGamesModerno &&
-    !cardGamesRetro;
+    !cardGamesRetro &&
+    !transversalMode;
   }
 
   urlImgFilme(int i ){
@@ -558,7 +561,7 @@ class PrincipalCtrl with ChangeNotifier{
       selectedIndexIcone = selectedIndexIcone.clamp(0, listIconsInicial.length - 1);
       imgFundoStr = listIconsInicial.first.imgStr;
       videosYT.clear();
-      pesquisaVideosYT(listIconsInicial.first.nome,0);
+      if (!transversalMode) pesquisaVideosYT(listIconsInicial.first.nome,0);
     }
     if(listIconsInicial.isEmpty) {
       try {
@@ -814,7 +817,16 @@ class PrincipalCtrl with ChangeNotifier{
   onFocusChangeIcones(bool hasFocus, int index,{ double tamanho = 0}) async{
     if(_disposed || interfaceChanging || compactNavigation) return;
     final revision = interfaceRevision;
-    if (!hasFocus || selectedIndexIcone == index) return;
+    if (!hasFocus) return;
+    if (transversalMode) {
+      if (selectedIndexIcone != index) {
+        selectedIndexIcone = index;
+        focusScope = focusScopeIcones;
+        attTela();
+      }
+      return;
+    }
+    if (selectedIndexIcone == index) return;
     if(cardGamesGrid){
       
       selectedIndexIcone = index; 
@@ -1153,6 +1165,9 @@ class PrincipalCtrl with ChangeNotifier{
     try{
       if(!stateTela) return;
       if(listIconsInicial.isEmpty) return btnMais();
+      if (transversalMode) {
+        SonsSistema.click();
+      }
       await db.openFile(listIconsInicial[selectedIndexIcone].local, throwOnError: reportErrors);
       gameIniciado = true;
       stateTela = false; // Desativa eventos durante o processo
@@ -1992,6 +2007,38 @@ class PrincipalCtrl with ChangeNotifier{
      try{
       if(gameIniciado) {
         if(event == "3") Navigator.pop(ctx);
+        return;
+      }
+      if (transversalMode) {
+        if (event == 'ESQUERDA' || event == 'DIREITA') {
+          if (listIconsInicial.isEmpty) return;
+          final direction = event == 'DIREITA' ? 1 : -1;
+          final nextIndex = listIconsInicial.length >= 4
+              ? (selectedIndexIcone + direction + listIconsInicial.length) %
+                  listIconsInicial.length
+              : (selectedIndexIcone + direction)
+                  .clamp(0, listIconsInicial.length - 1)
+                  .toInt();
+          if (nextIndex != selectedIndexIcone) {
+            selectedIndexIcone = nextIndex;
+            focusScope = focusScopeIcones;
+            focusScopeIcones.requestFocus();
+            SonsSistema.transversalMove(toRight: direction > 0);
+            attTela();
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (!_disposed &&
+                  transversalMode &&
+                  selectedIndexAbaGuias == 0 &&
+                  nextIndex < focusNodeIcones.length) {
+                focusNodeIcones[nextIndex].requestFocus();
+              }
+            });
+          }
+        } else if (event == 'SELECT') {
+          trocaViewIcones();
+        } else if (event == '2') {
+          btnEntrar();
+        }
         return;
       }
       if(cardGamesGrid) return movCardGrid(event);

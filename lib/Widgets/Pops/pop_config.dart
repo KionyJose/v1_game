@@ -208,7 +208,13 @@ class PopConfig {
 
           // Interface (focusNodes[5]) - Cicla com setas
           if (focusNodes[5].hasFocus) {
-            final opcoes = ['list', 'moderno', 'retro', 'futurista'];
+            final opcoes = [
+              'list',
+              'moderno',
+              'retro',
+              'futurista',
+              'transversal',
+            ];
             final idx = opcoes.indexOf(interfaceTemp);
             if (event == 'DIREITA') {
               interfaceTemp = opcoes[(idx + 1) % opcoes.length];
@@ -578,6 +584,11 @@ class PopConfig {
                                                   'key': 'futurista',
                                                   'label': 'Futurista',
                                                   'icon': Icons.water_rounded
+                                                },
+                                                {
+                                                  'key': 'transversal',
+                                                  'label': 'Transversal',
+                                                  'icon': Icons.view_carousel_rounded
                                                 },
                                               ];
                                               return Container(

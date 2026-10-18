@@ -5,8 +5,7 @@ import 'package:flutter/material.dart';
 import '../Class/WebScrap.dart';
 import '../Modelos/NoticiaGame.dart';
 
-/// Exibe a imagem retornada pelo feed e procura uma alternativa se ela faltar
-/// ou se o servidor da notícia recusar o acesso direto.
+/// Exibe a imagem da notícia e tenta URLs alternativas quando uma fonte falha.
 class NoticiaGameArtwork extends StatefulWidget {
   const NoticiaGameArtwork({
     super.key,
@@ -27,8 +26,12 @@ class NoticiaGameArtwork extends StatefulWidget {
 
 class _NoticiaGameArtworkState extends State<NoticiaGameArtwork> {
   String? _imageUrl;
+  List<String> _fallbackImages = const [];
+  int _fallbackIndex = -1;
+  int _requestId = 0;
   bool _searching = false;
   bool _searchAttempted = false;
+  bool _handlingImageError = false;
 
   @override
   void initState() {
@@ -37,7 +40,7 @@ class _NoticiaGameArtworkState extends State<NoticiaGameArtwork> {
     if (_imageUrl == null) {
       _searching = true;
       _searchAttempted = true;
-      unawaited(_resolveAlternativeImage());
+      unawaited(_resolveAlternativeImages(_requestId));
     }
   }
 
@@ -51,36 +54,65 @@ class _NoticiaGameArtworkState extends State<NoticiaGameArtwork> {
       return;
     }
 
+    _requestId++;
     _imageUrl = _httpImageUrl(widget.news.imgUrl);
+    _fallbackImages = const [];
+    _fallbackIndex = -1;
     _searching = _imageUrl == null;
     _searchAttempted = _imageUrl == null;
-    if (_searching) unawaited(_resolveAlternativeImage());
+    _handlingImageError = false;
+    if (_searching) unawaited(_resolveAlternativeImages(_requestId));
   }
 
-  Future<void> _resolveAlternativeImage() async {
-    String result = '';
+  Future<void> _resolveAlternativeImages(int requestId) async {
+    final news = widget.news;
+    List<String> candidates = const [];
     try {
-      result = await WebScrap.buscaImagemAlternativaNoticia(
-          widget.news.titulo, widget.news.veiculo);
-    } catch (_) {}
-    if (!mounted) return;
+      candidates = await WebScrap.buscarCandidatasImagemNoticia(news);
+    } catch (error) {
+      debugPrint('Não foi possível localizar imagem da notícia: $error');
+    }
+    if (!mounted || requestId != _requestId) return;
 
-    final candidate = _httpImageUrl(result);
+    final currentImage = _httpImageUrl(news.imgUrl);
+    final usable = candidates
+        .map(_httpImageUrl)
+        .whereType<String>()
+        .where((candidate) => candidate != currentImage)
+        .toSet()
+        .toList();
     setState(() {
+      _fallbackImages = usable;
+      _fallbackIndex = usable.isEmpty ? -1 : 0;
+      _imageUrl = usable.isEmpty ? null : usable.first;
       _searching = false;
-      _imageUrl = candidate == _imageUrl ? null : candidate;
     });
   }
 
-  void _searchAfterImageError() {
-    if (_searchAttempted) return;
+  void _handleImageError(Object error) {
+    if (_handlingImageError) return;
+    _handlingImageError = true;
+    final failedHost = Uri.tryParse(_imageUrl ?? '')?.host ?? 'URL inválida';
+    debugPrint('Falha ao carregar imagem da notícia em $failedHost: $error');
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted || _searchAttempted) return;
+      if (!mounted) return;
+      _handlingImageError = false;
+      if (_searching) return;
+      if (!_searchAttempted) {
+        setState(() {
+          _searchAttempted = true;
+          _searching = true;
+        });
+        unawaited(_resolveAlternativeImages(_requestId));
+        return;
+      }
+
+      final nextIndex = _fallbackIndex + 1;
       setState(() {
-        _searchAttempted = true;
-        _searching = true;
+        _fallbackIndex = nextIndex < _fallbackImages.length ? nextIndex : -1;
+        _imageUrl = _fallbackIndex < 0 ? null : _fallbackImages[_fallbackIndex];
       });
-      unawaited(_resolveAlternativeImage());
     });
   }
 
@@ -99,19 +131,18 @@ class _NoticiaGameArtworkState extends State<NoticiaGameArtwork> {
         borderRadius: widget.borderRadius,
         child: SizedBox.expand(
           child: _imageUrl == null
-              ? _placeholder()
+              ? _placeholder(loading: _searching)
               : Image.network(
                   _imageUrl!,
+                  key: ValueKey(_imageUrl),
                   fit: BoxFit.cover,
                   filterQuality: FilterQuality.medium,
                   headers: WebScrap.noticiaImageHeaders(widget.news.url),
-                  loadingBuilder: (_, child, progress) => progress == null
-                      ? child
-                      : _placeholder(loading: true),
-                  errorBuilder: (_, __, ___) {
-                    _searchAfterImageError();
-                    return _placeholder(
-                        loading: _searching || !_searchAttempted);
+                  loadingBuilder: (_, child, progress) =>
+                      progress == null ? child : _placeholder(loading: true),
+                  errorBuilder: (_, error, __) {
+                    _handleImageError(error);
+                    return _placeholder(loading: _searching);
                   },
                 ),
         ),
