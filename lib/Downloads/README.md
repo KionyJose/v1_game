@@ -84,6 +84,49 @@ alterados. Um mutex da sessão serializa os hosts de extração, pois os codecs
 legados usam nomes fixos; os downloads continuam simultâneos. A espera pelo
 mutex emite heartbeat e permite cancelamento.
 
+O canal `Init_MapFile_` é prendido em `Local\` por `repack_decoder_channel.dart`
+durante toda a extração direta. Um codec pode gravar `Global\` nesse canal e um
+decodificador que não encerre o mantém vivo: sem esse cuidado a preparação
+seguinte da mesma sessão do Windows falha com *Another installer is using the
+decoder initialization channel*, mesmo com o download íntegro.
+
+`repack_decoder_tuning.dart` reescreve o `CLS.ini` do repack. Além de resolver
+`{app}`, reduz `Memory`, `MaxMemoryUsage` e `ldmfMaxMemoryUsage` ao que a
+máquina tem de memória livre. O repack pede porcentagens da RAM **total**
+(`75%-10m`, `60%-2048m`); com pouca RAM livre o worker x64 do CLS morre no meio
+da extração e o unarc acusa `broken compressed data` — um erro que parece
+corrupção de download, mas não é. Limites de thread e caminhos de temporários
+ficam como o repack definiu.
+
+## Áudio recomprimido (`.fgpack`)
+
+Parte dos repacks recomprime o áudio FMOD como Ogg Vorbis. Nesses pacotes os
+`fg-*.bin` **não** contêm os `*.resource` do jogo: entregam segmentos
+`NN.fgpack` com o Ogg restaurado pelo `oggre_dec.exe`, o tamanho real de cada
+segmento em `NN.fgpack.x2` e um patch `*.fgpack.x5`. Extrair só os `.bin`
+produz uma instalação que abre, roda e fica **muda**, deixando os `.fgpack` para
+trás como sinal. O `fitgirl.md5` acusa exatamente os `*.resource` ausentes.
+
+`_restoreRecompressedAudio` em `game_preparation.dart` refaz o caminho do
+instalador original, com as ferramentas que o próprio repack traz:
+
+1. corta cada `NN.fgpack` no tamanho de 8 bytes little-endian de `NN.fgpack.x2`;
+2. `fsb.exe <segmento> <segmento>.fsb` converte cada um de Ogg Vorbis para FSB5
+   — por segmento, nunca no arquivo já concatenado, senão o resultado perde os
+   cabeçalhos intermediários e o patch recusa o tamanho;
+3. concatena os `.fsb` na ordem dos nomes;
+4. `x5.exe` (HDiffPatch `hpatchz`) aplica o `*.fgpack.x5` sobre essa junção;
+5. o resultado é um arquivo FreeArc, extraído com o `V1Unarc` na pasta do jogo,
+   e traz os `*.resource` definitivos;
+6. os intermediários são apagados.
+
+Validado em *Stick It to the Stickman*: 262/262 arquivos do `fitgirl.md5` e os
+14 `*.resource` idênticos byte a byte aos de uma instalação feita pelo
+`setup.exe` original. `fsb.exe` e `x5.exe` trabalham calados, então `_run`
+acompanha o avanço pelo arquivo que estão gravando (`growthProbe`) em vez das
+linhas de saída. Um pacote com mais de um `*.fgpack.x5`, ou sem essas
+ferramentas, interrompe a preparação com erro em vez de cadastrar um jogo mudo.
+
 O diagnóstico do canal de inicialização também é documentado pelo
 [autor de um host independente](https://soyuka.me/forza-horizon-6-linux-offline-saves/#eight-bytes-that-were-missing).
 O teste nativo opcional abaixo usa um pacote local existente, verifica a extração
@@ -151,8 +194,24 @@ sem alterar a biblioteca real.
 - Pausar: mantém o item e seus arquivos parciais.
 - Cancelar: remove a transferência do motor e mantém os arquivos parciais;
   Iniciar permite recuperá-los, verificando sua integridade.
-- Excluir: confirmação remove o item, seus torrents e metadados. A opção
-  adicional permite excluir também o conteúdo na pasta gerenciada daquele item.
+- Abrir pasta: abre a pasta recebida no Explorer, em qualquer estado do item.
+  Fica imediatamente antes de Excluir, na ordem do Pad e na tela. O Explorer
+  não se navega pelo Pad, então o botão libera a tela antes de abrir: a janela
+  deixa de ficar presa à frente e `Paad.ativaMouse` entrega o mouse do sistema.
+  Ao voltar o foco ao launcher, `onWindowFocus` restaura a fixação anterior.
+  O seletor de capa usa a mesma liberação.
+
+  A reposição da fixação sai sempre em `addPostFrameCallback`: `dispose` roda
+  com a árvore de widgets travada e `telaPresaReverse` notifica o provider do
+  `JanelaCtrl`, o que derruba o quadro com *setState() called when widget tree
+  was locked*. `ensureVisualUpdate` garante um próximo quadro quando a saída
+  acontece fora de um.
+- Excluir: confirmação remove o item, seus torrents e metadados e libera o
+  espaço do download — o repack, os arquivos de conferência, as ferramentas de
+  extração e o torrent da pasta — **preservando o jogo instalado**, que segue
+  na biblioteca. A pasta de instalação é reconhecida por `installationDirectory`
+  e por `launchPath`; sem nada a preservar, a pasta gerenciada sai inteira.
+  A opção adicional exclui também o jogo instalado, apagando a pasta completa.
 
 Ao reabrir o aplicativo, downloads em andamento ficam pausados; o usuário
 seleciona Retomar. A pasta de compras é examinada na abertura e monitorada para
@@ -184,9 +243,30 @@ Em Downloads, cima/baixo alternam cartões na ordem da fila; esquerda/direita
 alternam apenas ações habilitadas do cartão atual. A rolagem revela o cartão
 inteiro depois de sua expansão, sem reposicioná-lo a cada botão.
 
-Downloads FitGirl concluídos oferecem **Jogar**. `download_game_launcher.dart` procura
+Downloads FitGirl concluídos oferecem **Jogar**; os outros releases exibem o
+aviso de protocolo indisponível no próprio cartão e contam com **Abrir pasta**.
+`download_game_launcher.dart` procura
 executáveis na pasta recebida, ignorando instaladores, MD5 e pré-requisitos.
 Um navegador interno pelo Pad permite definir o executável quando necessário.
+
+O primeiro **Jogar** de um jogo ainda não cadastrado descompacta, cadastra e
+**para aí**: o jogo não abre nessa vez, e o cartão avisa que o Jogar seguinte
+pede a capa.
+
+**Um jogo sem capa própria não inicia.** Antes de abrir, o Jogar consulta
+`InstalledGameLibrary.hasCover`: enquanto a entrada guardar o ícone padrão
+(`BGICOdefault.png`), o seletor de imagens da tela principal é aberto, a
+escolha é gravada só naquela entrada (`setCover`) e aí o jogo abre e a fila de
+downloads fecha. Desistir do seletor mantém o jogo fechado, com o aviso de que
+ele abre depois da capa. Assim o jogo nunca chega ao início sem identidade.
+
+A condição é a capa, não o instante da instalação: se a extração terminar
+enquanto o jogador está em outra tela, o Jogar seguinte ainda pede a capa. O
+aviso no cartão é da visita à tela e não vai para o JSON; a capa, sim, fica no
+catálogo. Um jogo que já tem capa abre direto.
+
+`chooseCover` é a costura de teste que substitui seletor e download da imagem.
+
 `launchPath` é salvo
 no JSON e reutilizado nas próximas aberturas. A abertura usa o backend `DB`
 do launcher com a pasta do executável como diretório de trabalho; a retenção

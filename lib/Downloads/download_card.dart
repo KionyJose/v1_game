@@ -35,6 +35,10 @@ class DownloadCard extends StatefulWidget {
   final Future<void> Function()? onPlay;
   final Future<void> Function()? onSilentInstall;
   final Future<void> Function()? onStart;
+  final Future<void> Function()? onOpenFolder;
+
+  /// Instalação recém-concluída: o próximo Jogar pede a capa e abre o jogo.
+  final bool awaitingCover;
   final FocusNode? focusNode;
   final bool Function(TraversalDirection)? onVertical;
   const DownloadCard(
@@ -45,6 +49,8 @@ class DownloadCard extends StatefulWidget {
       this.onPlay,
       this.onSilentInstall,
       this.onStart,
+      this.onOpenFolder,
+      this.awaitingCover = false,
       this.focusNode,
       this.onVertical,
       this.autofocus = false});
@@ -57,6 +63,7 @@ class _DownloadCardState extends State<DownloadCard> {
   final _start = FocusNode();
   final _pause = FocusNode();
   final _delete = FocusNode();
+  final _folder = FocusNode();
   final _cancel = FocusNode();
   final _play = FocusNode();
   final _silent = FocusNode();
@@ -77,6 +84,7 @@ class _DownloadCardState extends State<DownloadCard> {
     _start.dispose();
     _pause.dispose();
     _delete.dispose();
+    _folder.dispose();
     _cancel.dispose();
     _play.dispose();
     _silent.dispose();
@@ -94,8 +102,10 @@ class _DownloadCardState extends State<DownloadCard> {
       _pause.requestFocus();
     } else if (widget.item.state != DownloadState.completed) {
       _start.requestFocus();
-    } else {
+    } else if (widget.item.sourceType == ReleaseSource.fitGirl) {
       _play.requestFocus();
+    } else {
+      _folder.requestFocus();
     }
   }
 
@@ -191,7 +201,9 @@ class _DownloadCardState extends State<DownloadCard> {
     }
     if (item.busy) return true;
     final nodes = [
-      if (item.state == DownloadState.completed) _play,
+      if (item.state == DownloadState.completed &&
+          item.sourceType == ReleaseSource.fitGirl)
+        _play,
       if (item.state == DownloadState.completed &&
           item.sourceType == ReleaseSource.fitGirl &&
           widget.onSilentInstall != null)
@@ -201,6 +213,7 @@ class _DownloadCardState extends State<DownloadCard> {
       if (item.state != DownloadState.completed &&
           item.state != DownloadState.canceled)
         _cancel,
+      if (widget.onOpenFolder != null) _folder,
       _delete,
     ];
     final current = nodes.indexWhere((node) => node.hasFocus);
@@ -374,6 +387,29 @@ class _DownloadCardState extends State<DownloadCard> {
                                                 color: Color(0xFFB9B5D2)),
                                           ),
                                         ),
+                                      if (item.state ==
+                                              DownloadState.completed &&
+                                          item.sourceType !=
+                                              ReleaseSource.fitGirl)
+                                        const Padding(
+                                          padding: EdgeInsets.only(bottom: 12),
+                                          child: Text(
+                                            'Este release ainda não tem protocolo automático de instalação. '
+                                            'Use Abrir pasta para instalar por conta própria.',
+                                            style: TextStyle(
+                                                color: Color(0xFFB9B5D2)),
+                                          ),
+                                        ),
+                                      if (widget.awaitingCover)
+                                        const Padding(
+                                          padding: EdgeInsets.only(bottom: 12),
+                                          child: Text(
+                                            'Instalação concluída e cadastrada. Jogar agora pede a capa do jogo '
+                                            'e abre o game.',
+                                            style: TextStyle(
+                                                color: Color(0xFF6CE4B0)),
+                                          ),
+                                        ),
                                       if (item.installationMetrics['elapsedMs']
                                           is num)
                                         Padding(
@@ -430,7 +466,9 @@ class _DownloadCardState extends State<DownloadCard> {
                                                   label: const Text(
                                                       'Cancelar preparo')),
                                             if (item.state ==
-                                                DownloadState.completed)
+                                                    DownloadState.completed &&
+                                                item.sourceType ==
+                                                    ReleaseSource.fitGirl)
                                               FilledButton.icon(
                                                   style: _actionStyle,
                                                   focusNode: _play,
@@ -438,19 +476,13 @@ class _DownloadCardState extends State<DownloadCard> {
                                                       item.busy || _playing
                                                           ? null
                                                           : _playGame,
-                                                  icon: Icon(item.sourceType ==
-                                                          ReleaseSource.fitGirl
-                                                      ? Icons.sports_esports
-                                                      : Icons.folder_open),
+                                                  icon: const Icon(
+                                                      Icons.sports_esports),
                                                   label: Text(_playing
                                                       ? item.installing
                                                           ? 'Preparando…'
                                                           : 'Abrindo…'
-                                                      : item.sourceType ==
-                                                              ReleaseSource
-                                                                  .fitGirl
-                                                          ? 'Jogar'
-                                                          : 'Abrir pasta')),
+                                                      : 'Jogar')),
                                             if (item.state ==
                                                     DownloadState.completed &&
                                                 item.sourceType ==
@@ -516,6 +548,16 @@ class _DownloadCardState extends State<DownloadCard> {
                                                   icon: const Icon(Icons.stop),
                                                   label:
                                                       const Text('Cancelar')),
+                                            if (widget.onOpenFolder != null)
+                                              FilledButton.icon(
+                                                  style: _actionStyle,
+                                                  focusNode: _folder,
+                                                  onPressed:
+                                                      widget.onOpenFolder,
+                                                  icon: const Icon(
+                                                      Icons.folder_open),
+                                                  label: const Text(
+                                                      'Abrir pasta')),
                                             FilledButton.icon(
                                                 style: _actionStyle,
                                                 focusNode: _delete,

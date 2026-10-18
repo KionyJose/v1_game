@@ -174,6 +174,13 @@ class DownloadsController extends ChangeNotifier {
     if (!_closed) notifyListeners();
   }
 
+  /// O jogo cadastrado já tem capa própria, ou ainda está com o ícone padrão?
+  Future<bool> hasInstalledCover(String executable) =>
+      _library.hasCover(executable);
+
+  Future<void> setInstalledCover(String executable, String image) =>
+      _library.setCover(executable, image);
+
   Future<String?> prepareForPlay(DownloadRecord record) {
     return _startPreparation(record, silent: false);
   }

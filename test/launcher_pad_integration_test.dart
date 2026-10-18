@@ -24,6 +24,8 @@ import 'package:v1_game/Tela/Tela loja/componentes/jogo_card.dart';
 import 'package:v1_game/Tela/Tela loja/componentes/galeria_jogo.dart';
 import 'package:v1_game/Tela/Tela loja/componentes/jogo_midia.dart';
 import 'package:v1_game/Interface/text_viewer_dialog.dart';
+import 'package:v1_game/Interface/pad_shortcuts_sheet.dart';
+import 'package:v1_game/Interface/launcher_more_grid.dart';
 import 'package:v1_game/Tela/Tela loja/componentes/game_identity.dart';
 import 'package:v1_game/Interface/launcher_header.dart';
 import 'detalhes_jogo_tela_test.dart'
@@ -226,7 +228,7 @@ void main() {
   });
 
   testWidgets(
-      'Jogar aparece ao concluir, usa executável do jogo e aceita A do Pad',
+      'Jogar aparece ao concluir, cadastra o executável do jogo e aceita A do Pad',
       (tester) async {
     late Directory root;
     late File game;
@@ -258,14 +260,18 @@ void main() {
     await tester.pumpAndSettle();
     expect(Focus.of(tester.element(find.text('Jogar'))).hasFocus, isTrue);
     pad.interfaceRouter.dispatch('2');
-    for (var attempt = 0; attempt < 40 && launched == null; attempt++) {
+    for (var attempt = 0;
+        attempt < 40 && controller.records.first.launchPath == null;
+        attempt++) {
       await tester.runAsync(
           () => Future<void>.delayed(const Duration(milliseconds: 25)));
       await tester.pump(const Duration(milliseconds: 25));
     }
     await tester.pumpAndSettle();
-    expect(launched, game.path);
     expect(controller.records.first.launchPath, game.path);
+    // Cadastro novo: o jogo só abre no Jogar seguinte, depois da capa.
+    expect(launched, isNull);
+    expect(find.textContaining('Jogar agora pede a capa'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -410,7 +416,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('Preparação concluída cadastra antes de abrir o jogo',
+  testWidgets('Preparação concluída cadastra o jogo e aguarda o Jogar seguinte',
       (tester) async {
     final preparation = ControlledPreparation();
     final controller = TelaController(preparation: preparation);
@@ -421,18 +427,18 @@ void main() {
     controller.records.first.state = DownloadState.completed;
     String? launched;
     await tester.pumpWidget(app(DownloadsTela(
-        controller: controller,
-        onLaunchGame: (path) async {
-          expect(controller.registered, [path]);
-          launched = path;
-        })));
+        controller: controller, onLaunchGame: (path) async => launched = path)));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Jogar'));
     await tester.pump();
     preparation.result.complete('D:\\V1 Jogos\\Teste\\Jogo\\Game.exe');
     await tester.pumpAndSettle();
-    expect(launched, 'D:\\V1 Jogos\\Teste\\Jogo\\Game.exe');
+    expect(controller.registered, ['D:\\V1 Jogos\\Teste\\Jogo\\Game.exe']);
     expect(controller.records.first.installationState, 'ready');
+    // O cadastro vem primeiro; abrir o jogo fica para o Jogar seguinte, que é
+    // quando a capa é escolhida.
+    expect(launched, isNull);
+    expect(find.textContaining('Jogar agora pede a capa'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -780,6 +786,38 @@ void main() {
     await tester.tap(find.text('Downloads'));
     await tester.pumpAndSettle();
     expect(result, 'Downloads');
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Atalhos abre dentro do Mais e devolve o foco ao card',
+      (tester) async {
+    var result = 'nada';
+    await tester.pumpWidget(app(Scaffold(
+        body: Builder(
+            builder: (context) => FilledButton(
+                onPressed: () async {
+                  result = await PopMais.mais(context);
+                },
+                child: const Text('Start'))))));
+    await tester.tap(find.text('Start'));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Atalhos'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Atalhos'));
+    await tester.pumpAndSettle();
+    // A folha abre por cima: o Mais continua aberto e nada foi devolvido.
+    expect(find.byType(PadShortcutsSheet), findsOneWidget);
+    expect(find.byType(LauncherMoreGrid), findsOneWidget);
+    expect(result, 'nada');
+    // B fecha só a folha e o foco volta ao card de Atalhos.
+    pad.interfaceRouter.dispatch('3');
+    await tester.pumpAndSettle();
+    expect(find.byType(PadShortcutsSheet), findsNothing);
+    expect(find.byType(LauncherMoreGrid), findsOneWidget);
+    expect(result, 'nada');
+    final focado = find.ancestor(
+        of: find.text('Atalhos'), matching: find.byType(Focus).first);
+    expect(tester.widget<Focus>(focado).focusNode?.hasFocus, isTrue);
     expect(tester.takeException(), isNull);
   });
 

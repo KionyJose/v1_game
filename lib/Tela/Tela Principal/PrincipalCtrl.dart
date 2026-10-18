@@ -21,7 +21,6 @@ import 'package:v1_game/Modelos/MediaCanal.dart';
 import 'package:v1_game/Modelos/NoticiaGame.dart';
 import 'package:v1_game/Modelos/videoYT.dart';
 import 'package:v1_game/Tela/games_busca.dart/games_busca_tela.dart';
-import 'package:v1_game/Widgets/ImagemFullScren.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 import 'package:v1_game/Widgets/Pops/pop_config.dart';
@@ -1388,10 +1387,6 @@ class PrincipalCtrl with ChangeNotifier{
         case "Excluir Card": {
           await excluirCardSelecionado();
           return;
-        }
-        case "Atalhos":{
-          await Pops.popTela(ctx,ImagemFullScren(urlImg: "${assetsPath}tutorial.png"));
-          Timer(const Duration(milliseconds: 500), () => iniciaTela());  
         }
         case "Cfg":{
           String retorno = await PopConfig.config(ctx);

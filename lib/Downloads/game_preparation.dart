@@ -1,10 +1,13 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/services.dart';
 import 'package:path/path.dart' as p;
 import 'download_game_launcher.dart';
 import 'download_record.dart';
+import 'repack_decoder_channel.dart';
+import 'repack_decoder_tuning.dart';
 import 'repack_manifest.dart';
 import '../System/app_storage.dart';
 
@@ -186,7 +189,7 @@ class GamePreparation {
     final config = File(p.join(runtime.path, 'CLS.ini'));
     if (await config.exists()) {
       final text = await config.readAsString();
-      await config.writeAsString(text.replaceAll('{app}', output.path));
+      await config.writeAsString(tuneDecoderConfig(text, output.path));
     }
     final manifestFile =
         File(p.join(tools.path, 'app', '_Redist', 'fitgirl.md5'));
@@ -260,37 +263,46 @@ class GamePreparation {
             'O instalador não forneceu um manifesto para verificar todos os arquivos.');
       }
     } else {
-      final sizes = <int>[];
-      for (final archive in archives) {
-        var size = 0;
-        await _run(
-            helper.path, [dll.path, archive.path, output.path, 'l'], task,
-            (line) {
-          final parts = line.split('\t');
-          if (parts.length >= 4 && parts[1] == 'origsize') size = _bytes(parts);
-        });
-        sizes.add(size);
-      }
-      final total = sizes.fold<int>(0, (a, b) => a + b);
-      var extracted = 0;
-      for (var i = 0; i < archives.length; i++) {
-        task.check();
-        final label =
-            'Extraindo ${p.basename(archives[i].path)} (${i + 1}/${archives.length})…';
-        status(label, null);
-        await _run(
-            helper.path, [dll.path, archives[i].path, output.path, 'x'], task,
-            (line) {
-          final parts = line.split('\t');
-          if (parts.length >= 4 && parts[1] == 'write') {
-            status(
-                label,
-                total > 0
-                    ? ((extracted + _bytes(parts)) / total).clamp(0, 1)
-                    : null);
-          }
-        });
-        extracted += sizes[i];
+      final channel = DecoderChannel.pin();
+      try {
+        final sizes = <int>[];
+        for (final archive in archives) {
+          var size = 0;
+          await _run(
+              helper.path, [dll.path, archive.path, output.path, 'l'], task,
+              (line) {
+            final parts = line.split('\t');
+            if (parts.length >= 4 && parts[1] == 'origsize') {
+              size = _bytes(parts);
+            }
+          });
+          sizes.add(size);
+        }
+        final total = sizes.fold<int>(0, (a, b) => a + b);
+        var extracted = 0;
+        for (var i = 0; i < archives.length; i++) {
+          task.check();
+          final label =
+              'Extraindo ${p.basename(archives[i].path)} (${i + 1}/${archives.length})…';
+          status(label, null);
+          await _run(
+              helper.path, [dll.path, archives[i].path, output.path, 'x'], task,
+              (line) {
+            final parts = line.split('\t');
+            if (parts.length >= 4 && parts[1] == 'write') {
+              status(
+                  label,
+                  total > 0
+                      ? ((extracted + _bytes(parts)) / total).clamp(0, 1)
+                      : null);
+            }
+          });
+          extracted += sizes[i];
+        }
+        await _restoreRecompressedAudio(
+            output, runtime, dll.path, helper.path, task, status);
+      } finally {
+        channel?.release();
       }
     }
     status('Verificando todos os arquivos instalados…', null);
@@ -329,6 +341,106 @@ class GamePreparation {
     return chooseInstalledExecutable(candidates, output.path);
   }
 
+  /// Parte dos repacks recomprime o áudio FMOD como Ogg Vorbis: em vez dos
+  /// `*.resource` do jogo, os `fg-*.bin` entregam segmentos `NN.fgpack` com o
+  /// Ogg restaurado, o tamanho real de cada um em `NN.fgpack.x2` e um patch
+  /// `*.fgpack.x5`. Sem desfazer isso o jogo instala completo, roda e fica
+  /// mudo, por isso a extração direta só termina depois de refazer o caminho
+  /// do instalador original: cortar os segmentos no tamanho real, converter
+  /// cada um de volta para FSB5, juntar, aplicar o patch e extrair o arquivo
+  /// FreeArc resultante, que traz os `*.resource` definitivos.
+  Future<void> _restoreRecompressedAudio(
+      Directory output,
+      Directory runtime,
+      String dll,
+      String helper,
+      PreparationTask task,
+      PreparationStatus status) async {
+    final segments = <File>[];
+    final patches = <File>[];
+    await for (final entry in output.list(followLinks: false)) {
+      if (entry is! File) continue;
+      final name = p.basename(entry.path).toLowerCase();
+      if (name.endsWith('.fgpack')) segments.add(entry);
+      if (name.endsWith('.fgpack.x5')) patches.add(entry);
+    }
+    if (segments.isEmpty && patches.isEmpty) return;
+    if (segments.isEmpty || patches.length != 1) {
+      throw StateError(
+          'Este repack guarda o áudio em um formato que a extração automática ainda não refaz.');
+    }
+    segments.sort((a, b) => a.path.compareTo(b.path));
+    final converter = File(p.join(runtime.path, 'fsb.exe'));
+    final patcher = File(p.join(runtime.path, 'x5.exe'));
+    if (!await converter.exists() || !await patcher.exists()) {
+      throw StateError(
+          'O repack não trouxe as ferramentas de áudio esperadas (fsb.exe e x5.exe).');
+    }
+    final banks = <File>[];
+    for (var i = 0; i < segments.length; i++) {
+      task.check();
+      final segment = segments[i];
+      status('Restaurando o áudio do jogo (${i + 1}/${segments.length})…',
+          i / segments.length);
+      final measure = File('${segment.path}.x2');
+      if (await measure.exists()) {
+        final mark = await measure.readAsBytes();
+        if (mark.length < 8) {
+          throw StateError(
+              'O repack não informou o tamanho de ${p.basename(segment.path)}.');
+        }
+        final real =
+            ByteData.sublistView(mark).getUint64(0, Endian.little);
+        if (real <= 0 || real > await segment.length()) {
+          throw StateError(
+              'O tamanho declarado de ${p.basename(segment.path)} não confere.');
+        }
+        final handle = await segment.open(mode: FileMode.append);
+        try {
+          await handle.truncate(real);
+        } finally {
+          await handle.close();
+        }
+      }
+      final bank = File('${segment.path}.fsb');
+      await _run(converter.path, [segment.path, bank.path], task, (_) {},
+          growthProbe: bank);
+      banks.add(bank);
+    }
+    status('Reunindo as trilhas de áudio…', null);
+    final joined = File(p.join(runtime.path, 'audio-banks.bin'));
+    final sink = joined.openWrite();
+    try {
+      for (final bank in banks) {
+        task.check();
+        await sink.addStream(bank.openRead());
+      }
+    } finally {
+      await sink.close();
+    }
+    status('Reconstruindo os arquivos de áudio…', null);
+    final rebuilt = File(p.join(runtime.path, 'audio-restored.arc'));
+    await _run(patcher.path, [joined.path, patches.single.path, rebuilt.path],
+        task, (_) {},
+        growthProbe: rebuilt);
+    status('Gravando o áudio na pasta do jogo…', null);
+    await _run(helper, [dll, rebuilt.path, output.path, 'x'], task, (_) {});
+    for (final leftover in [
+      ...segments,
+      ...segments.map((file) => File('${file.path}.x2')),
+      ...banks,
+      patches.single,
+      joined,
+      rebuilt,
+    ]) {
+      try {
+        if (await leftover.exists()) await leftover.delete();
+      } on FileSystemException {
+        // Restos do processo não invalidam uma instalação já verificada.
+      }
+    }
+  }
+
   static int _bytes(List<String> parts) =>
       (int.tryParse(parts[2]) ?? 0) * 1048576 +
       ((int.tryParse(parts[3]) ?? 0) & 1048575);
@@ -342,9 +454,11 @@ class GamePreparation {
     return file.path;
   }
 
+  /// [growthProbe] mantém vivas as ferramentas que trabalham caladas: o avanço
+  /// é medido pelo arquivo que elas gravam, não pelas linhas que imprimem.
   Future<void> _run(String executable, List<String> args, PreparationTask task,
       void Function(String) onLine,
-      {Set<int> canceledExitCodes = const {}}) async {
+      {Set<int> canceledExitCodes = const {}, File? growthProbe}) async {
     task.check();
     final process = await Process.start(executable, args,
         workingDirectory: p.dirname(executable));
@@ -372,7 +486,23 @@ class GamePreparation {
     });
     final stdoutDone = out.asFuture<void>();
     final stderrDone = err.asFuture<void>();
-    final timer = Timer.periodic(const Duration(seconds: 2), (_) {
+    var probed = -1;
+    var probing = false;
+    final timer = Timer.periodic(const Duration(seconds: 2), (_) async {
+      if (growthProbe != null && !probing) {
+        probing = true;
+        try {
+          final size = await growthProbe.length();
+          if (size != probed) {
+            probed = size;
+            lastData = DateTime.now();
+          }
+        } on FileSystemException {
+          // O arquivo só aparece quando a ferramenta começa a gravar.
+        } finally {
+          probing = false;
+        }
+      }
       if (DateTime.now().difference(lastData) > stallTimeout) {
         stalled = true;
         process.kill();

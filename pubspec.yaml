@@ -93,7 +93,7 @@ flutter:
     # Imagens de FUNDO ======================
     - assets/BGdefault.jpeg
     - assets/BGICOdefault.png
-    # - assets/tutorial.png  # Removido temporariamente — arquivo ausente
+    - assets/tutorial.png
     - assets/IconeAppV1.png
     - assets/retro=01.png
     - assets/retro=02.png

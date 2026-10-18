@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../Controllers/SonsSistema.dart';
 import 'futuristic_material.dart';
 import 'launcher_pad_scope.dart';
+import 'pad_shortcuts_sheet.dart';
 
 /// Result strings preserve the existing launcher's action contract.
 class LauncherMoreGrid extends StatefulWidget {
@@ -41,6 +42,22 @@ class _LauncherMoreGridState extends State<LauncherMoreGrid> {
     Navigator.of(context).pop(result);
   }
 
+  /// Atalhos é só leitura: abre por cima do Mais em vez de fechá-lo, e ao sair
+  /// devolve o foco ao próprio card, de onde a navegação continua.
+  Future<void> _activate(int index) async {
+    if (_closed) return;
+    final action = items[index].$2;
+    if (action != 'Atalhos') {
+      _close(action);
+      return;
+    }
+    SonsSistema.click();
+    await mostrarAtalhosDoPad(context);
+    if (!mounted || _closed) return;
+    _select(index);
+    _nodes[index].requestFocus();
+  }
+
   void _select(int index) {
     if (_closed || index == _selected) return;
     setState(() => _selected = index);
@@ -74,7 +91,7 @@ class _LauncherMoreGridState extends State<LauncherMoreGrid> {
       case 'DIREITA':
         if (_selected.isEven) _select(_selected + 1);
       case '2':
-        _close(items[_selected].$2);
+        _activate(_selected);
       case '3':
       case 'START':
         _close('');
@@ -171,7 +188,7 @@ class _LauncherMoreGridState extends State<LauncherMoreGrid> {
                               label: items[index].$1,
                               selected: selected,
                               child: GestureDetector(
-                                onTap: () => _close(items[index].$2),
+                                onTap: () => _activate(index),
                                 child: AnimatedContainer(
                                     duration:
                                         const Duration(milliseconds: 180),

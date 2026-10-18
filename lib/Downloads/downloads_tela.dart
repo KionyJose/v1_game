@@ -14,6 +14,11 @@ import 'game_preparation.dart';
 import 'package:provider/provider.dart';
 import 'package:window_manager/window_manager.dart';
 import '../Controllers/JanelaCtrl.dart';
+import '../Class/Paad.dart';
+import '../Class/WebScrap.dart';
+import '../Tela/SeletorImagens/SeletorImagens.dart';
+import '../Widgets/Pops/Pops.dart';
+import 'installed_game_library.dart';
 
 class DownloadsTela extends StatefulWidget {
   final DownloadsController? controller;
@@ -21,13 +26,18 @@ class DownloadsTela extends StatefulWidget {
   final Future<void> Function(String)? onLaunchGame;
   final Future<void> Function(String)? onOpenFolder;
   final Future<List<String>> Function()? loadDrives;
+
+  /// Recebe o nome do jogo e devolve o caminho local da capa escolhida, ou
+  /// nulo quando o jogador desiste. Sem isso, usa o seletor da tela principal.
+  final Future<String?> Function(String)? chooseCover;
   const DownloadsTela(
       {super.key,
       this.controller,
       this.enablePad = true,
       this.onLaunchGame,
       this.onOpenFolder,
-      this.loadDrives});
+      this.loadDrives,
+      this.chooseCover});
   @override
   State<DownloadsTela> createState() => _DownloadsTelaState();
 }
@@ -35,12 +45,25 @@ class DownloadsTela extends StatefulWidget {
 class _DownloadsTelaState extends State<DownloadsTela> with WindowListener {
   late final DownloadsController _controller;
   final _itemFocus = <String, FocusNode>{};
+
+  /// Jogos instalados nesta visita à tela que ainda aguardam a escolha da capa.
+  final _awaitingCover = <String>{};
   JanelaCtrl? _gameWindow;
   bool _wasPinned = false;
 
+  /// A fixação volta ao estado anterior fora do quadro em curso: `dispose`
+  /// roda com a árvore travada, e `telaPresaReverse` notifica o provider do
+  /// `JanelaCtrl` — notificar ali derruba o quadro com
+  /// "setState() called when widget tree was locked".
   void _restoreWindowPin() {
-    _gameWindow?.telaPresaReverse(usarEstado: true, estado: _wasPinned);
+    final window = _gameWindow;
+    if (window == null) return;
+    final pinned = _wasPinned;
     _gameWindow = null;
+    WidgetsBinding.instance.addPostFrameCallback(
+        (_) => window.telaPresaReverse(usarEstado: true, estado: pinned));
+    // Fora de um quadro não haveria um próximo para executar o retorno.
+    WidgetsBinding.instance.ensureVisualUpdate();
   }
 
   @override
@@ -98,20 +121,84 @@ class _DownloadsTelaState extends State<DownloadsTela> with WindowListener {
     }
   }
 
+  /// Abrir pasta entrega o controle ao Explorer, que não se navega pelo Pad:
+  /// a janela deixa de ficar presa à frente e o mouse do sistema é liberado,
+  /// como no início de um jogo. Ao voltar o foco ao launcher, `onWindowFocus`
+  /// restaura a fixação anterior.
+  Future<void> _releaseScreenForMouse() async {
+    _gameWindow = Provider.of<JanelaCtrl?>(context, listen: false);
+    _wasPinned = _gameWindow?.telaPresa ?? false;
+    _gameWindow?.telaPresaReverse(usarEstado: true, estado: false);
+    await Provider.of<Paad?>(context, listen: false)
+        ?.ativaMouse(usarEstado: true, estado: true);
+  }
+
+  Future<void> _openFolder(DownloadRecord item) async {
+    try {
+      await _releaseScreenForMouse();
+      if (!mounted) return;
+      if (widget.onOpenFolder != null) {
+        await widget.onOpenFolder!(item.destination);
+      } else {
+        await openDownloadedFolder(item.destination);
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text(
+                'Não foi possível abrir a pasta. Verifique se ela existe e está acessível.')));
+      }
+    }
+  }
+
+  /// A capa é gravada na entrada que o cadastro acabou de criar, sem mexer nos
+  /// outros jogos do catálogo.
+  Future<void> _chooseCover(DownloadRecord item, String executable) async {
+    final name = installedGameName(item.name);
+    final saved = await (widget.chooseCover ?? _pickCoverImage)(name);
+    if (!mounted || saved == null || saved.isEmpty) return;
+    await _controller.setInstalledCover(executable, saved);
+  }
+
+  /// Mesmo seletor de imagens da tela principal, já baixando a escolha.
+  Future<String?> _pickCoverImage(String name) async {
+    await _releaseScreenForMouse();
+    if (!mounted) return null;
+    final chosen = await Pops.popTela(context, SeletorImagens(nome: name));
+    if (!mounted || chosen is! String || chosen.isEmpty) return null;
+    final saved = await WebScrap.downloadImage(chosen, name);
+    if (!mounted) return null;
+    if (saved.startsWith('Erro::')) {
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(saved.replaceFirst('Erro:: ', ''))));
+      return null;
+    }
+    return saved;
+  }
+
+  Future<void> _launch(String path) async {
+    if (widget.onLaunchGame != null) {
+      await widget.onLaunchGame!(path);
+      return;
+    }
+    _gameWindow = Provider.of<JanelaCtrl?>(context, listen: false);
+    _wasPinned = _gameWindow?.telaPresa ?? false;
+    _gameWindow?.telaPresaReverse(usarEstado: true, estado: false);
+    await DB().openFile(path,
+        workingDirectory: p.dirname(path), throwOnError: true);
+  }
+
   Future<void> _play(DownloadRecord item) async {
     try {
       if (item.state != DownloadState.completed) return;
+      // Sem protocolo automático o cartão não oferece Jogar; o aviso fica nele
+      // e a pasta é aberta pelo próprio botão Abrir pasta.
       if (item.sourceType != ReleaseSource.fitGirl) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-            content: Text(
-                'Este release ainda não tem protocolo automático de instalação. Abrindo a pasta do download.')));
-        if (widget.onOpenFolder != null) {
-          await widget.onOpenFolder!(item.destination);
-        } else {
-          await openDownloadedFolder(item.destination);
-        }
+        await _openFolder(item);
         return;
       }
+      final wasReady =
+          item.installationState == 'ready' && item.launchPath != null;
       String? path;
       try {
         path = await _controller.prepareForPlay(item);
@@ -131,15 +218,34 @@ class _DownloadsTelaState extends State<DownloadsTela> with WindowListener {
         await _controller.registerInstalledGame(item, path);
       }
       if (!mounted) return;
-      if (widget.onLaunchGame != null) {
-        await widget.onLaunchGame!(path);
-      } else {
-        _gameWindow = Provider.of<JanelaCtrl?>(context, listen: false);
-        _wasPinned = _gameWindow?.telaPresa ?? false;
-        _gameWindow?.telaPresaReverse(usarEstado: true, estado: false);
-        await DB().openFile(path,
-            workingDirectory: p.dirname(path), throwOnError: true);
+      // Descompactou agora: o jogo não abre nesta vez, para que o Jogar
+      // seguinte cuide da capa antes de iniciar.
+      if (!wasReady) {
+        setState(() => _awaitingCover.add(item.id));
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text(
+                'Instalação concluída. Toque em Jogar de novo para escolher a capa e abrir o jogo.')));
+        return;
       }
+      // Sem capa própria o jogo não inicia: ele entraria no início sem
+      // identidade. A capa é pedida aqui, e só então o jogo abre.
+      if (!await _controller.hasInstalledCover(path)) {
+        if (!mounted) return;
+        await _chooseCover(item, path);
+        if (!mounted) return;
+        if (!await _controller.hasInstalledCover(path)) {
+          if (!mounted) return;
+          setState(() => _awaitingCover.add(item.id));
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+              content: Text(
+                  'O jogo abre depois de escolher a capa. Toque em Jogar para escolher.')));
+          return;
+        }
+        if (!mounted) return;
+        setState(() => _awaitingCover.remove(item.id));
+      }
+      await _launch(path);
+      if (mounted) Navigator.of(context).maybePop();
     } catch (_) {
       _restoreWindowPin();
       if (mounted) {
@@ -198,13 +304,17 @@ class _DownloadsTelaState extends State<DownloadsTela> with WindowListener {
                       content:
                           Column(mainAxisSize: MainAxisSize.min, children: [
                         const Text(
-                            'Remove o registro e os arquivos .torrent da pasta de compras.'),
+                            'Remove o registro, os .torrent da pasta de compras e os arquivos '
+                            'do download: o repack, a conferência e as ferramentas de instalação. '
+                            'O jogo já instalado continua na sua biblioteca.'),
                         CheckboxListTile(
                             value: removePayload,
                             onChanged: (value) =>
                                 setDialogState(() => removePayload = value!),
                             title: const Text(
-                                'Excluir também os arquivos do jogo'),
+                                'Excluir também o jogo instalado'),
+                            subtitle: const Text(
+                                'Apaga a pasta inteira, incluindo o jogo.'),
                             controlAffinity: ListTileControlAffinity.leading),
                       ]),
                       actions: [
@@ -331,6 +441,14 @@ class _DownloadsTelaState extends State<DownloadsTela> with WindowListener {
                                                                   items[index]),
                                                           onStart: () => _start(
                                                               items[index]),
+                                                          onOpenFolder: () =>
+                                                              _openFolder(
+                                                                  items[index]),
+                                                          awaitingCover:
+                                                              _awaitingCover
+                                                                  .contains(
+                                                                      items[index]
+                                                                          .id),
                                                           autofocus: index == 0,
                                                           onDelete: () =>
                                                               _delete(items[index]))),

@@ -209,7 +209,7 @@ class DownloadStore {
       managedRoot = Directory(p.windows.join(drive, 'V1 Jogos'));
     }
     final directory = Directory(destination);
-    if (deletePayload && await directory.exists()) {
+    if (await directory.exists()) {
       final root = await managedRoot.resolveSymbolicLinks();
       final expectedRoot = p.normalize(p.absolute(managedRoot.path));
       if (!p.equals(root, expectedRoot)) {
@@ -220,7 +220,11 @@ class DownloadStore {
           !p.equals(resolved, p.normalize(p.absolute(directory.path)))) {
         throw StateError('O destino aponta para fora da pasta gerenciada.');
       }
-      await _deleteWithRetry(directory, recursive: true);
+      if (deletePayload) {
+        await _deleteWithRetry(directory, recursive: true);
+      } else {
+        await _deleteDownloadFiles(directory, record);
+      }
     }
     for (final path in record.torrentFiles) {
       if (!p.isWithin(p.absolute(purchases.path), p.absolute(path))) continue;
@@ -230,6 +234,28 @@ class DownloadStore {
     }
     records.remove(record.id);
     await _persist();
+  }
+
+  /// Libera o espaço do download mantendo o jogo instalado: saem o repack, os
+  /// arquivos de conferência, as ferramentas de extração e o torrent da pasta,
+  /// e fica apenas a instalação. Sem nada a preservar, a pasta inteira sai.
+  Future<void> _deleteDownloadFiles(
+      Directory directory, DownloadRecord record) async {
+    final keep = <String>{
+      for (final path in [record.installationDirectory, record.launchPath])
+        if (path != null && path.isNotEmpty)
+          p.normalize(p.absolute(path)).toLowerCase(),
+    };
+    var kept = 0;
+    await for (final entry in directory.list(followLinks: false)) {
+      final path = p.normalize(p.absolute(entry.path)).toLowerCase();
+      if (keep.any((target) => target == path || p.isWithin(path, target))) {
+        kept++;
+        continue;
+      }
+      await _deleteWithRetry(entry, recursive: true);
+    }
+    if (kept == 0) await _deleteWithRetry(directory, recursive: true);
   }
 
   Future<void> _deleteWithRetry(FileSystemEntity entity,

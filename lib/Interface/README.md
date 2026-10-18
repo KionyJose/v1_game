@@ -84,6 +84,13 @@ o aplicativo inativo ou a preferência de reduzir animações.
   A confirma e B/Start fecha. A rolagem acompanha a seleção em janelas pequenas.
   O menu reutiliza uma captura estática do Futurista para refratar o cenário;
   a imagem só é liberada depois da animação de saída do diálogo.
+- `pad_shortcuts_sheet.dart`: o card **Atalhos** é o único item só de leitura, e
+  por isso não fecha o menu. `mostrarAtalhosDoPad` abre `assets/tutorial.png`
+  por cima do Mais; B, A, Start, Esc, o clique fora ou o botão Fechar saem, e o
+  foco volta ao próprio card de Atalhos, de onde a navegação continua. A folha
+  consome todo comando do Pad, então nada vaza para o menu atrás dela.
+  A imagem é carregada do bundle (`Image.asset`), não de um caminho em disco:
+  a entrada `assets/tutorial.png` precisa continuar declarada no `pubspec.yaml`.
 - Movimento: bordas e foco em 220 ms; rolagem por mola amortecida com velocidade
   preservada entre comandos e chegada exata (tolerância de 0,1 pixel);
   brilho somente após parar no cartão selecionado. Cards mantêm tamanho e

@@ -341,21 +341,43 @@ void main() {
   });
 
   test(
-      'Excluir pode preservar conteúdo; exclusão completa fica restrita à pasta do item',
+      'Excluir limpa o download e mantém o jogo instalado; exclusão completa fica restrita à pasta do item',
       () async {
     final first = await add('test');
     final second = await add('next');
-    await Directory(first.destination).create();
-    final content = File(p.join(first.destination, 'jogo.bin'));
-    await content.writeAsString('dados');
+    // Repack, ferramentas e a pasta do jogo instalado convivem no destino.
+    final installed = Directory(p.join(first.destination, 'Jogo'));
+    await installed.create(recursive: true);
+    final game = File(p.join(installed.path, 'jogo.exe'));
+    await game.writeAsString('executavel');
+    final repack = File(p.join(first.destination, 'fg-01.bin'));
+    await repack.writeAsString('dados');
+    final tools = Directory(p.join(first.destination, '.v1-tools'));
+    await tools.create();
+    first.installationDirectory = installed.path;
+    first.launchPath = game.path;
     await controller.delete(first);
-    expect(await content.exists(), isTrue);
+    // Só o que servia ao download sai; o jogo instalado permanece.
+    expect(await game.exists(), isTrue);
+    expect(await repack.exists(), isFalse);
+    expect(await tools.exists(), isFalse);
     expect(controller.items.length, 1);
-    await Directory(second.destination).create();
+    await Directory(second.destination).create(recursive: true);
     await File(p.join(second.destination, 'jogo.bin')).writeAsString('dados');
     await controller.delete(second, deletePayload: true);
     expect(await Directory(second.destination).exists(), isFalse);
-    expect(await content.exists(), isTrue);
+    expect(await game.exists(), isTrue);
+    await controller.refresh();
+    expect(controller.items, isEmpty);
+  });
+
+  test('Sem instalação a preservar, excluir remove a pasta do download',
+      () async {
+    final record = await add('test');
+    await Directory(record.destination).create(recursive: true);
+    await File(p.join(record.destination, 'fg-01.bin')).writeAsString('dados');
+    await controller.delete(record);
+    expect(await Directory(record.destination).exists(), isFalse);
     await controller.refresh();
     expect(controller.items, isEmpty);
   });
