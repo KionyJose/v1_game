@@ -11,6 +11,18 @@ import 'package:v1_game/Controllers/MovimentoSistema.dart';
 import 'package:v1_game/Modelos/ImgWebScrap.dart';
 import 'package:v1_game/Widgets/LoadWid.dart';
 
+/// Formato sempre; resolução só quando a página informou a do arquivo. Antes
+/// o rótulo era montado sem checar, e uma imagem sem resolução conhecida
+/// aparecia como "x - JPG".
+String _legenda(ImgWebScrap imagem) {
+  final formato = imagem.imageUrl.split('.').last.toUpperCase();
+  final temResolucao =
+      imagem.largura.trim().isNotEmpty && imagem.altura.trim().isNotEmpty;
+  return temResolucao
+      ? '${imagem.largura}x${imagem.altura} - $formato'
+      : formato;
+}
+
 class VisualizadorImgWeb extends StatefulWidget {
   const VisualizadorImgWeb({required this.list, super.key});
   final List<ImgWebScrap> list;
@@ -311,7 +323,7 @@ class _VisualizadorImgWebState extends State<VisualizadorImgWeb> {
                               color: Colors.black45,
                             ),
                             child: Text(
-                              "${widget.list[i].largura}x${widget.list[i].altura} - ${widget.list[i].imageUrl.split('.').last.toUpperCase()}",
+                              _legenda(widget.list[i]),
                               style: const TextStyle(color: Colors.white),
                             ),
                           ),

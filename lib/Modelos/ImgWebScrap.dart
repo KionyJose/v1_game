@@ -8,6 +8,10 @@ class ImgWebScrap {
   String largura;
   String folderUrl;
 
+  /// Quantas imagens a pasta guarda. Zero quando o resultado é uma imagem
+  /// solta, e não um álbum.
+  int fotos;
+
   ImgWebScrap({
     this.altura = "",
     this.largura = "",
@@ -15,6 +19,7 @@ class ImgWebScrap {
     this.imageUrl = "",
     this.tipo = "",
     this.folderUrl = "",
+    this.fotos = 0,
   });
 
   fromMapImgFinal(Map<String, String> map,

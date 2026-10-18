@@ -97,6 +97,45 @@ void main() {
         reason: '/w400/wp13320576.jpg precisa virar /wp/wp13320576.jpg');
   });
 
+  test('A pasta informa quantas imagens guarda; a imagem solta não', () {
+    final lista = WebScrap.wallpapersDaPagina(
+        fixture('wallpapercave_busca_real.html'), busca);
+    final albuns = lista.where((i) => i.fotos > 0).toList();
+    expect(albuns.map((i) => i.fotos), [60, 14, 37]);
+    // Os wallpapers soltos da mesma busca não viram pasta.
+    expect(lista.where((i) => i.folderUrl.contains('/w/')).map((i) => i.fotos),
+        everyElement(0));
+    expect(
+        WebScrap.wallpapersDaPagina(
+                fixture('wallpapercave_busca.html'), listagem)
+            .map((i) => i.fotos),
+        everyElement(0));
+  });
+
+  test('A imagem solta mostra a resolução do arquivo, não a de exibição', () {
+    // A página desenha o wallpaper em 700x1400 e declara a resolução real em
+    // `<p class="resolution">`; usar o atributo do `<img>` mostrava 700x1400.
+    final oficial = WebScrap.wallpapersDaPagina(
+        fixture('wallpapercave_pasta_wp.html'), pastaWp,
+        tamanhoCheio: true);
+    expect('${oficial.first.largura}x${oficial.first.altura}', '1080x2160');
+    final usuario = WebScrap.wallpapersDaPagina(
+        fixture('wallpapercave_pasta_uwp.html'), pastaUwp,
+        tamanhoCheio: true);
+    expect('${usuario.first.largura}x${usuario.first.altura}', '1600x1064');
+    // Miniaturas das vizinhas não dizem nada do arquivo: melhor vazio do que
+    // o tamanho da miniatura passando por resolução.
+    expect(oficial[1].largura, isEmpty);
+    expect(oficial[1].altura, isEmpty);
+  });
+
+  test('A listagem traz a resolução real de cada wallpaper', () {
+    final lista = WebScrap.wallpapersDaPagina(
+        fixture('wallpapercave_busca.html'), listagem);
+    expect(lista.map((i) => '${i.largura}x${i.altura}'),
+        ['1080x2160', '1920x1080', '2560x1440', '1920x1080', '1280x720']);
+  });
+
   test('Logo, ícones, avatares, vídeos e repetidas ficam de fora', () {
     for (final caso in {
       'wallpapercave_busca.html': listagem,

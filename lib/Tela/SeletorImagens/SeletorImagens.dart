@@ -8,6 +8,7 @@ import 'package:v1_game/Class/wallpapercave_image_cache.dart';
 import '../../Interface/launcher_pad_scope.dart';
 import 'package:v1_game/Tela/SeletorImagens/SeletorImgCtrl.dart';
 import 'package:v1_game/Widgets/LoadWid.dart';
+import 'package:v1_game/Modelos/ImgWebScrap.dart';
 
 class SeletorImagens extends StatefulWidget {
   const SeletorImagens({required this.nome, this.buscar, super.key});
@@ -229,8 +230,40 @@ class _SeletorImagensState extends State<SeletorImagens> {
     );
   }
 
+  /// Pasta com a quantidade de imagens escrita dentro dela, em preto sobre o
+  /// corpo branco do ícone; resultado de uma imagem só troca para o ícone de
+  /// imagem, para não prometer uma pasta que não existe.
+  static Widget marcaDoResultado(ImgWebScrap item) {
+    const sombra = Shadow(color: Colors.black, blurRadius: 5);
+    if (item.fotos <= 1) {
+      return const Icon(Icons.image, color: Colors.white, shadows: [sombra]);
+    }
+    return SizedBox(
+      width: 30,
+      height: 30,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          const Icon(Icons.folder,
+              size: 30, color: Colors.white, shadows: [sombra]),
+          Padding(
+            padding: const EdgeInsets.only(top: 7),
+            child: Text(
+              item.fotos > 99 ? '99+' : '${item.fotos}',
+              style: const TextStyle(
+                color: Color(0xFF101014),
+                fontSize: 11,
+                height: 1,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   btnUser(int index) {
-    const sdw = Shadow(color: Colors.black, blurRadius: 5);
     final foco = index == ctrl.selectedIndexGrid;
     final item = ctrl.listUser[index];
     return Container(
@@ -300,13 +333,9 @@ class _SeletorImagensState extends State<SeletorImagens> {
                   ),
                 ],
               ),
-              const Padding(
-                padding: EdgeInsets.only(left: 5, top: 2),
-                child: Icon(
-                  Icons.folder,
-                  color: Colors.white,
-                  shadows: [sdw],
-                ),
+              Padding(
+                padding: const EdgeInsets.only(left: 5, top: 2),
+                child: marcaDoResultado(item),
               ),
             ],
           ),

@@ -119,6 +119,31 @@ class WebScrap{
     return descartadas;
   }
 
+  /// Resolução real declarada pela página de um wallpaper, em `<p
+  /// class="resolution">1080x2160</p>`. Nessas páginas o `<img>` principal traz
+  /// no `width`/`height` o tamanho em que ele aparece na tela (700x1400), não o
+  /// do arquivo — era daí que vinha a resolução errada nas imagens soltas.
+  static List<String> _resolucaoDaPagina(dom.Document document) {
+    final texto = document.querySelector('p.resolution')?.text.trim() ?? '';
+    final partes = RegExp(r'^(\d+)\s*[x×]\s*(\d+)$', caseSensitive: false)
+        .firstMatch(texto);
+    return partes == null ? const ['', ''] : [partes[1]!, partes[2]!];
+  }
+
+  /// Quantas imagens o álbum guarda, quando a miniatura é a capa de um. O
+  /// site declara o número em `<div class="aall" photos="60">`; resultados que
+  /// são uma imagem solta não têm esse atributo e ficam em zero.
+  static int _fotosDoAlbum(dom.Element element) {
+    var parente = element.parent;
+    while (parente != null) {
+      final declarado = parente.attributes['photos'];
+      if (declarado != null) return int.tryParse(declarado.trim()) ?? 0;
+      if (parente.localName == 'a') break;
+      parente = parente.parent;
+    }
+    return 0;
+  }
+
   /// Página que abre aquele wallpaper, quando a miniatura está dentro de um
   /// link. É o que a tela chama de "pasta".
   static String _pastaDoWallpaper(dynamic element, Uri base) {
@@ -156,6 +181,7 @@ class WebScrap{
       {bool tamanhoCheio = false}) {
     final document = html.parse(body);
     final preenchimento = _imagensDePreenchimento(document);
+    final resolucao = _resolucaoDaPagina(document);
     final vistos = <String>{};
     final lista = <ImgWebScrap>[];
     for (final element in document.querySelectorAll('img')) {
@@ -171,6 +197,16 @@ class WebScrap{
       if (endereco.isEmpty || !vistos.add(endereco)) continue;
       imagem.imageUrl = endereco;
       imagem.folderUrl = _pastaDoWallpaper(element, base);
+      imagem.fotos = _fotosDoAlbum(element);
+      // Só a listagem (`wimg`) declara no próprio `<img>` a resolução do
+      // arquivo. A imagem principal de uma página (`wpimg`) usa a resolução
+      // declarada pela página, e miniaturas ficam sem nenhuma: um campo vazio
+      // é melhor do que o tamanho da miniatura passando por resolução.
+      if (!element.classes.contains('wimg')) {
+        final daPagina = element.classes.contains('wpimg');
+        imagem.largura = daPagina ? resolucao[0] : '';
+        imagem.altura = daPagina ? resolucao[1] : '';
+      }
       lista.add(imagem);
     }
     return lista;
