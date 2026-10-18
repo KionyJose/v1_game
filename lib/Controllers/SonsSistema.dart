@@ -26,23 +26,28 @@ class SonsSistema {
       : futuristicActive ? futuristicOpen() : _playSound('Sons/SomClick.mp3');
   static bool get futuristicActive => !SlimModeConfigController.active.value &&
       configSistema.viewType == 'futurista';
-  static void futuristicMove() => _playSound('Sons/Futurista/move.wav');
-  static void futuristicOpen() => _playSound('Sons/Futurista/open.wav');
-  static void futuristicLaunch() => _playSound('Sons/Futurista/launch.wav');
-  static void transversalMove({required bool toRight}) => _playSound(
-        toRight
-            ? 'Sons/Transversal/wind_slap_right.wav'
-            : 'Sons/Transversal/wind_slap_left.wav',
+  static void futuristicMove() =>
+      _playSound('Sons/Futurista/click_move_futurista.wav');
+  static void futuristicOpen() =>
+      _playSound('Sons/Futurista/click_enter_futurista.wav');
+  static void futuristicLaunch() =>
+      _playSound(
+        'Sons/Futurista/start_game_futurista.wav',
+        volumeMultiplier: configSistema.volumeSomInicioFuturista,
       );
   static Future<SoundHandle?> startWaterAmbience() async {
-    await preload('Sons/Futurista/water_ambient.wav');
-    final source = _loadedSounds['Sons/Futurista/water_ambient.wav'];
+    await preload('Sons/Futurista/menu_background_futurista.wav');
+    final source = _loadedSounds['Sons/Futurista/menu_background_futurista.wav'];
     if (!_initialized || source == null) return null;
     return _soloud.play(source, looping: true, paused: true, volume: 0);
   }
   static void updateWaterAmbience(SoundHandle handle, bool active) {
     if (!_initialized) return;
-    _soloud.setVolume(handle, configSistema.volume.clamp(0.0, 1.0) * .22);
+    _soloud.setVolume(
+      handle,
+      configSistema.volume.clamp(0.0, 1.0) *
+          configSistema.volumeMusicaFuturista.clamp(0.0, 1.0),
+    );
     _soloud.setPause(handle, !active);
   }
   static Future<void> stopWaterAmbience(SoundHandle handle) async {
@@ -106,7 +111,7 @@ class SonsSistema {
 
   // Toca som IMEDIATAMENTE - sem await, sem delays
   // IMPORTANTE: O som DEVE estar pré-carregado!
-  static void _playSound(String assetPath) {
+  static void _playSound(String assetPath, {double volumeMultiplier = 1}) {
     if (!_initialized) {
       debugPrint(
           '⚠️ SoLoud não inicializado! Chame SonsSistema.init() primeiro');
@@ -121,7 +126,8 @@ class SonsSistema {
     }
 
     try {
-      final volume = configSistema.volume.clamp(0.0, 1.0);
+      final volume = configSistema.volume.clamp(0.0, 1.0) *
+          volumeMultiplier.clamp(0.0, 1.0);
       if (volume == 0) return;
       final source = _loadedSounds[assetPath]!;
       // Toca IMEDIATAMENTE - sem await
@@ -143,11 +149,9 @@ class SonsSistema {
       preload('Sons/Intro.mp3'),
       preload('Sons/Slim/move_8bit.wav'),
       preload('Sons/Slim/open_8bit.wav'),
-      preload('Sons/Futurista/move.wav'),
-      preload('Sons/Futurista/open.wav'),
-      preload('Sons/Futurista/launch.wav'),
-      preload('Sons/Transversal/wind_slap_right.wav'),
-      preload('Sons/Transversal/wind_slap_left.wav'),
+      preload('Sons/Futurista/click_move_futurista.wav'),
+      preload('Sons/Futurista/click_enter_futurista.wav'),
+      preload('Sons/Futurista/start_game_futurista.wav'),
     ]);
     debugPrint('✓ Todos os sons carregados e prontos para uso instantâneo');
   }

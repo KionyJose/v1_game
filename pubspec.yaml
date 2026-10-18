@@ -41,6 +41,7 @@ dependencies:
   # MEDIA ===================================================
   process_run: ^0.12.0
   cached_network_image: ^3.3.0  
+  flutter_cache_manager: ^3.4.1
   url_launcher: ^6.2.6
   # audioplayers: ^6.5.1
   flutter_soloud: ^3.4.7

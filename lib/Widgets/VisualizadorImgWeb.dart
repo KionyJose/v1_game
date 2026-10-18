@@ -4,6 +4,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:v1_game/Class/wallpapercave_image_cache.dart';
 import 'package:provider/provider.dart';
 import 'package:v1_game/Class/Paad.dart';
 import 'package:v1_game/Controllers/MovimentoSistema.dart';
@@ -13,8 +14,6 @@ import 'package:v1_game/Widgets/LoadWid.dart';
 class VisualizadorImgWeb extends StatefulWidget {
   const VisualizadorImgWeb({required this.list, super.key});
   final List<ImgWebScrap> list;
-  static FocusScopeNode focusScope = FocusScopeNode();
-  static CarouselSliderController listCtrl = CarouselSliderController();
 
   @override
   State<VisualizadorImgWeb> createState() => _VisualizadorImgWebState();
@@ -23,6 +22,16 @@ class VisualizadorImgWeb extends StatefulWidget {
 class _VisualizadorImgWebState extends State<VisualizadorImgWeb> {
   String nomeImg = "";
   int indexFoto = 0;
+  final FocusScopeNode _focusScope = FocusScopeNode();
+  final FocusNode _keyboardFocus = FocusNode();
+  final CarouselSliderController _listCtrl = CarouselSliderController();
+  late final List<FocusNode> _imageFocusNodes;
+
+  @override
+  void initState() {
+    super.initState();
+    _imageFocusNodes = List.generate(widget.list.length, (_) => FocusNode());
+  }
 
   escutaPad(BuildContext ctx, String event) {
     try {
@@ -33,14 +42,14 @@ class _VisualizadorImgWebState extends State<VisualizadorImgWeb> {
     if (event.isEmpty) return;
 
     if (event == "DIREITA" || event == "ESQUERDA") {
-      MovimentoSistema.direcaoListView(VisualizadorImgWeb.focusScope, event);
+      MovimentoSistema.direcaoListView(_focusScope, event);
       if (event == "DIREITA") {
-        VisualizadorImgWeb.listCtrl.nextPage(
+        _listCtrl.nextPage(
           duration: const Duration(milliseconds: 160),
         );
       }
       if (event == "ESQUERDA") {
-        VisualizadorImgWeb.listCtrl.previousPage(
+        _listCtrl.previousPage(
           duration: const Duration(milliseconds: 160),
         );
       }
@@ -79,12 +88,22 @@ class _VisualizadorImgWebState extends State<VisualizadorImgWeb> {
   }
 
   @override
+  void dispose() {
+    _focusScope.dispose();
+    _keyboardFocus.dispose();
+    for (final node in _imageFocusNodes) {
+      node.dispose();
+    }
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return KeyboardListener(
         // Escuta teclado Press;
         includeSemantics: false,
-        focusNode: FocusNode(), //ctrl.focoPrincipal,
-        autofocus: false,
+        focusNode: _keyboardFocus,
+        autofocus: true,
         onKeyEvent: (KeyEvent event) => keyPress(context, event),
         child: escutaPadWid(context));
   }
@@ -178,9 +197,9 @@ class _VisualizadorImgWebState extends State<VisualizadorImgWeb> {
   body(BuildContext context) {
     return Center(
       child: FocusScope(
-        node: VisualizadorImgWeb.focusScope,
+        node: _focusScope,
         child: CarouselSlider(
-            carouselController: VisualizadorImgWeb.listCtrl,
+            carouselController: _listCtrl,
             options: CarouselOptions(
               height: MediaQuery.of(context).size.height * 1.0,
               onPageChanged: (index, ctrls) {
@@ -205,7 +224,7 @@ class _VisualizadorImgWebState extends State<VisualizadorImgWeb> {
                     return Navigator.pop(context, widget.list[i].imageUrl);
                   },
                   child: Focus(
-                    focusNode: FocusNode(),
+                    focusNode: _imageFocusNodes[i],
                     onFocusChange: (hasFocus) =>
                         hasFocus ? onFocusChangeImg(context, i) : null,
                     child: Stack(
@@ -217,6 +236,8 @@ class _VisualizadorImgWebState extends State<VisualizadorImgWeb> {
                             child: CachedNetworkImage(
                               imageUrl: widget.list[i]
                                   .imageUrl, // Substitua pelo URL da sua imagem
+                              cacheManager: WallpapercaveImageCache.manager,
+                              httpHeaders: WallpapercaveImageCache.headers,
                               placeholder: (context, url) {
                                 debugPrint(
                                     '========================================');

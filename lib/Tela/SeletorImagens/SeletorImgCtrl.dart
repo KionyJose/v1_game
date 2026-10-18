@@ -144,21 +144,28 @@ class SeletorImgCtrl with ChangeNotifier {
     load = true;
     attTela();
     try {
-      final slug = str
-          .replaceAll('™', '')
-          .replaceAll(':', '')
-          .replaceAll('?', '')
-          .replaceAll('!', '')
-          .replaceAll('&', 'and')
-          .trim()
-          .replaceAll(RegExp(r'\s+'), '-');
-      final result = await WebScrap.buscaImgsWalpaperCave(slug);
+      final rawTarget = str.trim();
+      final parsedTarget = Uri.tryParse(rawTarget);
+      final target = parsedTarget?.hasScheme == true
+          ? rawTarget
+          : rawTarget
+              .replaceAll(String.fromCharCode(0x2122), '')
+              .replaceAll(':', '')
+              .replaceAll('?', '')
+              .replaceAll('!', '')
+              .replaceAll('&', 'and')
+              .replaceAll(RegExp(r'\s+'), '-')
+              .replaceAll(RegExp(r'-+'), '-')
+              .trim();
+      final result = await WebScrap.buscaImgsWalpaperCave(target);
       if (_disposed || !ctx.mounted) return;
       listImgs =
           result == null ? [] : List<ImgWebScrap>.from(result[1] as List);
       if (listImgs.isEmpty) {
         ScaffoldMessenger.maybeOf(ctx)?.showSnackBar(const SnackBar(
-            content: Text('Nenhuma imagem disponível nesta seleção.')));
+          content:
+              Text('Nenhuma imagem dispon\u00edvel nesta sele\u00e7\u00e3o.'),
+        ));
         return;
       }
       final image = await Pops.popTela(ctx, VisualizadorImgWeb(list: listImgs));
@@ -167,7 +174,9 @@ class SeletorImgCtrl with ChangeNotifier {
     } catch (error) {
       if (!_disposed && ctx.mounted) {
         ScaffoldMessenger.maybeOf(ctx)?.showSnackBar(SnackBar(
-            content: Text('Não foi possível carregar as imagens: $error')));
+          content:
+              Text('N\u00e3o foi poss\u00edvel carregar as imagens: $error'),
+        ));
       }
     } finally {
       if (!_disposed && ctx.mounted) {
@@ -184,7 +193,8 @@ class SeletorImgCtrl with ChangeNotifier {
     }
   }
 
-  clickBtnBuscar() async {
+  Future<void> clickBtnBuscar() async {
+    if (_disposed || load) return;
     await iniciaTela(txtNome.text);
     // Desativa o uso do mouse;
     // Provider.of<Paad>(ctx, listen: false).ativaMouse( usarEstado: true,  estado: false);
@@ -235,14 +245,15 @@ class SeletorImgCtrl with ChangeNotifier {
         _limparClickPad();
         return Navigator.pop(ctx);
       } else if (event == "2") {
-        if (buscaFocos.hasFocus) return await iniciaTela(txtNome.text);
+        if (buscaFocos.hasFocus) return await clickBtnBuscar();
         if (txtFoco.hasFocus) {
           await abrirBuscaTeclado();
           return;
         }
         _limparClickPad();
         if (listUser.isNotEmpty && selectedIndexGrid < listUser.length) {
-          clickPasta(listUser[selectedIndexGrid].title);
+          final item = listUser[selectedIndexGrid];
+          clickPasta(item.folderUrl.isNotEmpty ? item.folderUrl : item.title);
         }
       }
       // debugPrint(" ===== Click Paad: => $event" );

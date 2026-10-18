@@ -1,8 +1,10 @@
 // ignore_for_file: file_names
 
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter/services.dart';
+import 'package:v1_game/Class/wallpapercave_image_cache.dart';
 import '../../Interface/launcher_pad_scope.dart';
 import 'package:v1_game/Tela/SeletorImagens/SeletorImgCtrl.dart';
 import 'package:v1_game/Widgets/LoadWid.dart';
@@ -216,25 +218,14 @@ class _SeletorImagensState extends State<SeletorImagens> {
 
   btnUser(int index) {
     const sdw = Shadow(color: Colors.black, blurRadius: 5);
-    bool foco = index == ctrl.selectedIndexGrid;
+    final foco = index == ctrl.selectedIndexGrid;
+    final item = ctrl.listUser[index];
     return Container(
-      decoration: BoxDecoration(
-        image: DecorationImage(
-          image: NetworkImage(ctrl.listUser[index]
-              .imageUrl), // Usando NetworkImage para carregar a imagem diretamente da URL
-          fit: BoxFit
-              .cover, // Ajusta a imagem para cobrir todo o container, por exemplo
-        ),
-        border: foco
-            ? Border.all(
-                color: Colors.amber, // Cor da borda
-                width: 3, // Espessura da borda
-              )
-            : null,
+      foregroundDecoration: BoxDecoration(
+        border: foco ? Border.all(color: Colors.amber, width: 3) : null,
       ),
       height: MediaQuery.of(context).size.height * 0.2,
       width: MediaQuery.of(context).size.width * 0.2,
-      // color: Colors.blue,
       child: Focus(
         focusNode: ctrl.focusNodesGrid[index],
         onFocusChange: (value) {
@@ -246,27 +237,49 @@ class _SeletorImagensState extends State<SeletorImagens> {
         child: GestureDetector(
           onTap: ctrl.teclando
               ? null
-              : () => ctrl.clickPasta(ctrl.listUser[index].title),
-          // padding: const EdgeInsets.all(8),
+              : () => ctrl.clickPasta(
+                    item.folderUrl.isNotEmpty ? item.folderUrl : item.title,
+                  ),
           child: Stack(
             children: [
+              Positioned.fill(
+                child: CachedNetworkImage(
+                  imageUrl: item.imageUrl,
+                  cacheManager: WallpapercaveImageCache.manager,
+                  httpHeaders: WallpapercaveImageCache.headers,
+                  fit: BoxFit.cover,
+                  placeholder: (_, __) => const ColoredBox(
+                    color: Colors.black26,
+                    child: Center(
+                      child: SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                    ),
+                  ),
+                  errorWidget: (_, __, ___) => const ColoredBox(
+                    color: Color(0xFF20242C),
+                    child: Center(
+                      child: Icon(
+                        Icons.broken_image_outlined,
+                        color: Colors.white54,
+                        size: 38,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
               Column(
                 mainAxisAlignment: MainAxisAlignment.end,
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  // Container(
-                  //   alignment: Alignment.center,
-                  //   child: ClipRRect(
-                  //     borderRadius: BorderRadius.circular(5),
-                  //     child: Image.network(ctrl.listUser[index].imageUrl),
-                  //   ),
-                  // ),
                   Container(
                     padding: const EdgeInsets.only(bottom: 5),
                     color: Colors.black87,
                     child: Center(
                       child: SelectableText(
-                        ctrl.listUser[index].title,
+                        item.title,
                         textAlign: TextAlign.center,
                         style: const TextStyle(color: Colors.white),
                       ),

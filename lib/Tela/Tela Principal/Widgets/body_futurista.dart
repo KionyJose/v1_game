@@ -769,9 +769,24 @@ class _FuturisticHomeState extends State<FuturisticHome>
                   boxShadow: focused
                       ? const [
                           BoxShadow(
-                              color: Color(0x70A9EEE4), blurRadius: 20)
+                              color: Color(0xD9A9EEE4),
+                              blurRadius: 34,
+                              spreadRadius: 4),
+                          BoxShadow(
+                              color: Color(0xA08063FF),
+                              blurRadius: 18,
+                              spreadRadius: 1),
                         ]
                       : null,
+                ),
+                foregroundDecoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(23),
+                  border: Border.all(
+                    color: focused
+                        ? const Color(0xFFF4FFFE)
+                        : Colors.transparent,
+                    width: focused ? 2.5 : 0,
+                  ),
                 ),
                 child: GlassPanel(
                   radius: 20,

@@ -93,12 +93,14 @@ class GlassPanel extends StatelessWidget {
       this.radius = 24,
       this.focused = false,
       this.borderWidth,
-      this.refractionWidth = 24});
+      this.refractionWidth = 24,
+      this.appearanceColor});
   final Widget child;
   final double radius;
   final bool focused;
   final double? borderWidth;
   final double refractionWidth;
+  final Color? appearanceColor;
   @override
   Widget build(BuildContext context) => LiquidGlassLens(
       useImpellerBackdrop: ui.ImageFilter.isShaderFilterSupported,
@@ -114,8 +116,10 @@ class GlassPanel extends StatelessWidget {
                   borderSaturation: 1.3,
                   borderSolidity: .15)),
           appearance: LiquidGlassAppearance(
-              color:
-                  focused ? const Color(0x448F70D8) : const Color(0x20877AAE),
+              color: appearanceColor ??
+                  (focused
+                      ? const Color(0x448F70D8)
+                      : const Color(0x20877AAE)),
               saturation: 1.2,
               blur: const LiquidGlassBlur(sigmaX: 5, sigmaY: 5),
               shadow: const LiquidGlassShadow(

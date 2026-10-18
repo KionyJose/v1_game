@@ -156,8 +156,8 @@ class _BodyTransversalState extends State<BodyTransversal>
         games.isEmpty ? '' : games[selectedGameIndex].imgStr.trim();
     final selectionFloor = _visualPosition.floor();
     final scrollProgress = _visualPosition - selectionFloor;
-    final firstAtStart = _firstRawIndex(selectionFloor, games.length);
-    final firstAtEnd = _firstRawIndex(selectionFloor + 1, games.length);
+    final firstAtStart = _firstRawIndex(selectionFloor);
+    final firstAtEnd = _firstRawIndex(selectionFloor + 1);
     final firstRaw = math.min(firstAtStart, firstAtEnd);
     final lastRaw = math.max(firstAtStart, firstAtEnd) + 3;
     final panelRawIndices = games.length < 4
@@ -227,11 +227,6 @@ class _BodyTransversalState extends State<BodyTransversal>
                     height: height,
                   ),
                 Positioned(
-                  top: 118,
-                  left: 42,
-                  child: _sectionLabel(),
-                ),
-                Positioned(
                   left: 42,
                   right: 42,
                   bottom: 24,
@@ -264,10 +259,7 @@ class _BodyTransversalState extends State<BodyTransversal>
     return gameCount < 4 ? selection.clamp(0, gameCount - 1) : selection;
   }
 
-  int _firstRawIndex(int selection, int gameCount) {
-    if (gameCount < 4) return 0;
-    return selection < 0 ? selection : math.max(0, selection - 2);
-  }
+  int _firstRawIndex(int selection) => selection;
 
   int? _gameIndexForRaw(int rawIndex, int gameCount) {
     if (gameCount == 0) return null;
@@ -282,7 +274,7 @@ class _BodyTransversalState extends State<BodyTransversal>
     double width,
     int gameCount,
   ) {
-    final firstRaw = _firstRawIndex(layoutSelection, gameCount);
+    final firstRaw = _firstRawIndex(layoutSelection);
     final weights = List<double>.generate(4, (slot) {
       final raw = firstRaw + slot;
       if (gameCount < 4 && raw >= gameCount) return 0.72;
@@ -564,41 +556,6 @@ class _BodyTransversalState extends State<BodyTransversal>
             child: Icon(Icons.add_rounded, color: Colors.white12, size: 42),
           ),
         ],
-      );
-
-  Widget _sectionLabel() => DecoratedBox(
-        decoration: BoxDecoration(
-          color: Colors.black.withValues(alpha: 0.36),
-          border: Border.all(color: Colors.white12),
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 7,
-                height: 7,
-                decoration: const BoxDecoration(
-                  color: _accent,
-                  shape: BoxShape.circle,
-                  boxShadow: [BoxShadow(color: _accent, blurRadius: 10)],
-                ),
-              ),
-              const SizedBox(width: 10),
-              const Text(
-                'TRANSVERSAL',
-                style: TextStyle(
-                  color: Colors.white70,
-                  fontSize: 10,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 2,
-                ),
-              ),
-            ],
-          ),
-        ),
       );
 
   Widget _controlsHint() => Row(

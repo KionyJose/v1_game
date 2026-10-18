@@ -19,6 +19,8 @@ class ConfigSistema {
   
   // Propriedades de ConfigSistema
   double volume; // Volume do sistema (0.0 - 1.0)
+  double volumeMusicaFuturista; // Volume da música ambiente futurista (0.0 - 1.0)
+  double volumeSomInicioFuturista; // Volume do som ao iniciar um jogo (0.0 - 1.0)
   int telaInicialTipo; // Tipo de tela inicial
   bool videosTelaPrincipal; // Exibir vídeos na tela principal
   bool noticias; // Exibir vídeos no card do game
@@ -47,6 +49,8 @@ class ConfigSistema {
     required this.darkMode,
     required this.spacing,
     required this.volume,
+    required this.volumeMusicaFuturista,
+    required this.volumeSomInicioFuturista,
     required this.telaInicialTipo,
     required this.videosTelaPrincipal,
     required this.noticias,
@@ -71,6 +75,8 @@ class ConfigSistema {
       darkMode: false,
       spacing: 8.0,
       volume: 0.9,
+      volumeMusicaFuturista: 0.22,
+      volumeSomInicioFuturista: 1.0,
       telaInicialTipo: 1,
       videosTelaPrincipal: true,
       noticias: false,
@@ -96,6 +102,18 @@ class ConfigSistema {
       darkMode: json['darkMode'] ?? false,
       spacing: (json['spacing'] is num) ? (json['spacing'] as num).toDouble() : 8.0,
       volume: (json['volume'] is num) ? (json['volume'] as num).toDouble() : 0.9,
+      volumeMusicaFuturista: (json['volumeMusicaFuturista'] is num)
+          ? (json['volumeMusicaFuturista'] as num)
+              .toDouble()
+              .clamp(0.0, 1.0)
+              .toDouble()
+          : 0.22,
+      volumeSomInicioFuturista: (json['volumeSomInicioFuturista'] is num)
+          ? (json['volumeSomInicioFuturista'] as num)
+              .toDouble()
+              .clamp(0.0, 1.0)
+              .toDouble()
+          : 1.0,
       telaInicialTipo: json['telaInicialTipo'] ?? 1,
       videosTelaPrincipal: json['videosTelaPrincipal'] ?? true,
       noticias: json['videosCardGame'] ?? true,
@@ -135,6 +153,8 @@ class ConfigSistema {
       'darkMode': darkMode,
       'spacing': spacing,
       'volume': volume,
+      'volumeMusicaFuturista': volumeMusicaFuturista,
+      'volumeSomInicioFuturista': volumeSomInicioFuturista,
       'telaInicialTipo': telaInicialTipo,
       'videosTelaPrincipal': videosTelaPrincipal,
       'videosCardGame': noticias,
@@ -159,6 +179,8 @@ class ConfigSistema {
     bool? darkMode,
     double? spacing,
     double? volume,
+    double? volumeMusicaFuturista,
+    double? volumeSomInicioFuturista,
     int? telaInicialTipo,
     bool? videosTelaPrincipal,
     bool? videosCardGame,
@@ -181,6 +203,10 @@ class ConfigSistema {
       darkMode: darkMode ?? this.darkMode,
       spacing: spacing ?? this.spacing,
       volume: volume ?? this.volume,
+      volumeMusicaFuturista:
+          volumeMusicaFuturista ?? this.volumeMusicaFuturista,
+      volumeSomInicioFuturista:
+          volumeSomInicioFuturista ?? this.volumeSomInicioFuturista,
       telaInicialTipo: telaInicialTipo ?? this.telaInicialTipo,
       videosTelaPrincipal: videosTelaPrincipal ?? this.videosTelaPrincipal,
       noticias: videosCardGame ?? noticias,
@@ -260,6 +286,8 @@ class ConfigSistema {
       darkMode = d.darkMode;
       spacing = d.spacing;
       volume = d.volume;
+      volumeMusicaFuturista = d.volumeMusicaFuturista;
+      volumeSomInicioFuturista = d.volumeSomInicioFuturista;
       telaInicialTipo = d.telaInicialTipo;
       videosTelaPrincipal = d.videosTelaPrincipal;
       noticias = d.noticias;

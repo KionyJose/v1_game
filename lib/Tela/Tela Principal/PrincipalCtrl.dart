@@ -1371,6 +1371,7 @@ class PrincipalCtrl with ChangeNotifier{
               ctx, "", retorno, listIconsInicial, selectedIndexIcone,
               futuristic: futuristicMode);
           if(retorno=="Add" && nome != null && nome != ""){
+            await iniciaLitIcones();
             selectedIndexIcone = 0;
             limparClickPad();
             await Future.delayed(const Duration(milliseconds: 250));
@@ -1380,7 +1381,6 @@ class PrincipalCtrl with ChangeNotifier{
         Timer(const Duration(milliseconds: 500), () => iniciaTela());
           }
           debugPrint("Sai navPasta");
-          Timer(const Duration(milliseconds: 500), () => iniciaTela()); 
         }
         case "Imagem da Download": {
           await salvaImgDownload();
@@ -1470,13 +1470,13 @@ class PrincipalCtrl with ChangeNotifier{
           listIconsInicial.insert(0,ico);
           await db.attDados(listIconsInicial);
 
+          await iniciaLitIcones();
           selectedIndexIcone = 0;
           limparClickPad();
           await Future.delayed(const Duration(milliseconds: 250));
           await salvaImgDownload();
 
           debugPrint("Sai navPasta");
-          Timer(const Duration(milliseconds: 500), () => iniciaTela());  
 
 
           
@@ -1554,41 +1554,71 @@ if (-not [WindowsPower]::SetSuspendState($false, $false, $false)) { exit 1 }
     } catch (_) {}
   }
   
-  salvaImgDownload() async {
-    videosYT.clear();
-    selectedIndexVideo=0;
+  Future<void> salvaImgDownload() async {
+    if (_disposed || !ctx.mounted || listIconsInicial.isEmpty) return;
+
+    final originalIndex = selectedIndexIcone.clamp(0, listIconsInicial.length - 1);
+    final game = listIconsInicial[originalIndex];
+    final previousFocus = FocusManager.instance.primaryFocus;
+    final previousScope = focusScope;
+    final categoryWasFocused = focusScopeAbaGuias.hasFocus;
     stateTela = false;
-    await iniciaLitIcones();
-    String nomeJogo = listIconsInicial[selectedIndexIcone].nome;
-    var result = await Pops.popTela(ctx, SeletorImagens(nome: nomeJogo));
-    if(result == null){ 
-      Timer(const Duration(milliseconds: 500), () => stateTela = true);
-      attTela();
-      return debugPrint("Retorno NULO img Download"); // ERRO NULO PARA AQUI
-    }
-    String novoCaminho = result as String;
+    attTela();
 
-    novoCaminho = await WebScrap.downloadImage(novoCaminho,listIconsInicial[selectedIndexIcone].nome);
-    if(novoCaminho.contains("Erro::")) {
-      debugPrint(novoCaminho); // ERRO SALVAMENTO PARA AQUI
-      return Timer(const Duration(milliseconds: 500), () => iniciaTela());
+    try {
+      final result = await Pops.popTela(ctx, SeletorImagens(nome: game.nome));
+      if (_disposed || !ctx.mounted || result is! String || result.isEmpty) return;
+
+      final novoCaminho = await WebScrap.downloadImage(result, game.nome);
+      if (_disposed || !ctx.mounted) return;
+      if (novoCaminho.startsWith('Erro::')) {
+        ScaffoldMessenger.maybeOf(ctx)?.showSnackBar(
+          SnackBar(content: Text(novoCaminho.replaceFirst('Erro:: ', ''))),
+        );
+        return;
+      }
+
+      var gameIndex = listIconsInicial.indexWhere((item) => identical(item, game));
+      if (gameIndex < 0) {
+        gameIndex = listIconsInicial.indexWhere(
+          (item) => item.nome == game.nome && item.local == game.local,
+        );
+      }
+      if (gameIndex < 0) return;
+
+      selectedIndexIcone = gameIndex;
+      listIconsInicial[gameIndex].imgStr = novoCaminho;
+      imgFundoStr = novoCaminho;
+      await db.attDados(listIconsInicial);
+    } catch (error) {
+      if (!_disposed && ctx.mounted) {
+        ScaffoldMessenger.maybeOf(ctx)?.showSnackBar(
+          SnackBar(content: Text('N\u00e3o foi poss\u00edvel atualizar a capa: $error')),
+        );
+      }
+      debugPrint('Erro ao selecionar a imagem do jogo: $error');
+    } finally {
+      if (!_disposed && ctx.mounted) {
+        stateTela = true;
+        limparClickPad(delayMs: 220);
+        attTela();
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (_disposed || !ctx.mounted) return;
+          if (previousFocus?.context != null) {
+            previousFocus!.requestFocus();
+            focusScope = previousScope;
+          } else if (futuristicMode) {
+            focarCategoriaSlim(barra: categoryWasFocused);
+          } else if (focusNodeIcones.isNotEmpty) {
+            focusScope = focusScopeIcones;
+            focusScopeIcones.requestFocus();
+            focusNodeIcones[selectedIndexIcone.clamp(0, focusNodeIcones.length - 1)].requestFocus();
+          }
+          attTela();
+        });
+      }
     }
-    listIconsInicial[selectedIndexIcone].imgStr = novoCaminho;
-    await db.attDados(listIconsInicial);
-    
-    load = true;    
-    attTela();
-    await iniciaLitIcones();    
-    stateTela = true;
-    load = false;      
-    attTela();
-    // Timer(const Duration(milliseconds: 500), () {
-    // });
-    // return iniciaTela();
   }
-  
-
-  
 
   escutaPad(String event) async {    
     try{
@@ -2084,7 +2114,7 @@ if (-not [WindowsPower]::SetSuspendState($false, $false, $false)) { exit 1 }
             selectedIndexIcone = nextIndex;
             focusScope = focusScopeIcones;
             focusScopeIcones.requestFocus();
-            SonsSistema.transversalMove(toRight: direction > 0);
+            SonsSistema.directionAtual();
             attTela();
             WidgetsBinding.instance.addPostFrameCallback((_) {
               if (!_disposed &&

@@ -83,7 +83,12 @@ class _LauncherMoreGridState extends State<LauncherMoreGrid> {
   }
 
   Widget _panel(Widget child) {
-    if (widget.futuristic) return GlassPanel(radius: 32, child: child);
+    if (widget.futuristic) {
+      return GlassPanel(
+          radius: 32,
+          appearanceColor: const Color(0xB30A0D19),
+          child: child);
+    }
     return ClipRRect(
       borderRadius: BorderRadius.circular(24),
       child: DecoratedBox(

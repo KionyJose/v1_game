@@ -15,12 +15,16 @@ class PopConfig {
     try {
       bool statePop = true;
       String retorno = "";
-      int total = 10;
+      int total = 12;
       FocusScopeNode focusScope = FocusScopeNode();
       const slimModeController = SlimModeConfigController();
 
       // Cria cópias das configurações para poder cancelar
       double volumeTemp = configSistema.volume;
+      double volumeMusicaFuturistaTemp =
+          configSistema.volumeMusicaFuturista;
+      double volumeSomInicioFuturistaTemp =
+          configSistema.volumeSomInicioFuturista;
       int uiFpsTemp = configSistema.uiFps;
       bool introTemp = configSistema.intro;
       bool videosTelaPrincipalTemp = configSistema.videosTelaPrincipal;
@@ -64,6 +68,9 @@ class PopConfig {
         final previousUiFps = configSistema.uiFps;
         configSistema.uiFps = uiFpsTemp;
         configSistema.volume = volumeTemp;
+        configSistema.volumeMusicaFuturista = volumeMusicaFuturistaTemp;
+        configSistema.volumeSomInicioFuturista =
+            volumeSomInicioFuturistaTemp;
         configSistema.intro = introTemp;
         configSistema.videosTelaPrincipal = videosTelaPrincipalTemp;
         configSistema.noticias = videosCardGameTemp;
@@ -174,6 +181,32 @@ class PopConfig {
             setStateDialog?.call(() {});
             return;
           }
+          if (focusNodes[10].hasFocus) {
+            if (event == "DIREITA" && volumeMusicaFuturistaTemp < 1.0) {
+              volumeMusicaFuturistaTemp =
+                  (volumeMusicaFuturistaTemp + 0.1).clamp(0.0, 1.0);
+            }
+            if (event == "ESQUERDA" && volumeMusicaFuturistaTemp > 0.0) {
+              volumeMusicaFuturistaTemp =
+                  (volumeMusicaFuturistaTemp - 0.1).clamp(0.0, 1.0);
+            }
+            SonsSistema.click();
+            setStateDialog?.call(() {});
+            return;
+          }
+          if (focusNodes[11].hasFocus) {
+            if (event == "DIREITA" && volumeSomInicioFuturistaTemp < 1.0) {
+              volumeSomInicioFuturistaTemp =
+                  (volumeSomInicioFuturistaTemp + 0.1).clamp(0.0, 1.0);
+            }
+            if (event == "ESQUERDA" && volumeSomInicioFuturistaTemp > 0.0) {
+              volumeSomInicioFuturistaTemp =
+                  (volumeSomInicioFuturistaTemp - 0.1).clamp(0.0, 1.0);
+            }
+            SonsSistema.click();
+            setStateDialog?.call(() {});
+            return;
+          }
 
           // Intro (focusNodes[1]) - Toggle com setas
           if (focusNodes[1].hasFocus) {
@@ -280,6 +313,16 @@ class PopConfig {
           }
 
           if (focusNodes[5].hasFocus) {
+            SonsSistema.click();
+            return;
+          }
+
+          if (focusNodes[10].hasFocus) {
+            SonsSistema.click();
+            return;
+          }
+
+          if (focusNodes[11].hasFocus) {
             SonsSistema.click();
             return;
           }
@@ -734,6 +777,78 @@ class PopConfig {
                                             }),
                                           ),
                                         ),
+
+                                        if (interfaceTemp == 'futurista')
+                                          buildConfigItem(
+                                            "Volume Música Futurista",
+                                            SizedBox(
+                                              width: 190,
+                                              child: Row(
+                                                children: [
+                                                  Expanded(
+                                                    child: Slider(
+                                                      value:
+                                                          volumeMusicaFuturistaTemp,
+                                                      min: 0,
+                                                      max: 1,
+                                                      divisions: 10,
+                                                      onChanged: (value) {
+                                                        volumeMusicaFuturistaTemp =
+                                                            value;
+                                                        setStateDialog?.call(
+                                                            () {});
+                                                      },
+                                                    ),
+                                                  ),
+                                                  Text(
+                                                    "${(volumeMusicaFuturistaTemp * 100).round()}%",
+                                                    style: const TextStyle(
+                                                      color: Colors.white,
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                            focusNodes[10],
+                                          ),
+
+                                        if (interfaceTemp == 'futurista')
+                                          buildConfigItem(
+                                            "Volume Som ao Jogar",
+                                            SizedBox(
+                                              width: 190,
+                                              child: Row(
+                                                children: [
+                                                  Expanded(
+                                                    child: Slider(
+                                                      value:
+                                                          volumeSomInicioFuturistaTemp,
+                                                      min: 0,
+                                                      max: 1,
+                                                      divisions: 10,
+                                                      onChanged: (value) {
+                                                        volumeSomInicioFuturistaTemp =
+                                                            value;
+                                                        setStateDialog?.call(
+                                                            () {});
+                                                      },
+                                                    ),
+                                                  ),
+                                                  Text(
+                                                    "${(volumeSomInicioFuturistaTemp * 100).round()}%",
+                                                    style: const TextStyle(
+                                                      color: Colors.white,
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                            focusNodes[11],
+                                          ),
 
                                         UiFpsOptions(value: uiFpsTemp, focusNode: focusNodes[9],
                                           onChanged: (value) {

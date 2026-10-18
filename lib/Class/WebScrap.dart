@@ -8,6 +8,7 @@ import '../System/app_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:v1_game/Modelos/ImgWebScrap.dart';
 import 'package:v1_game/Modelos/NoticiaGame.dart';
+import 'package:v1_game/Class/wallpapercave_image_cache.dart';
 import 'package:http/http.dart' as http;
 import 'package:html/parser.dart' as html;
 import 'dart:convert';
@@ -61,37 +62,63 @@ class WebScrap{
   
   // Função para pegar os links das imagens com base no nome do jogo
   static Future<List<dynamic>> buscaUsersWalpaperCave(String gameName) async {
-    String content = '';
-    List<ImgWebScrap> list = [];
-    // Cria a URL de busca dinâmica para Wallpapercave
     final url = Uri.https('wallpapercave.com', '/search', {'q': gameName.trim()});
-    final response = await http.get(url);
-    if (response.statusCode == 200) {
-      final bodyStr = utf8.decode(response.bodyBytes, allowMalformed: true);
-      final document = html.parse(bodyStr);
-      // Seleciona todas as tags <img> e filtra os links das imagens
-      final arquivo = document.querySelectorAll('img');
-      list = arquivo.map((e) {
-        final title = e.attributes['alt'] ?? ''; // Extrair o título (se disponível)
-        final imageUrl = e.attributes['src'] ?? ''; // Extrair o link da imagem
-        final tipo = e.attributes['class']??""; // Extrai o Tipo
+    try {
+      final response = await WallpapercaveImageCache.get(url).timeout(
+        const Duration(seconds: 20),
+      );
+      if (response.statusCode != 200) {
+        return ['Erro ao buscar dados. Status: ${response.statusCode}', <ImgWebScrap>[]];
+      }
 
-        return ImgWebScrap(title: title, imageUrl: imageUrl,tipo: tipo);
-      }).where((data) => data.imageUrl.isNotEmpty && data.imageUrl.contains("https")).toList();
+      final document = html.parse(utf8.decode(response.bodyBytes, allowMalformed: true));
+      final seenUrls = <String>{};
+      final list = <ImgWebScrap>[];
+      for (final element in document.querySelectorAll('img')) {
+        final image = ImgWebScrap()
+          ..fromMapImgFinal(
+            element.attributes.map((key, value) => MapEntry(key.toString(), value)),
+            baseUrl: url.toString(),
+          );
+        if (image.imageUrl.isEmpty || !seenUrls.add(image.imageUrl)) continue;
 
-      if (list.isEmpty) content = 'Nenhuma imagem encontrada para "$gameName".';
-      if (list.isNotEmpty) content = 'Imagens encontradas: ${list.length}';
-        
-    } else {
-      content = 'Erro ao buscar dados.';     
+        var parent = element.parent;
+        while (parent != null && parent.localName != 'a') {
+          parent = parent.parent;
+        }
+        final href = parent?.attributes['href']?.trim() ?? '';
+        if (href.isNotEmpty &&
+            !RegExp(r'\.(?:jpe?g|png|webp|gif|bmp)(?:[?#].*)?$', caseSensitive: false).hasMatch(href)) {
+          final folderUri = Uri.tryParse(href);
+          final resolved = folderUri?.hasScheme == true ? folderUri : url.resolve(href);
+          if (resolved != null &&
+              (resolved.scheme == 'http' || resolved.scheme == 'https') &&
+              resolved.host.isNotEmpty) {
+            image.folderUrl = resolved.toString();
+          }
+        }
+        list.add(image);
+      }
+
+      final content = list.isEmpty
+          ? 'Nenhuma imagem encontrada para "$gameName".'
+          : 'Imagens encontradas: ${list.length}';
+      return [content, list];
+    } catch (error) {
+      return ['Erro ao buscar dados: $error', <ImgWebScrap>[]];
     }
-    return [content,list];
   }
 
   static Future<List<dynamic>> buscaImgsWalpaperCave(String gameId) async {
     String content = '';
     List<ImgWebScrap> list = [];
-    final url = Uri.parse('https://wallpapercave.com/$gameId');
+    final rawPath = gameId.trim();
+    final parsedPath = Uri.tryParse(rawPath);
+    final url = parsedPath?.hasScheme == true
+        ? parsedPath!
+        : Uri.parse('https://wallpapercave.com/').resolve(
+            rawPath.startsWith('/') ? rawPath : '/$rawPath',
+          );
     
     debugPrint('========================================');
     debugPrint('WEBSCRAP - BUSCA DE IMAGENS');
@@ -99,7 +126,9 @@ class WebScrap{
     debugPrint('GameId: $gameId');
     
     try {
-      final response = await http.get(url);
+      final response = await WallpapercaveImageCache.get(url).timeout(
+        const Duration(seconds: 20),
+      );
       debugPrint('Status Code: ${response.statusCode}');
       
       if (response.statusCode == 200) {
@@ -109,14 +138,19 @@ class WebScrap{
         final arquivo = document.querySelectorAll('img');
         debugPrint('Total de tags <img> encontradas: ${arquivo.length}');
         
+        final seenImageUrls = <String>{};
         list = arquivo.map((e) {
           ImgWebScrap imgDados = ImgWebScrap();
-          imgDados.fromMapImgFinal(e.attributes);
+          imgDados.fromMapImgFinal(
+            e.attributes.map((key, value) => MapEntry(key.toString(), value)),
+            baseUrl: url.toString(),
+          );
           return imgDados;
         }).where((item) {
           bool valido = item.imageUrl.isNotEmpty && 
-                       item.tipo == "wimg" && 
-                       !item.imageUrl.contains(".webm");
+                       item.tipo.split(RegExp(r'\s+')).contains("wimg") &&
+                       !item.imageUrl.contains(".webm") &&
+                       seenImageUrls.add(item.imageUrl);
           
           if (!valido && item.imageUrl.isNotEmpty) {
             debugPrint('Imagem filtrada - URL: ${item.imageUrl}, Tipo: ${item.tipo}');
@@ -149,42 +183,59 @@ class WebScrap{
 
 
   static Future<String> downloadImage(String imageUrl, String nomeGame) async {
-    String msg = "";
     try {
-      final response = await http.get(Uri.parse(imageUrl));
-
-      if (response.statusCode == 200) {
-        final extension = p.extension(Uri.parse(imageUrl).path).toLowerCase();
-        final extencao = const ['.jpg', '.jpeg', '.png', '.webp', '.gif']
-            .contains(extension) ? extension : '.jpg';
-        final directoryPath = p.join(AppStorage.root.path, 'FundoGamesV1');
-        final safeName = nomeGame.replaceAll(RegExp(r'[<>:"/\\|?*\x00-\x1f]'), '_')
-            .replaceAll(RegExp(r'[. ]+$'), '');
-        final filePath = p.join(directoryPath,
-            'game-${safeName.isEmpty ? 'imagem' : safeName}$extencao');
-
-        final directory = Directory(directoryPath);
-        await ensureWritableDirectory(directory);
-        if (!await directory.exists()) {
-          await directory.create(recursive: true);
-        }
-
-        final file = File(filePath);
-        await file.writeAsBytes(response.bodyBytes);
-        msg = filePath;
-        debugPrint('Imagem salva em: $filePath');
-      } else {
-        msg = "Erro ao baixar a imagem. Código: ${response.statusCode}";
-        debugPrint('Erro ao baixar a imagem. Código: ${response.statusCode}');
+      final uri = Uri.tryParse(imageUrl);
+      if (uri == null || (uri.scheme != 'http' && uri.scheme != 'https') || uri.host.isEmpty) {
+        return 'Erro:: URL da imagem inv\u00e1lida.';
       }
-    } catch (e) {
-      msg = "Erro:: ao salvar a imagem: $e";
-      debugPrint('Erro ao salvar a imagem: $e');
+      final cachedImage = await WallpapercaveImageCache.manager
+          .getSingleFile(imageUrl, headers: WallpapercaveImageCache.headers)
+          .timeout(const Duration(seconds: 60));
+      final imageBytes = await cachedImage.readAsBytes();
+      if (!_isSupportedImageBytes(imageBytes)) {
+        return 'Erro:: O servidor n\u00e3o retornou uma imagem compat\u00edvel.';
+      }
+
+      final extencao = _imageExtensionFromBytes(imageBytes);
+      final directoryPath = p.join(AppStorage.root.path, 'FundoGamesV1');
+      final safeName = nomeGame.replaceAll(RegExp(r'[<>:"/\\|?*\x00-\x1f]'), '_')
+          .replaceAll(RegExp(r'[. ]+$'), '');
+      final filePath = p.join(directoryPath,
+          'game-${safeName.isEmpty ? 'imagem' : safeName}$extencao');
+
+      final directory = Directory(directoryPath);
+      await ensureWritableDirectory(directory);
+      if (!await directory.exists()) await directory.create(recursive: true);
+
+      final file = File(filePath);
+      await file.writeAsBytes(imageBytes, flush: true);
+      await FileImage(file).evict();
+      debugPrint('Imagem salva em: $filePath');
+      return filePath;
+    } catch (error) {
+      debugPrint('Erro ao salvar a imagem: $error');
+      return 'Erro:: ao salvar a imagem: $error';
     }
-    return msg;
   }
 
+  static bool _isSupportedImageBytes(List<int> bytes) =>
+      _imageExtensionFromBytes(bytes).isNotEmpty;
 
+  static String _imageExtensionFromBytes(List<int> bytes) {
+    if (bytes.length >= 3 && bytes[0] == 0xff && bytes[1] == 0xd8 && bytes[2] == 0xff) return '.jpg';
+    if (bytes.length >= 8 && bytes[0] == 0x89 && bytes[1] == 0x50 && bytes[2] == 0x4e && bytes[3] == 0x47) return '.png';
+    if (bytes.length >= 6) {
+      final signature = ascii.decode(bytes.take(6).toList(), allowInvalid: true);
+      if (signature == 'GIF87a' || signature == 'GIF89a') return '.gif';
+    }
+    if (bytes.length >= 12 &&
+        ascii.decode(bytes.take(4).toList(), allowInvalid: true) == 'RIFF' &&
+        ascii.decode(bytes.skip(8).take(4).toList(), allowInvalid: true) == 'WEBP') {
+      return '.webp';
+    }
+    if (bytes.length >= 2 && bytes[0] == 0x42 && bytes[1] == 0x4d) return '.bmp';
+    return '';
+  }
 
   static Future<List<VideoYT>> buscaVideosYT(String query, String nomeJogo) async {
     List<VideoYT> listVideosFinal = [];
