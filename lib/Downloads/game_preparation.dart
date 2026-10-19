@@ -341,14 +341,17 @@ class GamePreparation {
     return chooseInstalledExecutable(candidates, output.path);
   }
 
-  /// Parte dos repacks recomprime o áudio FMOD como Ogg Vorbis: em vez dos
-  /// `*.resource` do jogo, os `fg-*.bin` entregam segmentos `NN.fgpack` com o
-  /// Ogg restaurado, o tamanho real de cada um em `NN.fgpack.x2` e um patch
-  /// `*.fgpack.x5`. Sem desfazer isso o jogo instala completo, roda e fica
-  /// mudo, por isso a extração direta só termina depois de refazer o caminho
-  /// do instalador original: cortar os segmentos no tamanho real, converter
-  /// cada um de volta para FSB5, juntar, aplicar o patch e extrair o arquivo
-  /// FreeArc resultante, que traz os `*.resource` definitivos.
+  /// Parte dos repacks entrega o áudio recomprimido: o arquivo final sai como
+  /// Ogg Vorbis cru e vem acompanhado de um patch `.x5` (HDiffPatch) que o
+  /// devolve ao formato do jogo. Sem aplicar esse patch o jogo instala
+  /// completo, roda e fica mudo — e o manifesto acusa justamente esse arquivo.
+  ///
+  /// O patch aparece em duas formas, e as duas são tratadas aqui:
+  ///
+  /// - ao lado do próprio alvo, como `Master Bank.bank.x5`, quando o Ogg já
+  ///   está gravado no lugar do arquivo final;
+  /// - sozinho, como `inner.fgpack.x5`, quando o alvo ainda precisa ser
+  ///   montado a partir dos segmentos `NN.fgpack`.
   Future<void> _restoreRecompressedAudio(
       Directory output,
       Directory runtime,
@@ -356,87 +359,144 @@ class GamePreparation {
       String helper,
       PreparationTask task,
       PreparationStatus status) async {
-    final segments = <File>[];
     final patches = <File>[];
-    await for (final entry in output.list(followLinks: false)) {
-      if (entry is! File) continue;
-      final name = p.basename(entry.path).toLowerCase();
-      if (name.endsWith('.fgpack')) segments.add(entry);
-      if (name.endsWith('.fgpack.x5')) patches.add(entry);
+    await for (final entry in output.list(recursive: true, followLinks: false)) {
+      if (entry is File && p.extension(entry.path).toLowerCase() == '.x5') {
+        patches.add(entry);
+      }
     }
-    if (segments.isEmpty && patches.isEmpty) return;
-    if (segments.isEmpty || patches.length != 1) {
-      throw StateError(
-          'Este repack guarda o áudio em um formato que a extração automática ainda não refaz.');
-    }
-    segments.sort((a, b) => a.path.compareTo(b.path));
-    final converter = File(p.join(runtime.path, 'fsb.exe'));
+    if (patches.isEmpty) return;
     final patcher = File(p.join(runtime.path, 'x5.exe'));
-    if (!await converter.exists() || !await patcher.exists()) {
+    if (!await patcher.exists()) {
       throw StateError(
-          'O repack não trouxe as ferramentas de áudio esperadas (fsb.exe e x5.exe).');
+          'O repack não trouxe o reconstrutor de áudio (x5.exe) que seus arquivos pedem.');
     }
-    final banks = <File>[];
-    for (var i = 0; i < segments.length; i++) {
+    patches.sort((a, b) => a.path.compareTo(b.path));
+    for (var i = 0; i < patches.length; i++) {
       task.check();
-      final segment = segments[i];
-      status('Restaurando o áudio do jogo (${i + 1}/${segments.length})…',
-          i / segments.length);
-      final measure = File('${segment.path}.x2');
-      if (await measure.exists()) {
-        final mark = await measure.readAsBytes();
-        if (mark.length < 8) {
+      final patch = patches[i];
+      final alvo = File(p.withoutExtension(patch.path));
+      status(
+          'Restaurando o áudio do jogo (${i + 1}/${patches.length})…',
+          i / patches.length);
+      final origem = await alvo.exists()
+          ? alvo
+          : await _montarAlvoDoPatch(alvo, runtime, task);
+      final refeito = File('${alvo.path}.v1refeito');
+      await _run(patcher.path, [origem.path, patch.path, refeito.path], task,
+          (_) {},
+          growthProbe: refeito);
+      task.check();
+      // Um FreeArc no lugar do alvo significa que o áudio vem dentro dele, e
+      // não no próprio arquivo: é o caso dos repacks que juntam todas as
+      // trilhas num pacote só.
+      if (await _ehFreeArc(refeito)) {
+        status('Gravando o áudio na pasta do jogo…', null);
+        await _run(helper, [dll, refeito.path, output.path, 'x'], task, (_) {});
+        await _apagar([refeito, alvo]);
+      } else {
+        await _apagar([alvo]);
+        await refeito.rename(alvo.path);
+      }
+      await _apagar([patch]);
+    }
+    // Os segmentos só servem para montar o alvo; depois disso são peso morto.
+    await for (final entry in output.list(recursive: true, followLinks: false)) {
+      final nome = p.basename(entry.path).toLowerCase();
+      if (entry is File &&
+          (nome.endsWith('.fgpack') ||
+              nome.endsWith('.fgpack.x2') ||
+              nome.endsWith('.fgpack.fsb'))) {
+        await _apagar([entry]);
+      }
+    }
+  }
+
+  /// Monta o arquivo que o patch espera encontrar: cada segmento `NN.fgpack` é
+  /// cortado no tamanho real gravado em `NN.fgpack.x2`, convertido de Ogg
+  /// Vorbis para FSB5 pelo `fsb.exe` e concatenado na ordem dos nomes.
+  /// Converter o conjunto já concatenado não serve — o resultado perde os
+  /// cabeçalhos intermediários e o patch recusa o tamanho.
+  Future<File> _montarAlvoDoPatch(
+      File alvo, Directory runtime, PreparationTask task) async {
+    final segmentos = <File>[];
+    await for (final entry in alvo.parent.list(followLinks: false)) {
+      if (entry is File &&
+          entry.path != alvo.path &&
+          p.basename(entry.path).toLowerCase().endsWith('.fgpack')) {
+        segmentos.add(entry);
+      }
+    }
+    if (segmentos.isEmpty) {
+      throw StateError(
+          'O patch de áudio aponta para ${p.basename(alvo.path)}, que não veio no repack.');
+    }
+    final conversor = File(p.join(runtime.path, 'fsb.exe'));
+    if (!await conversor.exists()) {
+      throw StateError(
+          'O repack não trouxe o conversor de áudio (fsb.exe) que seus segmentos pedem.');
+    }
+    segmentos.sort((a, b) => a.path.compareTo(b.path));
+    final bancos = <File>[];
+    for (final segmento in segmentos) {
+      task.check();
+      final medida = File('${segmento.path}.x2');
+      if (await medida.exists()) {
+        final marca = await medida.readAsBytes();
+        if (marca.length < 8) {
           throw StateError(
-              'O repack não informou o tamanho de ${p.basename(segment.path)}.');
+              'O repack não informou o tamanho de ${p.basename(segmento.path)}.');
         }
-        final real =
-            ByteData.sublistView(mark).getUint64(0, Endian.little);
-        if (real <= 0 || real > await segment.length()) {
+        final real = ByteData.sublistView(marca).getUint64(0, Endian.little);
+        if (real <= 0 || real > await segmento.length()) {
           throw StateError(
-              'O tamanho declarado de ${p.basename(segment.path)} não confere.');
+              'O tamanho declarado de ${p.basename(segmento.path)} não confere.');
         }
-        final handle = await segment.open(mode: FileMode.append);
+        final handle = await segmento.open(mode: FileMode.append);
         try {
           await handle.truncate(real);
         } finally {
           await handle.close();
         }
       }
-      final bank = File('${segment.path}.fsb');
-      await _run(converter.path, [segment.path, bank.path], task, (_) {},
-          growthProbe: bank);
-      banks.add(bank);
+      final banco = File('${segmento.path}.fsb');
+      await _run(conversor.path, [segmento.path, banco.path], task, (_) {},
+          growthProbe: banco);
+      bancos.add(banco);
     }
-    status('Reunindo as trilhas de áudio…', null);
-    final joined = File(p.join(runtime.path, 'audio-banks.bin'));
-    final sink = joined.openWrite();
+    final destino = alvo.openWrite();
     try {
-      for (final bank in banks) {
+      for (final banco in bancos) {
         task.check();
-        await sink.addStream(bank.openRead());
+        await destino.addStream(banco.openRead());
       }
     } finally {
-      await sink.close();
+      await destino.close();
     }
-    status('Reconstruindo os arquivos de áudio…', null);
-    final rebuilt = File(p.join(runtime.path, 'audio-restored.arc'));
-    await _run(patcher.path, [joined.path, patches.single.path, rebuilt.path],
-        task, (_) {},
-        growthProbe: rebuilt);
-    status('Gravando o áudio na pasta do jogo…', null);
-    await _run(helper, [dll, rebuilt.path, output.path, 'x'], task, (_) {});
-    for (final leftover in [
-      ...segments,
-      ...segments.map((file) => File('${file.path}.x2')),
-      ...banks,
-      patches.single,
-      joined,
-      rebuilt,
-    ]) {
+    return alvo;
+  }
+
+  /// Assinatura `ArC` no começo do arquivo.
+  Future<bool> _ehFreeArc(File arquivo) async {
+    final handle = await arquivo.open();
+    try {
+      final cabecalho = await handle.read(4);
+      return cabecalho.length == 4 &&
+          cabecalho[0] == 65 &&
+          cabecalho[1] == 114 &&
+          cabecalho[2] == 67 &&
+          cabecalho[3] == 1;
+    } finally {
+      await handle.close();
+    }
+  }
+
+  Future<void> _apagar(Iterable<File> arquivos) async {
+    for (final arquivo in arquivos) {
       try {
-        if (await leftover.exists()) await leftover.delete();
+        if (await arquivo.exists()) await arquivo.delete();
       } on FileSystemException {
-        // Restos do processo não invalidam uma instalação já verificada.
+        // Restos não invalidam uma instalação já verificada.
       }
     }
   }

@@ -98,7 +98,31 @@ da extração e o unarc acusa `broken compressed data` — um erro que parece
 corrupção de download, mas não é. Limites de thread e caminhos de temporários
 ficam como o repack definiu.
 
-## Áudio recomprimido (`.fgpack`)
+## Áudio recomprimido (patch `.x5`)
+
+O sinal comum a todos esses repacks é um arquivo **`.x5`**: um patch
+[HDiffPatch] que devolve o áudio ao formato do jogo. O arquivo que ele corrige
+chega como Ogg Vorbis cru, e sem aplicar o patch o jogo instala completo, roda
+e fica **mudo** — com o `fitgirl.md5` acusando exatamente esse arquivo.
+
+O patch aparece em duas formas, e `_restoreRecompressedAudio` trata as duas:
+
+- **Ao lado do alvo**, como `Ben10_Data/StreamingAssets/Master Bank.bank.x5`,
+  quando o Ogg já está gravado no lugar do arquivo final. Basta aplicar o
+  patch sobre ele. Esse formato pode estar em qualquer profundidade da árvore,
+  por isso a procura é recursiva — olhar só a raiz deixava o jogo mudo.
+- **Sozinho**, como `inner.fgpack.x5`, quando o alvo ainda precisa ser montado
+  a partir dos segmentos `NN.fgpack` (ver abaixo).
+
+Se o resultado do patch for um arquivo FreeArc (assinatura `ArC\x01`), o áudio
+vem dentro dele e é extraído com o `V1Unarc` na pasta do jogo; caso contrário,
+ele substitui o alvo. Os intermediários saem no fim.
+
+Validado em dois repacks de formatos diferentes: *Ben 10 - Power Trip*
+(516/516, patch ao lado do alvo, recomprime com `cls-mpzz.dll`) e *Stick It to
+the Stickman* (262/262, patch com segmentos, recomprime com `oggre_dec.exe`).
+
+### Segmentos `.fgpack`
 
 Parte dos repacks recomprime o áudio FMOD como Ogg Vorbis. Nesses pacotes os
 `fg-*.bin` **não** contêm os `*.resource` do jogo: entregam segmentos
@@ -107,8 +131,8 @@ segmento em `NN.fgpack.x2` e um patch `*.fgpack.x5`. Extrair só os `.bin`
 produz uma instalação que abre, roda e fica **muda**, deixando os `.fgpack` para
 trás como sinal. O `fitgirl.md5` acusa exatamente os `*.resource` ausentes.
 
-`_restoreRecompressedAudio` em `game_preparation.dart` refaz o caminho do
-instalador original, com as ferramentas que o próprio repack traz:
+`_montarAlvoDoPatch` refaz o caminho do instalador original, com as
+ferramentas que o próprio repack traz:
 
 1. corta cada `NN.fgpack` no tamanho de 8 bytes little-endian de `NN.fgpack.x2`;
 2. `fsb.exe <segmento> <segmento>.fsb` converte cada um de Ogg Vorbis para FSB5

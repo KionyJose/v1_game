@@ -188,8 +188,13 @@ class _BodyFuturistaState extends State<BodyFuturista> with WindowListener {
         }
         ctrl.selectedIndexIcone = index;
         ctrl.stateTela = true;
-        await ctrl.btnEntrar(
-            apresentarInicializacao: presentation, reportErrors: true);
+        // Sem `reportErrors`, como no modo principal: o jogo é apenas
+        // iniciado. Com ele ligado, uma falha do `Process.start` — o que
+        // acontece com todo jogo que exige elevação — subia como erro e a
+        // tela desistia, em vez de deixar o `openFile` cair no shell, que é
+        // quem sabe pedir a autorização do Windows. A confirmação do UAC é
+        // do jogador; o launcher não tem como responder por ele.
+        await ctrl.btnEntrar(apresentarInicializacao: presentation);
       });
       if (played == true && mounted) ctrl.selecionarItemSlim(0);
     } catch (error) {

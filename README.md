@@ -1,5 +1,10 @@
 # V1 Launcher (Beta)
 
+### 🌐 [Site oficial](https://sistemav1.web.app) · ⬇️ [Baixar para Windows](https://drive.google.com/drive/folders/1dGbAkusLLgHAECbAlx9Zdeq2u4_2Nbaw?usp=sharing) · 💜 Doe via PIX: `kionydev@gmail.com`
+
+> O V1 Launcher é gratuito e feito por uma pessoa só. Se ele te for útil, a
+> doação é o que mantém o projeto andando — e qualquer valor ajuda.
+
 🔐 **Instalação e permissões no Windows:** consulte o [guia de permissões e dependências](docs/windows-permissions.md). Ele explica a verificação inicial, os acessos de cada recurso e como preparar o Release para o cliente.
 
 **V1 Launcher** é um *launcher* para PC inspirado na interface do PlayStation 5, projetado para substituir 99% do uso do mouse e teclado no Windows. Com ele, você pode navegar pelo seu sistema operacional de forma intuitiva e eficiente, sem depender dos métodos tradicionais de entrada.
@@ -8,7 +13,9 @@
 
 Se você gostou do V1 Launcher e deseja apoiar seu desenvolvimento, considere fazer uma doação para ajudar a manter e aprimorar o projeto.
 
-**Chave PIX para doações:** kionydb1@outlook.com
+**Chave PIX para doações:** kionydev@gmail.com
+
+**Baixar:** [Google Drive](https://drive.google.com/drive/folders/1dGbAkusLLgHAECbAlx9Zdeq2u4_2Nbaw?usp=sharing) · **Site:** [sistemav1.web.app](https://sistemav1.web.app)
 
 Toda contribuição é bem-vinda e ajudará a levar o V1 Launcher para o próximo nível!
 
