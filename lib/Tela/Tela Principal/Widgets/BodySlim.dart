@@ -39,7 +39,7 @@ class BodySlim extends StatelessWidget {
   String _image(int index) => switch (ctrl.selectedIndexAbaGuias) {
         1 => ctrl.listCinema[index].imgLocal,
         2 => ctrl.listMusica[index].imgLocal,
-        3 => '',
+        3 => ctrl.listLojas[index].logo,
         _ => ctrl.listIconsInicial[index].imgStr,
       };
 
@@ -400,6 +400,7 @@ class _SlimItemsState extends State<_SlimItems> {
                                       icon: store?.icone ?? widget.icon,
                                       color:
                                           store == null ? null : Colors.white,
+                                      logo: store != null,
                                     ),
                                   )),
                             ),
@@ -433,10 +434,14 @@ class _SlimItemsState extends State<_SlimItems> {
 }
 
 class _SlimImage extends StatelessWidget {
-  const _SlimImage({required this.path, required this.icon, this.color});
+  const _SlimImage(
+      {required this.path, required this.icon, this.color, this.logo = false});
   final String path;
   final IconData icon;
   final Color? color;
+
+  /// Marca de loja: cabe inteira no bloco em vez de ser recortada.
+  final bool logo;
 
   @override
   Widget build(BuildContext context) {
@@ -448,6 +453,16 @@ class _SlimImage extends StatelessWidget {
     if (path.isEmpty) return fallback();
     final uri = Uri.tryParse(path);
     const decodeWidth = 320;
+    // As logos vêm do pacote do aplicativo, não do disco do usuário.
+    if (path.startsWith('assets/')) {
+      return Padding(
+        padding: EdgeInsets.all(logo ? 14 : 0),
+        child: Image.asset(path,
+            fit: logo ? BoxFit.contain : BoxFit.cover,
+            cacheWidth: decodeWidth,
+            errorBuilder: (_, __, ___) => fallback()),
+      );
+    }
     if (uri?.scheme == 'https' || uri?.scheme == 'http') {
       return Image.network(path,
           fit: BoxFit.cover,

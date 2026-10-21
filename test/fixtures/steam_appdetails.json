@@ -1,0 +1,48 @@
+{
+ "570": {
+  "success": true,
+  "data": {
+   "name": "Dota 2",
+   "is_free": true,
+   "short_description": "Todos os dias, milhões de jogadores de todo o mundo levam um de mais de 100 heróis para a luta. Estejam a jogar há 10 ou 1000 horas, há sempre algo para descobrir. Com mecânicas, recursos e heróis sempre em evolução graças a atualizações regulares, o Dota 2 é mais do que um jogo.",
+   "header_image": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/570/header.jpg?t=1791407503",
+   "genres": [
+    {
+     "id": "1",
+     "description": "Ação"
+    },
+    {
+     "id": "2",
+     "description": "Estratégia"
+    },
+    {
+     "id": "37",
+     "description": "Grátis para Jogar"
+    }
+   ],
+   "screenshots": [
+    {
+     "id": 0,
+     "path_thumbnail": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/570/ss_ad8eee787704745ccdecdfde3a5cd2733704898d.600x338.jpg?t=1791407503",
+     "path_full": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/570/ss_ad8eee787704745ccdecdfde3a5cd2733704898d.1920x1080.jpg?t=1791407503"
+    },
+    {
+     "id": 1,
+     "path_thumbnail": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/570/ss_7ab506679d42bfc0c0e40639887176494e0466d9.600x338.jpg?t=1791407503",
+     "path_full": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/570/ss_7ab506679d42bfc0c0e40639887176494e0466d9.1920x1080.jpg?t=1791407503"
+    },
+    {
+     "id": 2,
+     "path_thumbnail": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/570/ss_c9118375a2400278590f29a3537769c986ef6e39.600x338.jpg?t=1791407503",
+     "path_full": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/570/ss_c9118375a2400278590f29a3537769c986ef6e39.1920x1080.jpg?t=1791407503"
+    },
+    {
+     "id": 3,
+     "path_thumbnail": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/570/ss_f9ebafedaf2d5cfb80ef1f74baa18eb08cad6494.600x338.jpg?t=1791407503",
+     "path_full": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/570/ss_f9ebafedaf2d5cfb80ef1f74baa18eb08cad6494.1920x1080.jpg?t=1791407503"
+    }
+   ],
+   "price_overview": null
+  }
+ }
+}

@@ -14,6 +14,82 @@ novas tentativas; os widgets ficam fora desta pasta. A busca na tela cobre
 os jogos já carregados. O botão de paginação permite percorrer todo o catálogo
 sem baixar milhares de registros na abertura. Não há persistência offline.
 
+`catalogoPorGenero` pertence à fonte, não à tela: o nome do parâmetro é do site
+(`genre` na GamesTorrents, `tags` na Steam) e o endereço base pode ter campos
+obrigatórios. A tela montava esse endereço com `catalogo.replace(queryParameters:
+{})`, o que apagava a query inteira da fonte.
+
+## Diagnóstico de falhas
+
+`diagnostico_catalogo.dart` existe por um motivo específico: **na máquina do
+cliente o catálogo não carregava e a tela dizia só "Verifique sua conexão"**.
+Essa frase cobria causas que pedem ações opostas — provedor bloqueando o
+domínio no DNS, Cloudflare recusando o IP, antivírus cortando o HTTPS, site
+fora do ar, mudança de layout — e não dava nada para relatar.
+
+`FalhaCatalogo` separa cada uma. `DiagnosticoCatalogo` carrega a frase que o
+cliente lê, um código curto (`LOJA-DNSBLOQUEADO`, `LOJA-ACESSORECUSADO`…) que
+ele consegue ditar, e o detalhe técnico. `DiagnosticoCatalogo.de` desembrulha o
+`ClientException` do pacote http antes de olhar o tipo, porque ele engole o
+`SocketException` e perde a causa.
+
+Quem classifica é a fonte: `carregar` embrulha a chamada de rede, o status e o
+decode, e lança `ErroCatalogo.diagnosticado`. Erro que escapar do contrato
+ainda recebe código no `CatalogoController`, para nenhum caminho ficar mudo.
+
+O que o cliente vê é o `ErroCatalogoPainel` (em `../componentes/`): a causa
+provável, o código, **Detalhes técnicos** recolhido e **Copiar detalhes**.
+
+Tudo é gravado em `%LOCALAPPDATA%\V1 Launcher\loja-erros.log`, truncado em
+256 KB — um log que cresce sem limite é um log que ninguém consegue enviar.
+Gravar é melhor-esforço: disco cheio não apaga a mensagem da tela.
+
+**Para apurar um caso:** peça o print com o código, ou o arquivo de log. Os
+códigos mais prováveis em máquina de cliente no Brasil são `LOJA-DNSBLOQUEADO`
+(provedor bloqueando o domínio — troque o DNS) e `LOJA-ACESSORECUSADO`
+(Cloudflare recusando o IP — VPN ou rede compartilhada).
+
+Testes: `test/diagnostico_catalogo_test.dart` (classificação e controller) e
+`test/erro_catalogo_painel_test.dart` (o que aparece na tela e o que é copiado).
+
+## Steam
+
+`steam_scraper.dart` alimenta a tela **Descobrir** ([`../../Descobrir/`](../../Descobrir/README.md)),
+não a Loja Interna. Usa dois endereços públicos, nenhum deles HTML de página
+inteira:
+
+- catálogo: `/search/results/` com `infinite=1`, que devolve JSON com o
+  fragmento `results_html`; a paginação anda pelo `start` e o fim vem de
+  `total_count`. `cc=br` e `l=portuguese` fixam real e português — sem eles a
+  Steam decide pelo IP e o mesmo jogo aparece com moedas diferentes.
+- ficha: `/api/appdetails?appids=<id>`, com descrição, gêneros, capturas e preço.
+
+A linha de busca não traz gênero, então `JogoCatalogo.generos` recebe lançamento
+e preço, que é o que o cartão mostra como legenda. A ficha é endereçada por
+`/app/<appid>/`, montada do `data-ds-appid` em vez do `href`, que vem com
+rastreamento `?snr=`.
+
+Os filtros de `generosSteam` são **ids de tag**: a busca aceita `tags=19` e
+ignora `genre=Ação`.
+
+Os vídeos da Steam são mp4 próprios, não ids do YouTube. `TrailerPlayer` só toca
+YouTube, então `trailers` vem vazio e a galeria mostra apenas as capturas.
+
+Fixtures com JSON real: `steam_busca.json` e `steam_appdetails.json`.
+Teste: `flutter test test/steam_scraper_test.dart`.
+
+## Sonda ao vivo
+
+`test/loja_live_probe_test.dart` roda os scrapers reais contra os dois sites e
+imprime catálogo, filtro, ficha — e, quando falha, o relatório de diagnóstico
+já classificado. É o atalho para reproduzir o problema **na máquina do
+cliente** sem abrir o aplicativo:
+
+```powershell
+$env:RUN_LOJA_LIVE_PROBE = '1'
+flutter test --no-pub --reporter expanded test/loja_live_probe_test.dart
+```
+
 Os testes usam HTML real em `test/fixtures/gamestorrents_catalogo.html`:
 `flutter test test/catalogo_scraper_test.dart`.
 Atualize a fixture ao revisar uma mudança de estrutura do site.

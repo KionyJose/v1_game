@@ -4,6 +4,7 @@ import 'package:html/parser.dart' as html;
 import 'package:http/http.dart' as http;
 
 import 'catalogo_scraper.dart';
+import 'diagnostico_catalogo.dart';
 
 /// Todos os seletores específicos do site ficam neste arquivo.
 class GamesTorrentsSeletores {
@@ -33,6 +34,14 @@ class GamesTorrentsScraper implements CatalogoScraper {
   Uri busca(String termo) => Uri.https(
       catalogo.host, '/pt-br/buscar/', {'q': termo.trim()});
 
+  @override
+  Uri catalogoPorGenero(String genero) => genero.isEmpty
+      ? catalogo
+      : catalogo.replace(queryParameters: {
+          ...catalogo.queryParameters,
+          'genre': genero,
+        });
+
   bool _paginaPermitida(Uri uri) =>
       uri.scheme == 'https' &&
       uri.host == catalogo.host &&
@@ -41,18 +50,42 @@ class GamesTorrentsScraper implements CatalogoScraper {
   @override
   Future<PaginaCatalogo> carregar(Uri pagina) async {
     if (!_paginaPermitida(pagina)) {
-      throw const ErroCatalogo('Endereço de catálogo inválido.');
+      throw ErroCatalogo.diagnosticado(DiagnosticoCatalogo.endereco(pagina));
     }
-    final response = await _client.get(pagina, headers: {
-      'Accept': 'text/html',
-      'Accept-Language': 'pt-BR,pt;q=0.9',
-    }).timeout(const Duration(seconds: 25));
+    http.Response response;
+    try {
+      response = await _client.get(pagina, headers: {
+        'Accept': 'text/html',
+        'Accept-Language': 'pt-BR,pt;q=0.9',
+        // O pacote http manda `Dart/x.y (dart:io)` por padrão, que é
+        // assinatura declarada de robô. O Cloudflare do site responde 403 a
+        // clientes sem navegador conhecido, e na máquina do cliente isso
+        // aparecia como "verifique sua conexão".
+        'User-Agent': _userAgent,
+      }).timeout(const Duration(seconds: 25));
+    } catch (erro) {
+      // DNS bloqueado, TLS recusado, tempo esgotado e firewall chegam aqui, e
+      // cada um pede uma ação diferente do cliente.
+      throw ErroCatalogo.diagnosticado(
+          DiagnosticoCatalogo.de(erro, endereco: pagina));
+    }
     if (response.statusCode != 200) {
-      throw ErroCatalogo(
-          'O site respondeu com HTTP ${response.statusCode}. Tente novamente.');
+      throw ErroCatalogo.diagnosticado(
+          DiagnosticoCatalogo.doStatus(response.statusCode, endereco: pagina));
     }
-    return interpretar(utf8.decode(response.bodyBytes), pagina);
+    String corpo;
+    try {
+      corpo = utf8.decode(response.bodyBytes);
+    } catch (erro) {
+      throw ErroCatalogo.diagnosticado(DiagnosticoCatalogo.de(erro,
+          endereco: pagina, status: response.statusCode));
+    }
+    return interpretar(corpo, pagina);
   }
+
+  static const _userAgent =
+      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
+      '(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
 
   /// Função independente de rede para validar mudanças no HTML com fixtures.
   PaginaCatalogo interpretar(String conteudo, Uri pagina) {
@@ -96,8 +129,14 @@ class GamesTorrentsScraper implements CatalogoScraper {
     }
     // Não confundir bloqueio/alteração de layout com um catálogo vazio.
     if (jogos.isEmpty && document.querySelector('.catalog-controls') == null) {
-      throw const ErroCatalogo(
-          'Não foi possível reconhecer o catálogo. O site pode estar indisponível ou ter alterado sua estrutura.');
+      // O começo do título ajuda a reconhecer página de bloqueio da operadora
+      // ou desafio do Cloudflare entregues no lugar do catálogo.
+      final titulo = document.querySelector('title')?.text.trim() ?? '';
+      throw ErroCatalogo.diagnosticado(DiagnosticoCatalogo.estrutura(
+          'Nenhum "${GamesTorrentsSeletores.cards}" e nenhum ".catalog-controls" '
+          'em ${conteudo.length} bytes. Título da página: '
+          '"${titulo.length > 80 ? '${titulo.substring(0, 80)}…' : titulo}".',
+          endereco: pagina));
     }
     Uri? proxima;
     final atual = int.tryParse(pagina.queryParameters['page'] ?? '1') ?? 1;

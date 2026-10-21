@@ -81,6 +81,7 @@ flutter:
 
   assets:
     - assets/Futurista/
+    - assets/Lojas/
     - assets/Repack/
     - assets/Repack/license/
     # Adicionando Teclado VIrtual ===========

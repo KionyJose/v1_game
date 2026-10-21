@@ -35,6 +35,7 @@ import '../../Interface/launcher_routes.dart';
 import '../../Interface/futuristic_game_feed.dart';
 import '../../Downloads/downloads_tela.dart';
 import '../../Downloads/installed_game_library.dart';
+import '../Descobrir/descobrir_tela.dart';
 import '../Tela loja/scrap_loja.dart';
 import '../../Controllers/slim_mode_config_controller.dart';
 import '../../Interface/launcher_menu.dart';
@@ -146,16 +147,16 @@ class PrincipalCtrl with ChangeNotifier{
   
   List<String> listAbaGuias= ["Games","Cinema","Musica","Loja"];
   List<LojaGame> listLojas = const [
-    LojaGame(nome: 'Loja Interna', subtitulo: 'Catálogo, trailers e downloads no launcher', url: '', interna: true, cor: Color(0xFF8B7CFF), icone: Icons.storefront_rounded),
-    LojaGame(nome: 'GOG', subtitulo: 'Clássicos e DRM-free', url: 'https://www.gog.com', cor: Color(0xFF6D42C7), icone: Icons.extension_rounded),
-    LojaGame(nome: 'Steam', subtitulo: 'Biblioteca, ofertas e comunidade', url: 'https://store.steampowered.com', cor: Color(0xFF1B5C8F), icone: Icons.sports_esports_rounded),
-    LojaGame(nome: 'Epic', subtitulo: 'Jogos grátis e lançamentos', url: 'https://store.epicgames.com/pt-BR', cor: Color(0xFF2A2A2A), icone: Icons.bolt_rounded),
-    LojaGame(nome: 'Microsoft', subtitulo: 'Xbox, Game Pass e PC', url: 'https://www.xbox.com/pt-br/games', cor: Color(0xFF107C10), icone: Icons.grid_view_rounded),
-    LojaGame(nome: 'EA', subtitulo: 'EA app e franquias esportivas', url: 'https://www.ea.com/games', cor: Color(0xFFFF3B30), icone: Icons.blur_circular_rounded),
-    LojaGame(nome: 'Ubisoft', subtitulo: 'Ubisoft Store e Connect', url: 'https://store.ubisoft.com', cor: Color(0xFF0078D7), icone: Icons.radar_rounded),
-    LojaGame(nome: 'Blizzard', subtitulo: 'Battle.net e jogos Blizzard', url: 'https://shop.battle.net', cor: Color(0xFF00AEEF), icone: Icons.ac_unit_rounded),
-    LojaGame(nome: 'itch.io', subtitulo: 'Indies, game jams e pague quanto quiser', url: 'https://itch.io', cor: Color(0xFFFA5C5C), icone: Icons.favorite_rounded),
-    LojaGame(nome: 'Mods', subtitulo: 'Mods, patches e conteúdo da comunidade', url: 'https://www.moddb.com', cor: Color(0xFF7A4F22), icone: Icons.construction_rounded),
+    LojaGame(nome: 'Loja Interna', subtitulo: 'Catálogo, trailers e downloads no launcher', url: '', interna: true, cor: Color(0xFF8B7CFF), icone: Icons.storefront_rounded, logo: 'assets/Lojas/interna.png'),
+    LojaGame(nome: 'GOG', subtitulo: 'Clássicos e DRM-free', url: 'https://www.gog.com', cor: Color(0xFF6D42C7), icone: Icons.extension_rounded, logo: 'assets/Lojas/gog.png'),
+    LojaGame(nome: 'Descobrir', subtitulo: 'Carrossel de jogos da Steam no launcher', url: 'https://store.steampowered.com', descobrir: true, cor: Color(0xFF1B5C8F), icone: Icons.explore_rounded, logo: 'assets/Lojas/steam.png'),
+    LojaGame(nome: 'Epic', subtitulo: 'Jogos grátis e lançamentos', url: 'https://store.epicgames.com/pt-BR', cor: Color(0xFF2A2A2A), icone: Icons.bolt_rounded, logo: 'assets/Lojas/epic.png'),
+    LojaGame(nome: 'Microsoft', subtitulo: 'Xbox, Game Pass e PC', url: 'https://www.xbox.com/pt-br/games', cor: Color(0xFF107C10), icone: Icons.grid_view_rounded, logo: 'assets/Lojas/microsoft.png'),
+    LojaGame(nome: 'EA', subtitulo: 'EA app e franquias esportivas', url: 'https://www.ea.com/games', cor: Color(0xFFFF3B30), icone: Icons.blur_circular_rounded, logo: 'assets/Lojas/ea.png'),
+    LojaGame(nome: 'Ubisoft', subtitulo: 'Ubisoft Store e Connect', url: 'https://store.ubisoft.com', cor: Color(0xFF0078D7), icone: Icons.radar_rounded, logo: 'assets/Lojas/ubisoft.png'),
+    LojaGame(nome: 'Blizzard', subtitulo: 'Battle.net e jogos Blizzard', url: 'https://shop.battle.net', cor: Color(0xFF00AEEF), icone: Icons.ac_unit_rounded, logo: 'assets/Lojas/blizzard.png'),
+    LojaGame(nome: 'itch.io', subtitulo: 'Indies, game jams e pague quanto quiser', url: 'https://itch.io', cor: Color(0xFFFA5C5C), icone: Icons.favorite_rounded, logo: 'assets/Lojas/itchio.png'),
+    LojaGame(nome: 'Mods', subtitulo: 'Mods, patches e conteúdo da comunidade', url: 'https://www.moddb.com', cor: Color(0xFF7A4F22), icone: Icons.construction_rounded, logo: 'assets/Lojas/moddb.png'),
   ];
   static String cine = "Cine";
   static String musc = "Musc";
@@ -1960,7 +1961,9 @@ if (-not [WindowsPower]::SetSuspendState($false, $false, $false)) { exit 1 }
     }
     if (event == "2"){
       final lojaAtual = listLojas[selectedIndexLoja];
-      if (lojaAtual.interna) {
+      if (lojaAtual.descobrir) {
+        await abrirTelaInterna(const DescobrirTela());
+      } else if (lojaAtual.interna) {
         await abrirTelaInterna(const ScrapLoja());
       } else {
         await sairDaTelaMedia(lojaAtual.url, "Abrindo ${lojaAtual.nome}.");
@@ -2237,7 +2240,16 @@ class LojaGame {
   final String subtitulo;
   final String url;
   final Color cor;
+
+  /// Desenho usado enquanto a loja não tem logo, e sempre que o PNG faltar ou
+  /// não puder ser lido. Nenhum bloco fica vazio por causa de um arquivo.
   final IconData icone;
+
+  /// Caminho do PNG da logo em `assets/Lojas/`. Vazio mantém o ícone.
+  final String logo;
+
+  /// Abre o carrossel Descobrir dentro do launcher, em vez do navegador.
+  final bool descobrir;
 
   const LojaGame({
     this.interna = false,
@@ -2246,5 +2258,7 @@ class LojaGame {
     required this.url,
     required this.cor,
     required this.icone,
+    this.logo = '',
+    this.descobrir = false,
   });
 }

@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:v1_game/Tela/Tela%20Principal/PrincipalCtrl.dart';
+import 'loja_logo.dart';
 
 class BodyIconesLoja extends StatelessWidget {
   final PrincipalCtrl ctrl;
@@ -79,17 +80,23 @@ class BodyIconesLoja extends StatelessWidget {
                             Positioned(
                               right: -8,
                               bottom: -12,
-                              child: Icon(
-                                loja.icone,
-                                color: Colors.white.withValues(alpha: 0.18),
-                                size: 112,
+                              child: Opacity(
+                                opacity: 0.18,
+                                child: LojaLogo(
+                                  logo: loja.logo,
+                                  icone: loja.icone,
+                                  tamanho: 112,
+                                ),
                               ),
                             ),
                             Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                Icon(loja.icone, color: Colors.white, size: foco ? 40 : 34),
+                                LojaLogo(
+                                    logo: loja.logo,
+                                    icone: loja.icone,
+                                    tamanho: foco ? 40 : 34),
                                 Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [

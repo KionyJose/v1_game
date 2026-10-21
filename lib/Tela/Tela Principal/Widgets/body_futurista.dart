@@ -260,8 +260,9 @@ class _BodyFuturistaState extends State<BodyFuturista> with WindowListener {
                   ctrl.listCinema[index].imgLocal, Icons.movie_rounded),
               2 => FuturisticItem(ctrl.listMusica[index].nome,
                   ctrl.listMusica[index].imgLocal, Icons.music_note_rounded),
-              3 => FuturisticItem(
-                  ctrl.listLojas[index].nome, '', ctrl.listLojas[index].icone),
+              3 => FuturisticItem(ctrl.listLojas[index].nome,
+                  ctrl.listLojas[index].logo, ctrl.listLojas[index].icone,
+                  logo: true),
               _ => FuturisticItem(
                   ctrl.listIconsInicial[index].nome,
                   ctrl.listIconsInicial[index].imgStr,
@@ -331,10 +332,14 @@ class _BodyFuturistaState extends State<BodyFuturista> with WindowListener {
 }
 
 class FuturisticItem {
-  const FuturisticItem(this.name, this.image, this.icon);
+  const FuturisticItem(this.name, this.image, this.icon, {this.logo = false});
   final String name;
   final String image;
   final IconData icon;
+
+  /// Marca de loja em vez de capa de jogo: precisa caber inteira no bloco,
+  /// então é desenhada com `contain` e respiro, não recortada por `cover`.
+  final bool logo;
 }
 
 /// Independently testable glass layout; it never launches processes itself.
@@ -1231,8 +1236,12 @@ class _FuturisticHomeState extends State<FuturisticHome>
             child: Icon(item.icon, size: 52, color: const Color(0xFFB8ECE8))));
     if (item.image.isEmpty) return fallback;
     if (item.image.startsWith('assets/')) {
-      return Image.asset(item.image,
-          fit: BoxFit.cover, errorBuilder: (_, __, ___) => fallback);
+      final imagem = Image.asset(item.image,
+          fit: item.logo ? BoxFit.contain : BoxFit.cover,
+          errorBuilder: (_, __, ___) => fallback);
+      return item.logo
+          ? Padding(padding: const EdgeInsets.all(18), child: imagem)
+          : imagem;
     }
     if (item.image.startsWith('http')) {
       return Image.network(item.image,

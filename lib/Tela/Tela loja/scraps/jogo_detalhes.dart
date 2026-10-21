@@ -27,6 +27,14 @@ class JogoDetalhes {
   final List<Uri> imagens;
   final List<TrailerJogo> trailers;
   final List<VersaoJogo> versoes;
+
+  /// Preço formatado pela própria loja. Vazio nas fontes de torrent.
+  final String preco;
+
+  /// Página oficial para abrir no navegador. Só as lojas preenchem: é o que
+  /// substitui o painel de download quando não existe torrent.
+  final Uri? urlLoja;
+
   const JogoDetalhes(
       {required this.pagina,
       required this.nome,
@@ -35,7 +43,9 @@ class JogoDetalhes {
       this.generos = const [],
       this.imagens = const [],
       this.trailers = const [],
-      this.versoes = const []});
+      this.versoes = const [],
+      this.preco = '',
+      this.urlLoja});
 }
 
 abstract class DetalhesScraper {

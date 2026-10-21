@@ -4,6 +4,7 @@ import '../../Interface/launcher_pad_scope.dart';
 import '../../Interface/launcher_routes.dart';
 import '../../Interface/pad_keyboard.dart';
 import 'detalhes_jogo_tela.dart';
+import 'componentes/erro_catalogo_painel.dart';
 import 'componentes/jogo_card.dart';
 import 'componentes/loja_intro.dart';
 import 'scraps/catalogo_controller.dart';
@@ -248,21 +249,14 @@ class _ScrapLojaState extends State<ScrapLoja> {
                                         Padding(
                                             padding:
                                                 const EdgeInsets.only(top: 16),
-                                            child: Wrap(
-                                                crossAxisAlignment:
-                                                    WrapCrossAlignment.center,
-                                                spacing: 12,
-                                                children: [
-                                                  Text(_catalogo.erro!),
-                                                  TextButton(
-                                                      onPressed: _catalogo
-                                                              .carregando
-                                                          ? null
-                                                          : _catalogo
-                                                              .tentarNovamente,
-                                                      child: const Text(
-                                                          'Tentar novamente')),
-                                                ])),
+                                            child: ErroCatalogoPainel(
+                                              mensagem: _catalogo.erro!,
+                                              diagnostico:
+                                                  _catalogo.diagnostico,
+                                              carregando: _catalogo.carregando,
+                                              onTentarNovamente:
+                                                  _catalogo.tentarNovamente,
+                                            )),
                                       const SizedBox(height: 8),
                                       Text(
                                           '${_catalogo.jogos.length} jogos carregados'),

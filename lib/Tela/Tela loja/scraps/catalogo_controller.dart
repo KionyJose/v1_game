@@ -1,9 +1,21 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'catalogo_scraper.dart';
+import 'diagnostico_catalogo.dart';
 
 class CatalogoController extends ChangeNotifier {
   final CatalogoScraper scraper;
-  CatalogoController(this.scraper);
+
+  /// Grava a falha na máquina do cliente. Injetável para os testes não
+  /// escreverem no disco do desenvolvedor.
+  final Future<void> Function(DiagnosticoCatalogo) registrarFalha;
+
+  CatalogoController(this.scraper,
+      {Future<void> Function(DiagnosticoCatalogo)? registrarFalha})
+      : registrarFalha = registrarFalha ?? _registroPadrao;
+
+  static Future<void> _registroPadrao(DiagnosticoCatalogo d) => d.registrar();
 
   final List<JogoCatalogo> _jogos = [];
   List<JogoCatalogo> get jogos => List.unmodifiable(_jogos);
@@ -11,6 +23,11 @@ class CatalogoController extends ChangeNotifier {
   String genero = '';
   String total = '';
   String? erro;
+
+  /// Causa classificada da última falha, com código e detalhe técnico. Nulo
+  /// quando a última tentativa deu certo.
+  DiagnosticoCatalogo? diagnostico;
+
   Uri? proxima;
   bool carregando = false;
   bool _disposed = false;
@@ -31,10 +48,9 @@ class CatalogoController extends ChangeNotifier {
     genero = filtroGenero ?? genero;
     // Escolher um gênero volta ao catálogo: o site não cruza busca e filtro.
     termo = '';
-    await _carregar(
-        scraper.catalogo
-            .replace(queryParameters: genero.isEmpty ? {} : {'genre': genero}),
-        reiniciar: true);
+    // A fonte monta o endereço: o nome do parâmetro e os campos obrigatórios
+    // do endereço base são dela, não da tela.
+    await _carregar(scraper.catalogoPorGenero(genero), reiniciar: true);
   }
 
   /// Pergunta ao site, em vez de filtrar o que já está em memória. Um termo
@@ -63,6 +79,7 @@ class CatalogoController extends ChangeNotifier {
     _ultimaReiniciar = reiniciar;
     carregando = true;
     erro = null;
+    diagnostico = null;
     notifyListeners();
     try {
       final pagina = await scraper.carregar(uri);
@@ -75,9 +92,17 @@ class CatalogoController extends ChangeNotifier {
       proxima = pagina.proxima;
     } catch (e) {
       if (_disposed) return;
-      erro = e is ErroCatalogo
-          ? e.mensagem
-          : 'Não foi possível acessar o site. Verifique sua conexão e tente novamente.';
+      // Fonte que não classificou a falha não fica sem diagnóstico: o cliente
+      // precisa de um código para relatar em qualquer caminho de erro.
+      final causa = e is ErroCatalogo && e.diagnostico != null
+          ? e.diagnostico!
+          : DiagnosticoCatalogo.de(e, endereco: uri);
+      diagnostico = causa;
+      erro = e is ErroCatalogo ? e.mensagem : causa.mensagem;
+      // Gravar o log é melhor-esforço: disco cheio ou pasta sem permissão não
+      // pode virar erro assíncrono solto nem apagar a mensagem da tela.
+      unawaited(registrarFalha(causa).catchError(
+          (Object falha) => debugPrint('Log da loja não gravado: $falha')));
     } finally {
       if (!_disposed) {
         carregando = false;

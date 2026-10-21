@@ -15,6 +15,10 @@ class FonteTeste implements CatalogoScraper {
   Uri busca(String termo) =>
       Uri.https('example.com', '/buscar/', {'q': termo.trim()});
   @override
+  Uri catalogoPorGenero(String genero) => genero.isEmpty
+      ? catalogo
+      : catalogo.replace(queryParameters: {'genre': genero});
+  @override
   void dispose() {}
   @override
   Future<PaginaCatalogo> carregar(Uri pagina) async {
