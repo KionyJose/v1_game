@@ -1,0 +1,264 @@
+import 'dart:async';
+import 'dart:io';
+
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:provider/provider.dart';
+import 'package:v1_game/Bando%20de%20Dados/db.dart';
+import 'package:v1_game/Class/Paad.dart';
+import 'package:v1_game/Controllers/JanelaCtrl.dart';
+import 'package:v1_game/Modelos/IconeInicial.dart';
+import 'package:v1_game/Tela/Tela Principal/PrincipalCtrl.dart';
+
+/// Registra quando o jogo foi aberto e quanto tempo o `openFile` custou.
+///
+/// O `openFile` real consulta `Win32_Process` pelo PowerShell duas vezes e
+/// ainda espera 700 ms por dentro, então na máquina do cliente ele leva
+/// segundos. O atraso simulado aqui é o que reproduz o problema original.
+class DBEspiao extends DB {
+  DBEspiao({this.demora = const Duration(milliseconds: 400)});
+  final Duration demora;
+  final List<String> abertos = [];
+  DateTime? primeiraAberturaEm;
+
+  @override
+  openFile(String filePath,
+      {String? workingDirectory, bool throwOnError = false}) async {
+    abertos.add(filePath);
+    primeiraAberturaEm ??= DateTime.now();
+    await Future<void>.delayed(demora);
+  }
+
+  @override
+  Future<void> attDados(List<IconInicial> list) async {}
+}
+
+class CtrlDeTeste extends PrincipalCtrl {
+  CtrlDeTeste(super.ctx);
+
+  @override
+  Future<void> iniciaTela() async {
+    focusNodeIcones = [];
+    focusNodeAbaGuias = [FocusNode()];
+    focusNodeCinema = [];
+    focusNodeMusica = [];
+    focusNodeLoja = [];
+    focusNodeVideos = [];
+  }
+
+  /// A animação de reposicionamento do ícone não interessa a estes testes,
+  /// mas o tempo que ela consome interessa: continua sendo trabalho feito
+  /// entre a animação aparecer e o jogo abrir.
+  int moveuIcone = 0;
+  @override
+  Future<void> moverIcoPosicaoInicial(IconInicial icone) async {
+    moveuIcone++;
+    await Future<void>.delayed(const Duration(milliseconds: 120));
+  }
+}
+
+Future<CtrlDeTeste> _montar(WidgetTester tester, DBEspiao db,
+    {int jogos = 3}) async {
+  CtrlDeTeste? criado;
+  final pad = Paad(escutar: false, janelaCtrl: JanelaCtrl());
+  addTearDown(pad.dispose);
+  await tester.pumpWidget(MultiProvider(
+    providers: [
+      ChangeNotifierProvider<Paad>.value(value: pad),
+      ChangeNotifierProvider<JanelaCtrl>(create: (_) => JanelaCtrl()),
+    ],
+    child: MaterialApp(home: Builder(builder: (context) {
+      // Uma vez só: abrir a folha empurra uma rota, o MaterialApp reconstrói
+      // e um controller novo aqui zeraria `stateTela` no meio da abertura.
+      final ctrl = criado ??= CtrlDeTeste(context)
+        ..db = db
+        ..listIconsInicial = List.generate(
+            jogos,
+            (i) => IconInicial([
+                  'lugar: ${i + 1}',
+                  'nome: Jogo $i',
+                  'local: jogo$i.exe',
+                  'img: ',
+                  'imgAux: ',
+                ]))
+        ..focusNodeIcones = List.generate(jogos, (_) => FocusNode())
+        ..selectedIndexIcone = 0
+        ..stateTela = true;
+      return AnimatedBuilder(
+        animation: ctrl,
+        builder: (_, __) => Scaffold(
+          body: Column(children: [
+            TextButton(
+                focusNode: ctrl.focusNodeAbaGuias.first,
+                onPressed: () {},
+                child: const Text('Jogos')),
+            for (var i = 0; i < ctrl.listIconsInicial.length; i++)
+              TextButton(
+                  focusNode: ctrl.focusNodeIcones[i],
+                  onPressed: () {},
+                  child: Text(ctrl.listIconsInicial[i].nome)),
+          ]),
+        ),
+      );
+    })),
+  ));
+  await tester.pump();
+  return criado!;
+}
+
+/// Avança o relógio falso em fatias.
+///
+/// `pumpAndSettle` não serve aqui: a folha de carga tem um indicador que gira
+/// sem parar, e o settle nunca chega. O que interessa nestes testes é tempo
+/// decorrido, não quadro estável.
+Future<void> _avancar(WidgetTester tester, Duration tempo,
+    {Duration passo = const Duration(milliseconds: 100)}) async {
+  var restante = tempo;
+  while (restante > Duration.zero) {
+    final fatia = restante < passo ? restante : passo;
+    await tester.pump(fatia);
+    restante -= fatia;
+  }
+}
+
+void main() {
+  testWidgets('A animação aparece antes de o jogo abrir', (tester) async {
+    final db = DBEspiao();
+    final ctrl = await _montar(tester, db);
+
+    unawaited(ctrl.btnEntrar());
+    await tester.pump();
+    await _avancar(tester, const Duration(milliseconds: 500));
+
+    // Meio segundo depois do clique a folha já está na tela e o jogo ainda
+    // não subiu. Era exatamente o contrário: o jogo abria primeiro e a
+    // animação só aparecia depois.
+    expect(find.text('Entrando no game...'), findsOneWidget);
+    expect(db.abertos, isEmpty);
+
+    await _avancar(tester, const Duration(seconds: 2));
+    expect(db.abertos, ['jogo0.exe']);
+
+    // Drena o `openFile` simulado e o resfriamento do clique.
+    await _avancar(tester, const Duration(seconds: 2));
+  });
+
+  testWidgets('O jogo abre dois segundos depois da animação', (tester) async {
+    final db = DBEspiao();
+    final ctrl = await _montar(tester, db);
+
+    unawaited(ctrl.btnEntrar());
+    await tester.pump();
+    // Antes dos dois segundos, nada de jogo.
+    await _avancar(tester, const Duration(milliseconds: 1800));
+    expect(db.abertos, isEmpty);
+    // A preparação do ícone roda dentro da espera, não depois dela.
+    expect(ctrl.moveuIcone, 1);
+
+    await _avancar(tester, const Duration(milliseconds: 500));
+    expect(db.abertos.length, 1);
+
+    // Drena o que o `openFile` simulado ainda deixou pendente.
+    await _avancar(tester, const Duration(seconds: 2));
+  });
+
+  testWidgets('Cliques repetidos não abrem o jogo mais de uma vez',
+      (tester) async {
+    final db = DBEspiao(demora: const Duration(seconds: 1));
+    final ctrl = await _montar(tester, db);
+
+    // Rajada de cliques, como um duplo-clique de mouse no Transversal.
+    for (var i = 0; i < 6; i++) {
+      unawaited(ctrl.btnEntrar());
+    }
+    await tester.pump();
+    // A porta fecha no mesmo instante do primeiro clique, sem esperar quadro.
+    expect(ctrl.entrandoNoJogo, isTrue);
+    expect(ctrl.mouseBloqueado, isTrue);
+
+    await _avancar(tester, const Duration(seconds: 3));
+    for (var i = 0; i < 4; i++) {
+      unawaited(ctrl.btnEntrar());
+    }
+    await _avancar(tester, const Duration(seconds: 2));
+
+    expect(db.abertos, ['jogo0.exe']);
+  });
+
+  testWidgets('Cliques durante a abertura não entram na fila', (tester) async {
+    final db = DBEspiao(demora: const Duration(milliseconds: 600));
+    final ctrl = await _montar(tester, db);
+
+    unawaited(ctrl.btnEntrar());
+    await tester.pump();
+    // Um clique a cada 200 ms durante toda a sequência.
+    for (var i = 0; i < 15; i++) {
+      await tester.pump(const Duration(milliseconds: 200));
+      unawaited(ctrl.btnEntrar());
+    }
+    await _avancar(tester, const Duration(seconds: 2));
+
+    expect(db.abertos.length, 1);
+  });
+
+  testWidgets('O sistema fica liberado quando o jogo abriu', (tester) async {
+    final db = DBEspiao();
+    final ctrl = await _montar(tester, db);
+
+    unawaited(ctrl.btnEntrar());
+    await tester.pump();
+    expect(ctrl.stateTela, isFalse, reason: 'bloqueado durante a abertura');
+
+    await _avancar(tester, const Duration(seconds: 4));
+
+    expect(db.abertos.length, 1);
+    expect(ctrl.stateTela, isTrue);
+    expect(ctrl.gameIniciado, isFalse);
+    expect(ctrl.entrandoNoJogo, isFalse);
+    expect(ctrl.mouseBloqueado, isFalse);
+    // A folha saiu sozinha: ninguém precisou apertar nada.
+    expect(find.text('Entrando no game...'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Depois de abrir um jogo o próximo clique funciona',
+      (tester) async {
+    final db = DBEspiao();
+    final ctrl = await _montar(tester, db);
+
+    unawaited(ctrl.btnEntrar());
+    await _avancar(tester, const Duration(seconds: 4));
+    expect(db.abertos.length, 1);
+
+    ctrl.selectedIndexIcone = 2;
+    unawaited(ctrl.btnEntrar());
+    await _avancar(tester, const Duration(seconds: 4));
+
+    expect(db.abertos, ['jogo0.exe', 'jogo2.exe']);
+    expect(ctrl.stateTela, isTrue);
+  });
+
+  testWidgets('Falha ao abrir devolve o launcher em vez de travar a tela',
+      (tester) async {
+    final db = _DBQueFalha();
+    final ctrl = await _montar(tester, db);
+
+    unawaited(ctrl.btnEntrar());
+    await _avancar(tester, const Duration(seconds: 4));
+
+    expect(ctrl.stateTela, isTrue);
+    expect(ctrl.gameIniciado, isFalse);
+    expect(ctrl.entrandoNoJogo, isFalse);
+    expect(find.text('Entrando no game...'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+}
+
+class _DBQueFalha extends DBEspiao {
+  @override
+  openFile(String filePath,
+      {String? workingDirectory, bool throwOnError = false}) async {
+    abertos.add(filePath);
+    throw const ProcessException('jogo.exe', [], 'executável não encontrado');
+  }
+}

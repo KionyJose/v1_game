@@ -195,3 +195,41 @@ voltar ao launcher não interrompe transferências. A fila é acessível pelo St
 
 Validação do roteamento, teclado, retorno à loja e menu anterior:
 `flutter test --no-pub test/launcher_pad_integration_test.dart`.
+
+## Ordem de abertura de um jogo 🎬
+
+Vale para todos os modos — Grid, Moderno, Retro, Slim, Transversal e
+Futurista — porque todos passam por `PrincipalCtrl.btnEntrar`.
+
+1. **Clique.** `_entrandoNoJogo`, `gameIniciado` e `stateTela` mudam **antes do
+   primeiro `await`**. A partir daí `mouseBloqueado` é verdadeiro e nenhum
+   outro clique entra.
+2. **Animação.** A folha "Entrando no game..." aparece imediatamente, antes de
+   qualquer trabalho de bastidor.
+3. **Preparação.** Mouse, fixação da janela, reposicionamento do ícone e foco
+   acontecem *dentro* da espera, não depois dela.
+4. **Dois segundos** (`esperaAntesDoJogo`), descontando o que a preparação já
+   consumiu: o jogo sobe sempre 2 s depois de a animação aparecer.
+5. **`db.openFile`.** Só agora o jogo abre.
+6. **Liberação.** `_liberarSistema()` devolve mouse, janela e foco e reabre os
+   eventos; a folha sai sozinha, sem ninguém apertar nada.
+7. **Resfriamento** de 600 ms (`resfriamentoDoClique`) antes de aceitar um
+   novo clique, para o último toque de uma rajada não abrir um segundo jogo.
+
+**A ordem era inversa.** `db.openFile` vinha primeiro, e só ~650 ms depois a
+animação aparecia — por isso ela parecia atrasada: o jogo já estava subindo.
+Pior, as guardas só eram marcadas *depois* desse `await`, e ele é longo:
+`openFile` consulta `Win32_Process` pelo PowerShell **duas vezes** (~370 ms
+cada, medido) e ainda espera 700 ms por dentro. Durante esses segundos
+`mouseBloqueado` continuava falso e cada clique extra abria outra cópia do
+jogo. No Transversal era pior, porque `_openGame` chama `btnEntrar` direto do
+`onTap` do cartão, sem passar por `abrirItemSlim`.
+
+A folha de carga não usa `transitionAnimationController` próprio: o anterior
+nascia com `vsync: Navigator.of(ctx)` e nunca era descartado, deixando um
+Ticker vivo por abertura. Descartá-lo ao fim também não resolve — ele conduz a
+animação de saída, e liberá-lo cedo deixa a folha congelada na tela.
+
+Testes: `flutter test test/ordem_abertura_jogo_test.dart` cobre a ordem, os
+dois segundos, rajada de cliques, liberação ao fim, segundo jogo em seguida e
+falha de abertura.

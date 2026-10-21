@@ -1166,63 +1166,119 @@ class PrincipalCtrl with ChangeNotifier{
     if (!compactNavigation) ctrlAnimeBgFundo.repeat(reverse: true);
   }
 
+  /// Quanto tempo a animação de abertura fica na tela antes de o jogo subir.
+  static const esperaAntesDoJogo = Duration(seconds: 2);
+
+  /// Janela em que um clique atrasado da mesma rajada ainda é ignorado.
+  static const resfriamentoDoClique = Duration(milliseconds: 600);
+
+  /// Fecha a porta de entrada do jogo de forma síncrona.
+  ///
+  /// `db.openFile` leva segundos — ele consulta `Win32_Process` pelo
+  /// PowerShell duas vezes e ainda espera 700 ms por dentro. Enquanto a ordem
+  /// antiga abria o jogo *antes* de marcar `gameIniciado`/`stateTela`, todo
+  /// esse intervalo ficava sem guarda: `mouseBloqueado` continuava falso e
+  /// cada clique extra abria outra cópia do jogo. No Transversal era pior,
+  /// porque lá o toque do cartão chama `btnEntrar` direto.
+  bool _entrandoNoJogo = false;
+
+  bool get entrandoNoJogo => _entrandoNoJogo;
+
   btnEntrar({Future<void> Function()? apresentarInicializacao,
     bool reportErrors = false}) async {
-    try{
-      if(!stateTela) return;
-      if(listIconsInicial.isEmpty) return btnMais();
+    if (_entrandoNoJogo) return;
+    if (!stateTela) return;
+    if (listIconsInicial.isEmpty) return btnMais();
+
+    // Daqui até o `finally` nenhum outro clique entra.
+    _entrandoNoJogo = true;
+    gameIniciado = true;
+    stateTela = false;
+    final jogo = listIconsInicial[selectedIndexIcone];
+    ValueNotifier<bool>? jogoAberto;
+    Future<void>? folhaDeCarga;
+
+    try {
       if (transversalMode) {
         SonsSistema.click();
       }
-      await db.openFile(listIconsInicial[selectedIndexIcone].local, throwOnError: reportErrors);
-      gameIniciado = true;
-      stateTela = false; // Desativa eventos durante o processo
+
+      // 1. A animação entra primeiro, antes de qualquer trabalho pesado.
+      if (apresentarInicializacao == null) {
+        jogoAberto = ValueNotifier<bool>(false);
+        folhaDeCarga = Pops()
+            .carregandoGames(ctx, 'Entrando no game...', pronto: jogoAberto);
+      }
+      final abriuAnimacao = DateTime.now();
+
       await Provider.of<Paad>(ctx, listen: false).ativaMouse(usarEstado: true, estado: false);
       videosIndexYT = List.generate(listIconsInicial.length, (index) => []);
       Provider.of<JanelaCtrl>(ctx, listen: false).telaPresaReverse(usarEstado: true, estado: false);
-      await moverIcoPosicaoInicial(listIconsInicial[selectedIndexIcone]);
+      await moverIcoPosicaoInicial(jogo);
       selectedIndexIcone = 0;
-      // focusNodeIcones[selectedIndexIcone].requestFocus();
       cardGamesGrid && cardInf ? focusNodeCardInf[selectedIndexCardInfo].requestFocus() : focusNodeIcones[selectedIndexIcone].requestFocus();
-
       attTela();
-      await Future.delayed(const Duration(milliseconds: 650));
+
+      // 2. Desconta o que a preparação já consumiu: o jogo abre sempre dois
+      //    segundos depois da animação aparecer, não dois segundos depois
+      //    de terminar o trabalho de bastidor.
+      final restante =
+          esperaAntesDoJogo - DateTime.now().difference(abriuAnimacao);
+      if (restante > Duration.zero) await Future.delayed(restante);
+
+      // 3. Só então o jogo sobe.
+      await db.openFile(jogo.local, throwOnError: reportErrors);
+      jogoAberto?.value = true;
+
       if (apresentarInicializacao != null) {
         await apresentarInicializacao();
-      } else {
-        await Pops().carregandoGames(ctx,"Entrando no game..." );
       }
-      gameIniciado = false;
-      Provider.of<JanelaCtrl>(ctx, listen: false).telaPresaReverse(estado: true, usarEstado: true);
-      // Desativa o uso do mouse;
-      await Provider.of<Paad>(ctx, listen: false).ativaMouse( usarEstado: true,  estado: false);
-      
-      // Garantir que o foco volte para o escopo correto após abrir o arquivo
 
-      cardInf = false;
-      focusScopeIcones.requestFocus();
-      focusScope = focusScopeIcones;
-      if (focusNodeIcones.isNotEmpty) {
-        selectedIndexIcone =
-            selectedIndexIcone.clamp(0, focusNodeIcones.length - 1);
-        focusNodeIcones[selectedIndexIcone].requestFocus();
-      }
-      
-      // Delay antes de reativar eventos para evitar cliques duplos
-      await Future.delayed(const Duration(milliseconds: 300));
-      stateTela = true;
+      _liberarSistema();
 
-      // focusNodeIcones[selectedIndexIcone].requestFocus();
-      // focusScopeIcones.requestFocus();
-      // focusScope = focusScopeIcones;
-    }catch(e){
+      // A folha sai sozinha assim que o jogo abre; esperar aqui só garante
+      // que a rota saiu antes de outro clique ser aceito.
+      if (folhaDeCarga != null) await folhaDeCarga;
+    } catch (e) {
       debugPrint(e.toString());
-      if (reportErrors) {
-        gameIniciado = false;
-        stateTela = true;
-        rethrow;
-      }
+      jogoAberto?.value = true;
+      if (reportErrors) rethrow;
+    } finally {
+      // O `ValueNotifier` não é descartado aqui de propósito: a folha ainda
+      // remove o seu listener no próprio dispose, e descartá-lo antes disso
+      // faz esse removeListener lançar.
+      // Mesmo numa falha o launcher precisa voltar a responder.
+      _liberarSistema();
+      // Resfriamento: o último clique de uma rajada chega depois de tudo
+      // pronto e abriria um segundo jogo. A tela já está liberada aqui; só a
+      // porta de entrada continua fechada por um instante.
+      await Future.delayed(resfriamentoDoClique);
+      _entrandoNoJogo = false;
     }
+  }
+
+  /// Devolve mouse, janela e foco ao launcher e reabre os eventos da tela.
+  void _liberarSistema() {
+    if (_disposed) return;
+    gameIniciado = false;
+    try {
+      Provider.of<JanelaCtrl>(ctx, listen: false)
+          .telaPresaReverse(estado: true, usarEstado: true);
+      Provider.of<Paad>(ctx, listen: false)
+          .ativaMouse(usarEstado: true, estado: false);
+    } catch (error) {
+      debugPrint('Não foi possível restaurar a janela: $error');
+    }
+    cardInf = false;
+    focusScopeIcones.requestFocus();
+    focusScope = focusScopeIcones;
+    if (focusNodeIcones.isNotEmpty) {
+      selectedIndexIcone =
+          selectedIndexIcone.clamp(0, focusNodeIcones.length - 1);
+      focusNodeIcones[selectedIndexIcone].requestFocus();
+    }
+    stateTela = true;
+    attTela();
   }
 
   Future<void> btnFecharJogoAberto() async {

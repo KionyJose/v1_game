@@ -1,5 +1,8 @@
 // ignore_for_file: avoid_print, unused_local_variable, file_names, deprecated_member_use
+import 'dart:async';
 import 'dart:ui' as ui;
+
+import 'package:flutter/foundation.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -41,20 +44,29 @@ class Pops {
     );
   }
 
-  carregandoGames(BuildContext ctx,String str) {
-    return showModalBottomSheet(
+  /// Folha "Entrando no game...".
+  ///
+  /// Com [pronto], ela se fecha sozinha assim que o jogo abrir, respeitando o
+  /// tempo mínimo de exibição. Sem ele, continua esperando A ou B, como antes.
+  /// Sem `transitionAnimationController` de propósito.
+  ///
+  /// O controller anterior era criado com `vsync: Navigator.of(ctx)` e nunca
+  /// descartado: cada abertura de jogo deixava um Ticker vivo preso ao
+  /// Navigator. Descartá-lo ao fim também não serve — ele é quem conduz a
+  /// animação de saída, e liberá-lo cedo deixa a folha congelada na tela.
+  /// A transição padrão não tem dono para esquecer e ainda entra mais rápido,
+  /// que é o que esta folha precisa: aparecer no instante do clique.
+  Future<void> carregandoGames(BuildContext ctx, String str,
+      {ValueListenable<bool>? pronto}) async {
+    await showModalBottomSheet<void>(
       context: ctx,
       isScrollControlled: true, // Permite expandir o conteúdo
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      transitionAnimationController: AnimationController(
-        vsync: Navigator.of(ctx),
-        duration: const Duration(seconds: 1), // Tempo reduzido para 200ms
-      ),
       backgroundColor: Colors.transparent,
       builder: (context) {
-        return _CarregandoGamesSheet(texto: str);
+        return _CarregandoGamesSheet(texto: str, pronto: pronto);
       },
     );
   }
@@ -386,7 +398,10 @@ class Pops {
 class _CarregandoGamesSheet extends StatefulWidget {
   final String texto;
 
-  const _CarregandoGamesSheet({required this.texto});
+  /// Vira verdadeiro quando o jogo já abriu; a folha então sai sozinha.
+  final ValueListenable<bool>? pronto;
+
+  const _CarregandoGamesSheet({required this.texto, this.pronto});
 
   @override
   State<_CarregandoGamesSheet> createState() => _CarregandoGamesSheetState();
@@ -394,26 +409,58 @@ class _CarregandoGamesSheet extends StatefulWidget {
 
 class _CarregandoGamesSheetState extends State<_CarregandoGamesSheet> {
   final FocusNode _focusNode = FocusNode();
-  late final DateTime _abriuEm;
   bool _fechando = false;
+  bool _minimoPassou = false;
+  Timer? _minimo;
+
+  static const tempoMinimo = Duration(seconds: 2);
 
   @override
   void initState() {
     super.initState();
-    _abriuEm = DateTime.now();
+    widget.pronto?.addListener(_jogoAbriu);
+    // O tempo mínimo é marcado pelo próprio Timer, não por `DateTime.now()`:
+    // comparar relógio de parede com espera agendada dá resultados diferentes
+    // conforme quem conduz o tempo, e deixava a folha presa.
+    _minimo = Timer(tempoMinimo, () {
+      _minimoPassou = true;
+      _jogoAbriu();
+    });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _focusNode.requestFocus();
     });
   }
 
   @override
+  void didUpdateWidget(_CarregandoGamesSheet oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.pronto != widget.pronto) {
+      oldWidget.pronto?.removeListener(_jogoAbriu);
+      widget.pronto?.addListener(_jogoAbriu);
+      _jogoAbriu();
+    }
+  }
+
+  @override
   void dispose() {
+    _minimo?.cancel();
+    widget.pronto?.removeListener(_jogoAbriu);
     _focusNode.dispose();
     super.dispose();
   }
 
-  bool get _podeFechar =>
-      DateTime.now().difference(_abriuEm) >= const Duration(seconds: 2);
+  bool get _podeFechar => _minimoPassou;
+
+  /// Fecha sozinha quando o jogo subiu e o tempo mínimo já passou.
+  void _jogoAbriu() {
+    if (_fechando || !mounted) return;
+    if (widget.pronto?.value != true || !_podeFechar) return;
+    _fechando = true;
+    // `dispose` do Navigator não pode rodar dentro de um listener/timer.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) Navigator.of(context).maybePop();
+    });
+  }
 
   void _tentarFechar(BuildContext context, String event) {
     if (_fechando || (event != '2' && event != '3')) return;

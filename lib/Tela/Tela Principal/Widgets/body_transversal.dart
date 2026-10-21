@@ -1,5 +1,6 @@
 // ignore_for_file: file_names
 
+import 'dart:async';
 import 'dart:math' as math;
 import 'dart:io';
 
@@ -134,7 +135,10 @@ class _BodyTransversalState extends State<BodyTransversal>
   }
 
   void _openGame(int index) {
-    if (widget.ctrl.mouseBloqueado ||
+    // `entrandoNoJogo` fecha já no primeiro toque; `mouseBloqueado` só reflete
+    // isso no quadro seguinte, e um duplo-clique rápido passava entre os dois.
+    if (widget.ctrl.entrandoNoJogo ||
+        widget.ctrl.mouseBloqueado ||
         index < 0 ||
         index >= widget.ctrl.listIconsInicial.length) {
       return;
@@ -143,7 +147,7 @@ class _BodyTransversalState extends State<BodyTransversal>
     widget.ctrl.focusScope = widget.ctrl.focusScopeIcones;
     widget.ctrl.focusNodeIcones[index].requestFocus();
     widget.ctrl.attTela();
-    widget.ctrl.btnEntrar();
+    unawaited(widget.ctrl.btnEntrar());
   }
 
   @override
@@ -360,7 +364,10 @@ class _BodyTransversalState extends State<BodyTransversal>
                     _onFocusChange(hasFocus, gameIndex),
                 child: GestureDetector(
                   behavior: HitTestBehavior.opaque,
-                  onTap: () => _openGame(gameIndex),
+                  // Sem toque enquanto um jogo sobe, como nos demais modos.
+                  onTap: widget.ctrl.mouseBloqueado
+                      ? null
+                      : () => _openGame(gameIndex),
                   child: _gamePanel(
                     games[gameIndex],
                     gameIndex,
