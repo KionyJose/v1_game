@@ -44,10 +44,114 @@ Tudo é gravado em `%LOCALAPPDATA%\V1 Launcher\loja-erros.log`, truncado em
 256 KB — um log que cresce sem limite é um log que ninguém consegue enviar.
 Gravar é melhor-esforço: disco cheio não apaga a mensagem da tela.
 
-**Para apurar um caso:** peça o print com o código, ou o arquivo de log. Os
-códigos mais prováveis em máquina de cliente no Brasil são `LOJA-DNSBLOQUEADO`
-(provedor bloqueando o domínio — troque o DNS) e `LOJA-ACESSORECUSADO`
-(Cloudflare recusando o IP — VPN ou rede compartilhada).
+## Contorno automático do bloqueio de DNS
+
+O caso real do cliente foi `LOJA-DNSBLOQUEADO`: o provedor devolve "host não
+encontrado" para o domínio da loja, embora o site esteja no ar e alcançável.
+**O cliente não configura nada** — `cliente_loja.dart` resolve sozinho.
+
+`ClienteDaLoja` tenta o caminho normal primeiro, que é mais rápido e reaproveita
+conexão. Só quando a falha é de DNS (`Failed host lookup`, `errorCode 11001`)
+ele troca para `ClienteDireto`, e **lembra a troca** pelo resto da sessão: a
+primeira página paga a falha, as seguintes vão direto. Qualquer outra falha de
+rede sobe como antes, sem virar contorno.
+
+`ResolvedorDoH` pergunta o endereço por HTTPS à Cloudflare e, se ela não
+responder, ao Google — o mesmo que todo navegador moderno faz. As respostas
+ficam 10 minutos em cache, e um cache vencido ainda é usado se os dois
+resolvedores caírem.
+
+**Por que não `HttpClient.connectionFactory`.** A fábrica precisa devolver um
+socket **já seguro**, e as formas públicas de criar um
+`ConnectionTask<SecureSocket>` usam o mesmo argumento para conectar e para o
+SNI. Medido: devolvendo um `Socket` cru, a Cloudflare responde *"400 The plain
+HTTP request was sent to HTTPS port"* — o dart:io não faz o TLS. Apontando
+`SecureSocket.startConnect` para o IP, o handshake morre em
+`HANDSHAKE_FAILURE_ON_CLIENT_HELLO`, porque o certificado é de
+`gamestorrents.app`. Só `SecureSocket.secure(socket, host: ...)` aceita o SNI
+separado do endereço, e é por isso que `ClienteDireto` monta a requisição
+HTTP/1.1 por cima do socket em vez de usar `HttpClient`.
+
+Ele manda `Accept-Encoding: identity` e `Connection: close` para o corpo
+terminar no EOF, mas **desfaz `Transfer-Encoding: chunked`** mesmo assim: a
+Cloudflare usa chunked de qualquer forma, e sem desfazer os marcadores de
+tamanho entram no meio do HTML e corrompem o conteúdo em pontos espalhados —
+um estrago silencioso, que o parser de HTML engole sem reclamar.
+
+As capas moram no mesmo domínio e o `CachedNetworkImage` tem pilha HTTP
+própria, que usa o DNS do sistema. `CacheDaLoja` dá a ele um `HttpFileService`
+com o mesmo cliente; sem isso o catálogo abria pelo contorno e todos os
+cartões ficavam sem arte.
+
+### O Comprar também passa
+
+O WebView2 resolve DNS pelo Windows e não usa o `ClienteDaLoja`: com o
+provedor bloqueando o domínio, o catálogo abria e o **Comprar** morria em
+`HOST_NAME_NOT_RESOLVED`. `EmbeddedTorrentDownloader._regraDeResolucao`
+resolve o host por DoH e passa ao ambiente do WebView2 o argumento do Chromium
+`--host-resolver-rules="MAP <host> <ip>"`. Essa regra troca **só a resolução**:
+`Host` e SNI continuam com o nome original, então o certificado segue válido.
+
+A regra só entra quando `ClienteDaLoja.contornoAtivo` já está ligado — ou seja,
+quando o DNS do provedor falhou de verdade. Com DNS saudável o WebView2 segue
+normal, e qualquer falha do resolvedor devolve nulo: é melhor tentar e ver o
+erro do site do que recusar a compra por causa de um resolvedor fora do ar.
+
+Só o domínio da loja é mapeado. O hCaptcha e os demais recursos resolvem pelo
+caminho normal, que não está bloqueado.
+
+**O ambiente é um só, e vive enquanto o aplicativo viver.** O processo do
+navegador do WebView2 é compartilhado e não morre junto com a janela: criar
+outro ambiente enquanto ele respira falha com `ERROR_INVALID_STATE` — *"o grupo
+ou recurso não está no estado correto"*. A versão anterior criava e descartava
+um ambiente por compra, então a segunda compra da sessão sempre quebrava.
+
+O argumento também precisa ser **determinístico**, e aqui estava o outro lado
+do mesmo defeito: `_regraDeResolucao` criava um `ResolvedorDoH` novo a cada
+compra, o cache nascia vazio e a Cloudflare devolve os dois endereços em ordem
+alternada. O IP escolhido mudava, o argumento mudava junto e o ambiente novo
+batia de frente com o processo antigo. Agora o resolvedor é único e
+`mapeamentoDeHost` ordena os endereços antes de escolher, então o mesmo
+conjunto sempre gera o mesmo texto (`test/webview_mapeamento_test.dart`).
+
+Se `ERROR_INVALID_STATE` aparecer mesmo assim, o ambiente guardado é solto e a
+mensagem avisa para tentar de novo — a tentativa seguinte cria um limpo.
+
+### Erros do Comprar
+
+As três etapas da compra falavam línguas diferentes. Agora todas usam
+`DiagnosticoCatalogo`:
+
+- **consulta da etapa** (`gamestorrents_download_scraper.dart`): classifica
+  rede, status e estrutura, como o catálogo — e manda o mesmo User-Agent de
+  navegador, que faltava ali e rendia 403 do Cloudflare.
+- **WebView2** (`torrent_download_view.dart`): `_explicar` traduz
+  `WebResourceErrorType` — `HOST_LOOKUP`, `TIMEOUT`, `CANNOT_CONNECT_TO_HOST` —
+  em causa, código e detalhe, no lugar de "Verifique sua conexão".
+- **painel da compra** (`detalhes_jogo_tela.dart`): o erro deixou de ser uma
+  linha vermelha solta; vem com código e **Copiar detalhes**, e a falha ao
+  carregar a própria ficha agora usa o mesmo `ErroCatalogoPainel` do catálogo.
+- **captura do arquivo** (`_response`): o tipo e a mensagem do erro eram
+  jogados fora, e torrent inválido, pasta sem permissão ou DevTools fora de
+  hora chegavam ao cliente como a mesma frase. Agora saem com
+  `LOJA-DESCONHECIDA` e o `runtimeType` junto. Cancelamento continua sendo
+  cancelamento, sem virar relatório.
+
+Códigos próprios desta etapa: `LOJA-WEBVIEW` (criação do ambiente),
+`LOJA-WEBVIEW-ESTADO` (processo anterior preso), `LOJA-WEBVIEW-DEVTOOLS`
+(canal de captura) e `LOJA-WEBVIEW-TEMPO` (10 minutos sem conclusão).
+
+Tudo cai no mesmo `loja-erros.log`.
+
+Sondas ao vivo: `test/contorno_dns_live_test.dart` simula o DNS bloqueado do
+cliente e confere catálogo, ficha, capa e paginação pelo contorno.
+Testes offline: `test/cliente_loja_test.dart` e `test/erro_compra_test.dart`.
+
+**Para apurar um caso:** peça o print com o código, ou o arquivo de log.
+`LOJA-DNSBLOQUEADO` agora só aparece quando **o contorno automático também
+falhou** — a rede bloqueia o site de forma mais ampla que o DNS, e por isso a
+mensagem não manda mais trocar o DNS da máquina. `LOJA-ACESSORECUSADO`
+continua sendo a Cloudflare recusando o IP (VPN ou rede compartilhada).
 
 Testes: `test/diagnostico_catalogo_test.dart` (classificação e controller) e
 `test/erro_catalogo_painel_test.dart` (o que aparece na tela e o que é copiado).

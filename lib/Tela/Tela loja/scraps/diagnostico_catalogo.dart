@@ -101,12 +101,17 @@ class DiagnosticoCatalogo {
           texto.contains('Failed host lookup') ||
           texto.contains('No address associated with hostname');
       if (dns) {
+        // Chegar aqui significa que o contorno automático também não passou:
+        // o caminho normal já teria trocado para o resolvedor DoH sozinho.
+        // Por isso a mensagem não pede mais para trocar o DNS da máquina —
+        // isso o aplicativo já faz por conta própria.
         return DiagnosticoCatalogo(
           falha: FalhaCatalogo.dnsBloqueado,
-          mensagem: 'O endereço do site não foi encontrado. O provedor de '
-              'internet costuma bloquear esse domínio pelo DNS. Troque o DNS '
-              'para 1.1.1.1 ou 8.8.8.8, ou teste pelo celular com 4G.',
-          detalhe: 'DNS não resolveu: $texto',
+          mensagem: 'O endereço do site não foi encontrado, e a rota '
+              'alternativa do aplicativo também não passou. A rede em uso '
+              'bloqueia esse site de forma mais ampla. Teste pelo celular '
+              'com 4G ou em outra rede.',
+          detalhe: 'DNS não resolveu, inclusive pelo contorno: $texto',
           endereco: endereco,
         );
       }

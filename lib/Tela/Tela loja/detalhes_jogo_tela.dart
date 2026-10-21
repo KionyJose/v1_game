@@ -6,11 +6,15 @@ import 'package:path/path.dart' as p;
 import '../../Downloads/downloads_controller.dart';
 import 'downloads/embedded_torrent_downloader.dart';
 import 'downloads/torrent_download.dart';
+import 'componentes/erro_catalogo_painel.dart';
 import 'componentes/jogo_midia.dart';
 import 'componentes/game_identity.dart';
 import 'componentes/galeria_jogo.dart';
 import '../../Interface/pad_scroll_target.dart';
 import '../../Interface/pad_directional_group.dart';
+import 'package:flutter/services.dart';
+import 'dart:async';
+import 'scraps/diagnostico_catalogo.dart';
 import 'scraps/catalogo_scraper.dart';
 import 'scraps/gamestorrents_detalhes_scraper.dart';
 import 'scraps/gamestorrents_download_scraper.dart';
@@ -51,6 +55,9 @@ class _DetalhesJogoTelaState extends State<DetalhesJogoTela> {
   bool _compraConcluida = false;
   bool _cancelamentoSolicitado = false;
   String? _erroDownload;
+
+  /// Causa classificada da falha da compra, quando a fonte soube dizer.
+  DiagnosticoCatalogo? _diagnosticoDownload;
   String? _arquivoSalvo;
   ProgressoTorrent? _progresso;
   FocusNode get _purchaseFocus => _consultando
@@ -127,11 +134,23 @@ class _DetalhesJogoTelaState extends State<DetalhesJogoTela> {
     } catch (e, stack) {
       debugPrint('Falha no fluxo de download: $e\n$stack');
       if (mounted) {
-        setState(() => _erroDownload = e is ErroCatalogo
-            ? e.mensagem
+        // A etapa de consulta já classifica a causa; o WebView2 devolve o
+        // texto pronto. Falha sem classificação ainda recebe um código, para
+        // nenhum caminho da compra chegar ao cliente sem nada para relatar.
+        final causa = e is ErroCatalogo
+            ? e.diagnostico
             : e is StateError
-                ? e.message.toString()
-                : 'Falha ao preparar o download (${e.runtimeType}). Tente novamente.');
+                ? null
+                : DiagnosticoCatalogo.de(e, endereco: widget.jogo.pagina);
+        setState(() {
+          _diagnosticoDownload = causa;
+          _erroDownload = e is ErroCatalogo
+              ? e.mensagem
+              : e is StateError
+                  ? e.message.toString()
+                  : causa!.mensagem;
+        });
+        if (causa != null) unawaited(causa.registrar());
       }
     } finally {
       if (mounted) {
@@ -175,20 +194,30 @@ class _DetalhesJogoTelaState extends State<DetalhesJogoTela> {
                   return const Center(child: CircularProgressIndicator());
                 }
                 if (snapshot.hasError || snapshot.data == null) {
-                  return Center(
-                      child: Padding(
-                          padding: const EdgeInsets.all(24),
-                          child:
-                              Column(mainAxisSize: MainAxisSize.min, children: [
-                            Text(snapshot.error is ErroCatalogo
-                                ? (snapshot.error as ErroCatalogo).mensagem
-                                : 'Não foi possível carregar os detalhes. Verifique sua conexão.'),
-                            const SizedBox(height: 12),
-                            FilledButton(
-                                autofocus: true,
-                                onPressed: _atualizar,
-                                child: const Text('Tentar novamente'))
-                          ])));
+                  final falha = snapshot.error;
+                  // A ficha usa o mesmo painel do catálogo: causa, código e
+                  // detalhe copiável, em vez de uma frase genérica.
+                  final causa = falha is ErroCatalogo
+                      ? falha.diagnostico
+                      : falha == null
+                          ? null
+                          : DiagnosticoCatalogo.de(falha,
+                              endereco: widget.jogo.pagina);
+                  return SingleChildScrollView(
+                      padding: const EdgeInsets.all(24),
+                      child: Center(
+                          child: ConstrainedBox(
+                              constraints:
+                                  const BoxConstraints(maxWidth: 720),
+                              child: ErroCatalogoPainel(
+                                mensagem: falha is ErroCatalogo
+                                    ? falha.mensagem
+                                    : causa?.mensagem ??
+                                        'Não foi possível carregar os detalhes deste jogo.',
+                                diagnostico: causa,
+                                carregando: false,
+                                onTentarNovamente: _atualizar,
+                              ))));
                 }
                 return _detailsLayout(context, snapshot.data!);
               })));
@@ -403,9 +432,66 @@ class _DetalhesJogoTelaState extends State<DetalhesJogoTela> {
               if (_erroDownload != null)
                 Padding(
                     padding: const EdgeInsets.only(top: 12),
-                    child: Text(_erroDownload!,
-                        style: TextStyle(
-                            color: Theme.of(context).colorScheme.error))),
+                    child: _ErroDaCompra(
+                        texto: _erroDownload!,
+                        diagnostico: _diagnosticoDownload)),
             ],
           ])));
+}
+
+/// Falha da compra, no mesmo formato do painel do catálogo.
+///
+/// Antes era uma linha vermelha solta: o cliente lia "não foi possível" e o
+/// suporte não recebia nada. Agora vem a causa, o código e o detalhe técnico
+/// pronto para copiar — e tudo já está no `loja-erros.log`.
+class _ErroDaCompra extends StatelessWidget {
+  const _ErroDaCompra({required this.texto, this.diagnostico});
+
+  final String texto;
+  final DiagnosticoCatalogo? diagnostico;
+
+  /// O WebView2 devolve mensagem, código e detalhe em um texto só.
+  String get _relatorio => diagnostico?.relatorio ?? texto;
+
+  Future<void> _copiar(BuildContext context) async {
+    await Clipboard.setData(ClipboardData(text: _relatorio));
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Detalhes copiados. Envie para o suporte.')));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final causa = diagnostico;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+          color: const Color(0xFF1A1016),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFF7A3B4C))),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Semantics(
+            liveRegion: true,
+            child: Text(causa?.mensagem ?? texto,
+                style: const TextStyle(color: Color(0xFFFF9BB0)))),
+        if (causa != null) ...[
+          const SizedBox(height: 10),
+          Text(causa.codigo,
+              style: const TextStyle(
+                  fontFamily: 'monospace',
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700)),
+        ],
+        const SizedBox(height: 6),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton.icon(
+              onPressed: () => _copiar(context),
+              icon: const Icon(Icons.copy_all_rounded, size: 18),
+              label: const Text('Copiar detalhes')),
+        ),
+      ]),
+    );
+  }
 }

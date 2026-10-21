@@ -33,8 +33,11 @@ void main() {
               'Failed host lookup: www.gamestorrents.app')));
       expect(causa.falha, FalhaCatalogo.dnsBloqueado);
       expect(causa.codigo, 'LOJA-DNSBLOQUEADO');
-      expect(causa.mensagem, contains('provedor'));
-      expect(causa.mensagem, contains('1.1.1.1'));
+      // Chegar a esta mensagem significa que o contorno automático também
+      // falhou, então ela não manda mais o cliente mexer no DNS da máquina.
+      expect(causa.mensagem, contains('rota alternativa'));
+      expect(causa.mensagem, contains('4G'));
+      expect(causa.mensagem, isNot(contains('1.1.1.1')));
     });
 
     test('DNS embrulhado em ClientException pelo pacote http', () async {

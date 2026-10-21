@@ -3,6 +3,7 @@ import 'package:html/dom.dart';
 import 'package:html/parser.dart' as html;
 import 'package:http/http.dart' as http;
 import 'catalogo_scraper.dart';
+import 'cliente_loja.dart';
 import 'jogo_detalhes.dart';
 
 class DetalhesSeletores {
@@ -19,7 +20,7 @@ class DetalhesSeletores {
 class GamesTorrentsDetalhesScraper implements DetalhesScraper {
   final http.Client _client;
   GamesTorrentsDetalhesScraper({http.Client? client})
-      : _client = client ?? http.Client();
+      : _client = client ?? ClienteDaLoja();
 
   static const host = 'www.gamestorrents.app';
 

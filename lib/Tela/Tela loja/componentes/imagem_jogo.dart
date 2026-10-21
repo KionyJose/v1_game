@@ -1,5 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import '../scraps/cliente_loja.dart';
 
 class ImagemJogo extends StatelessWidget {
   final Uri? url;
@@ -16,6 +17,7 @@ class ImagemJogo extends StatelessWidget {
     return url == null
         ? vazio
         : CachedNetworkImage(
+                      cacheManager: CacheDaLoja.instancia,
             imageUrl: url.toString(),
             fit: fit,
             placeholder: (_, __) => vazio,

@@ -9,6 +9,7 @@ import 'package:path_provider/path_provider.dart';
 
 import '../../../Interface/launcher_pad_scope.dart';
 import '../../../System/app_storage.dart';
+import '../scraps/diagnostico_catalogo.dart';
 import '../scraps/jogo_detalhes.dart';
 import 'arquivo_torrent.dart';
 import 'torrent_download.dart';
@@ -51,8 +52,9 @@ class _TorrentDownloadViewState extends State<TorrentDownloadView> {
     _limit = Timer(
         const Duration(minutes: 10),
         () => _finish(const TorrentDownloadResult(
-            error:
-                'O site não concluiu o download em 10 minutos. Tente novamente.')));
+            error: 'O site não concluiu o download em 10 minutos. Se apareceu '
+                'uma verificação, ela precisa ser concluída na própria '
+                'janela.\n\nLOJA-WEBVIEW-TEMPO')));
   }
 
   @override
@@ -106,10 +108,12 @@ class _TorrentDownloadViewState extends State<TorrentDownloadView> {
             urlRequest:
                 URLRequest(url: WebUri(widget.etapa.pagina.toString())));
       }
-    } catch (_) {
-      _finish(const TorrentDownloadResult(
-          error:
-              'Não foi possível iniciar o download integrado. Verifique o WebView2 Runtime.'));
+    } catch (erro) {
+      // Sem o canal DevTools não há como capturar a resposta liberada.
+      _finish(TorrentDownloadResult(
+          error: 'Não foi possível preparar a captura do arquivo dentro do '
+              'app. Confira o WebView2 Runtime.\n\nLOJA-WEBVIEW-DEVTOOLS\n'
+              '${erro.runtimeType}: $erro'));
     }
   }
 
@@ -190,11 +194,74 @@ class _TorrentDownloadViewState extends State<TorrentDownloadView> {
       try {
         if (pending != null && await pending.exists()) await pending.delete();
       } catch (_) {/* Não substituir o erro original por falha de limpeza. */}
+      // Cancelar é escolha do jogador, não defeito: não vira relatório.
+      if (error is StateError && error.message.toString().contains('cancelado')) {
+        _finish(TorrentDownloadResult(error: error.message.toString()));
+        return;
+      }
+      // O tipo e a mensagem do erro eram jogados fora aqui, e qualquer falha
+      // na captura — torrent inválido, pasta sem permissão, DevTools fora de
+      // hora — chegava ao cliente como a mesma frase sem informação nenhuma.
+      final causa = DiagnosticoCatalogo(
+        falha: FalhaCatalogo.desconhecida,
+        mensagem: error is StateError
+            ? error.message.toString()
+            : 'Não foi possível receber o arquivo .torrent dentro do app.',
+        detalhe: 'Captura do .torrent — ${error.runtimeType}: $error',
+        endereco: widget.etapa.pagina,
+      );
+      unawaited(causa.registrar());
       _finish(TorrentDownloadResult(
-          error: error is StateError
-              ? error.message.toString()
-              : 'Não foi possível receber o arquivo dentro do app. Tente novamente.'));
+          error: '${causa.mensagem}\n\n${causa.codigo}\n${causa.detalhe}'));
     }
+  }
+
+  /// Traduz a falha do WebView2 para a mesma linguagem do catálogo.
+  ///
+  /// "Verifique sua conexão" cobria causas opostas: provedor bloqueando o
+  /// domínio, proxy cortando HTTPS e site fora do ar pediam ações diferentes,
+  /// e quem atende o cliente não tinha nada para trabalhar. Cada caso agora
+  /// sai com código próprio e o detalhe técnico junto.
+  static String _explicar(WebResourceError erro, Uri pagina) {
+    final tipo = erro.type;
+    final DiagnosticoCatalogo causa;
+    if (tipo == WebResourceErrorType.HOST_LOOKUP) {
+      causa = DiagnosticoCatalogo(
+        falha: FalhaCatalogo.dnsBloqueado,
+        mensagem: 'O navegador interno não encontrou o endereço do site. '
+            'A rede bloqueia esse domínio para o WebView2, que resolve nomes '
+            'pelo Windows. Teste pelo celular com 4G ou em outra rede.',
+        detalhe: 'WebView2 HOST_NAME_NOT_RESOLVED: ${erro.description}',
+        endereco: pagina,
+      );
+    } else if (tipo == WebResourceErrorType.TIMEOUT) {
+      causa = DiagnosticoCatalogo(
+        falha: FalhaCatalogo.tempoEsgotado,
+        mensagem: 'O site não respondeu a tempo nesta etapa. Tente novamente.',
+        detalhe: 'WebView2 TIMEOUT: ${erro.description}',
+        endereco: pagina,
+      );
+    } else if (tipo == WebResourceErrorType.CANNOT_CONNECT_TO_HOST ||
+        tipo == WebResourceErrorType.NOT_CONNECTED_TO_INTERNET ||
+        tipo == WebResourceErrorType.NETWORK_CONNECTION_LOST) {
+      causa = DiagnosticoCatalogo(
+        falha: FalhaCatalogo.semRede,
+        mensagem: 'O navegador interno não alcançou o site. Verifique se '
+            'firewall ou antivírus não estão bloqueando o aplicativo.',
+        detalhe: 'WebView2 ${tipo.toNativeValue()}: ${erro.description}',
+        endereco: pagina,
+      );
+    } else {
+      causa = DiagnosticoCatalogo(
+        falha: FalhaCatalogo.desconhecida,
+        mensagem: 'A etapa de download não carregou. Use o código abaixo ao '
+            'relatar o problema.',
+        detalhe: 'WebView2 ${tipo.toNativeValue()}: ${erro.description}',
+        endereco: pagina,
+      );
+    }
+    unawaited(causa.registrar());
+    return '${causa.mensagem}\n\n${causa.codigo}\n${causa.detalhe}';
   }
 
   Future<void> _loaded(InAppWebViewController web, WebUri? url) async {
@@ -270,9 +337,8 @@ class _TorrentDownloadViewState extends State<TorrentDownloadView> {
                   },
                   onReceivedError: (_, request, error) {
                     if (!_receiving && request.isForMainFrame == true) {
-                      _finish(const TorrentDownloadResult(
-                          error:
-                              'A página de download não carregou. Verifique sua conexão.'));
+                      _finish(TorrentDownloadResult(
+                          error: _explicar(error, widget.etapa.pagina)));
                     }
                   },
                 )),

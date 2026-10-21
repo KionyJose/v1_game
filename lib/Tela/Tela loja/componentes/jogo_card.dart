@@ -1,6 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import '../scraps/catalogo_scraper.dart';
+import '../scraps/cliente_loja.dart';
 
 class JogoCard extends StatefulWidget {
   final JogoCatalogo jogo;
@@ -42,6 +43,7 @@ class _JogoCardState extends State<JogoCard> {
                   child: jogo.imagem == null
                       ? fallback
                       : CachedNetworkImage(
+                      cacheManager: CacheDaLoja.instancia,
                           imageUrl: jogo.imagem.toString(),
                           fit: BoxFit.cover,
                           placeholder: (_, __) => fallback,

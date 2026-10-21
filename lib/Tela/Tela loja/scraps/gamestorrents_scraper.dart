@@ -4,6 +4,7 @@ import 'package:html/parser.dart' as html;
 import 'package:http/http.dart' as http;
 
 import 'catalogo_scraper.dart';
+import 'cliente_loja.dart';
 import 'diagnostico_catalogo.dart';
 
 /// Todos os seletores específicos do site ficam neste arquivo.
@@ -20,7 +21,7 @@ class GamesTorrentsSeletores {
 class GamesTorrentsScraper implements CatalogoScraper {
   final http.Client _client;
   GamesTorrentsScraper({http.Client? client})
-      : _client = client ?? http.Client();
+      : _client = client ?? ClienteDaLoja();
 
   @override
   String get nome => 'GamesTorrents';

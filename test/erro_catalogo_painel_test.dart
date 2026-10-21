@@ -65,7 +65,7 @@ void main() {
         findsOneWidget);
   });
 
-  testWidgets('DNS bloqueado orienta trocar o DNS, sem falar em conexão',
+  testWidgets('DNS bloqueado explica que o contorno também falhou',
       (tester) async {
     final scraper = GamesTorrentsScraper(client: MockClient((_) async =>
         throw http.ClientException(
@@ -76,7 +76,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('LOJA-DNSBLOQUEADO'), findsOneWidget);
-    expect(find.textContaining('1.1.1.1'), findsOneWidget);
+    expect(find.textContaining('rota alternativa'), findsOneWidget);
     expect(find.textContaining('Verifique sua conexão'), findsNothing);
     expect(tester.takeException(), isNull);
   });
