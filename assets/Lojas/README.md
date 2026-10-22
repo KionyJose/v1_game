@@ -7,7 +7,8 @@ lidos de `LojaGame.logo` em `PrincipalCtrl.listLojas`.
 | --------------- | ------------ | ----------------------------------- |
 | `interna.png`   | Loja Interna | `assets/IconeAppV1.png` do próprio app |
 | `gog.png`       | GOG          | Simple Icons `gogdotcom`            |
-| `steam.png`     | Descobrir    | Simple Icons `steam`                |
+| `descobrir.png` | Descobrir    | geometria (bússola) — marca nossa   |
+| `steam.png`     | Steam        | Simple Icons `steam`                |
 | `epic.png`      | Epic         | Simple Icons `epicgames`            |
 | `microsoft.png` | Microsoft    | geometria (quatro quadrados)        |
 | `ea.png`        | EA           | Simple Icons `ea`                   |

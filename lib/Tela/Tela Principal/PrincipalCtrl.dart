@@ -36,6 +36,7 @@ import '../../Interface/futuristic_game_feed.dart';
 import '../../Downloads/downloads_tela.dart';
 import '../../Downloads/installed_game_library.dart';
 import '../Descobrir/descobrir_tela.dart';
+import '../../Widgets/Pops/pop_interfaces.dart';
 import '../Tela loja/scrap_loja.dart';
 import '../../Controllers/slim_mode_config_controller.dart';
 import '../../Interface/launcher_menu.dart';
@@ -45,10 +46,42 @@ class PrincipalCtrl with ChangeNotifier{
   DB db = DB();  
   bool _disposed = false;
   bool get slimMode => SlimModeConfigController.active.value;
-  bool get futuristicMode => !slimMode && configSistema.viewType == 'futurista';
-  bool get transversalMode =>
-      !slimMode && !cardGamesGrid && configSistema.viewType == 'transversal';
-  bool get compactNavigation => slimMode || futuristicMode;
+
+  /// Modos de apresentação — **campos**, não leituras diretas da configuração.
+  ///
+  /// Trocar de corpo precisa acontecer dentro da transição de
+  /// [aplicarModoInterface], que desmonta o corpo antigo em um quadro e monta
+  /// o novo no seguinte. Todos os corpos anexam o mesmo `focusScopeIcones`, e
+  /// é essa separação em dois quadros que evita o conflito.
+  ///
+  /// Como getters de `configSistema.viewType`, estes dois furavam a transição:
+  /// a tela de configurações grava o `viewType` **antes** de a interface ser
+  /// aplicada, e qualquer reconstrução nesse intervalo — fechar o diálogo já
+  /// basta — trocava o corpo fora da janela protegida. Era o caminho da tela
+  /// preta ao sair de Principal para Transversal.
+  bool futuristicMode = false;
+  bool transversalMode = false;
+  bool compactNavigation = false;
+
+  /// Recalcula todos os modos a partir da configuração atual.
+  ///
+  /// Único lugar que decide qual corpo aparece. Quem muda a apresentação
+  /// chama isto de dentro da transição, nunca direto da tela.
+  void _recalcularModos({bool? forcarGrid}) {
+    final grid = forcarGrid ?? (configSistema.viewType == 'grid');
+    cardGamesGrid = !slimMode && grid;
+    // O Grid anula os demais: com o SELECT ele é forçado por cima de um
+    // `viewType` que continua sendo "moderno" ou "retro", e dois modos
+    // valendo ao mesmo tempo confundem quem lê esses campos.
+    cardGamesModerno =
+        !slimMode && !cardGamesGrid && configSistema.viewType == 'moderno';
+    cardGamesRetro =
+        !slimMode && !cardGamesGrid && configSistema.viewType == 'retro';
+    futuristicMode = !slimMode && configSistema.viewType == 'futurista';
+    transversalMode =
+        !slimMode && !cardGamesGrid && configSistema.viewType == 'transversal';
+    compactNavigation = slimMode || futuristicMode;
+  }
   bool interfaceChanging = false;
   int interfaceRevision = 0;
   void _compactMoveSound() => futuristicMode
@@ -149,7 +182,8 @@ class PrincipalCtrl with ChangeNotifier{
   List<LojaGame> listLojas = const [
     LojaGame(nome: 'Loja Interna', subtitulo: 'Catálogo, trailers e downloads no launcher', url: '', interna: true, cor: Color(0xFF8B7CFF), icone: Icons.storefront_rounded, logo: 'assets/Lojas/interna.png'),
     LojaGame(nome: 'GOG', subtitulo: 'Clássicos e DRM-free', url: 'https://www.gog.com', cor: Color(0xFF6D42C7), icone: Icons.extension_rounded, logo: 'assets/Lojas/gog.png'),
-    LojaGame(nome: 'Descobrir', subtitulo: 'Carrossel de jogos da Steam no launcher', url: 'https://store.steampowered.com', descobrir: true, cor: Color(0xFF1B5C8F), icone: Icons.explore_rounded, logo: 'assets/Lojas/steam.png'),
+    LojaGame(nome: 'Descobrir', subtitulo: 'Grade de jogos dentro do launcher', url: 'https://store.steampowered.com', descobrir: true, cor: Color(0xFF6D3BC7), icone: Icons.explore_rounded, logo: 'assets/Lojas/descobrir.png'),
+    LojaGame(nome: 'Steam', subtitulo: 'Abre no navegador', url: 'https://store.steampowered.com', cor: Color(0xFF1B5C8F), icone: Icons.sports_esports_rounded, logo: 'assets/Lojas/steam.png'),
     LojaGame(nome: 'Epic', subtitulo: 'Jogos grátis e lançamentos', url: 'https://store.epicgames.com/pt-BR', cor: Color(0xFF2A2A2A), icone: Icons.bolt_rounded, logo: 'assets/Lojas/epic.png'),
     LojaGame(nome: 'Microsoft', subtitulo: 'Xbox, Game Pass e PC', url: 'https://www.xbox.com/pt-br/games', cor: Color(0xFF107C10), icone: Icons.grid_view_rounded, logo: 'assets/Lojas/microsoft.png'),
     LojaGame(nome: 'EA', subtitulo: 'EA app e franquias esportivas', url: 'https://www.ea.com/games', cor: Color(0xFFFF3B30), icone: Icons.blur_circular_rounded, logo: 'assets/Lojas/ea.png'),
@@ -174,6 +208,9 @@ class PrincipalCtrl with ChangeNotifier{
   // late Notificacao notf;
 
   PrincipalCtrl(this.ctx,){
+    // Antes de qualquer construção: sem isto o primeiro quadro desenharia o
+    // corpo errado e a troca viria depois, fora da transição.
+    _recalcularModos();
     InstalledGameLibrary.changes.addListener(_onInstalledGamesChanged);
     SlimModeConfigController.active.addListener(aplicarModoInterface);
     iniciaTela();
@@ -185,9 +222,7 @@ class PrincipalCtrl with ChangeNotifier{
     interfaceChanging = true;
     FocusManager.instance.primaryFocus?.unfocus();
     limparClickPad();
-    cardGamesGrid = !slimMode && configSistema.viewType == 'grid';
-    cardGamesModerno = !slimMode && configSistema.viewType == 'moderno';
-    cardGamesRetro = !slimMode && configSistema.viewType == 'retro';
+    _recalcularModos();
     if (!telaIniciada) {
       interfaceChanging = false;
       attTela();
@@ -479,9 +514,7 @@ class PrincipalCtrl with ChangeNotifier{
 
   iniciaTela() async {
     if(_disposed) return;
-    cardGamesGrid = !slimMode && configSistema.viewType == "grid";
-    cardGamesModerno = !slimMode && configSistema.viewType == "moderno";
-    cardGamesRetro = !slimMode && configSistema.viewType == "retro";
+    _recalcularModos();
     selectedIndexIcone = 0;
     selectedIndexVideo = 0;
     selectedIndexCinema = 0;
@@ -1195,7 +1228,6 @@ class PrincipalCtrl with ChangeNotifier{
     gameIniciado = true;
     stateTela = false;
     final jogo = listIconsInicial[selectedIndexIcone];
-    ValueNotifier<bool>? jogoAberto;
     Future<void>? folhaDeCarga;
 
     try {
@@ -1204,10 +1236,11 @@ class PrincipalCtrl with ChangeNotifier{
       }
 
       // 1. A animação entra primeiro, antes de qualquer trabalho pesado.
+      //    Ela NÃO se fecha sozinha: quem volta para o launcher é o jogador,
+      //    apertando A ou B na própria folha. Fechá-la junto com a abertura
+      //    do jogo tirava essa decisão dele.
       if (apresentarInicializacao == null) {
-        jogoAberto = ValueNotifier<bool>(false);
-        folhaDeCarga = Pops()
-            .carregandoGames(ctx, 'Entrando no game...', pronto: jogoAberto);
+        folhaDeCarga = Pops().carregandoGames(ctx, 'Entrando no game...');
       }
       final abriuAnimacao = DateTime.now();
 
@@ -1228,55 +1261,62 @@ class PrincipalCtrl with ChangeNotifier{
 
       // 3. Só então o jogo sobe.
       await db.openFile(jogo.local, throwOnError: reportErrors);
-      jogoAberto?.value = true;
 
+      // 4. E aqui a espera é do jogador: a folha (ou a tela futurista) só sai
+      //    quando ele mandar sair. O launcher fica parado atrás do jogo até
+      //    lá — é esse o ponto de retorno, e ele não é automático.
       if (apresentarInicializacao != null) {
         await apresentarInicializacao();
+      } else if (folhaDeCarga != null) {
+        await folhaDeCarga;
       }
 
-      _liberarSistema();
-
-      // A folha sai sozinha assim que o jogo abre; esperar aqui só garante
-      // que a rota saiu antes de outro clique ser aceito.
-      if (folhaDeCarga != null) await folhaDeCarga;
+      // 5. Só depois da ação dele o launcher volta a si.
+      await _liberarSistema();
     } catch (e) {
       debugPrint(e.toString());
-      jogoAberto?.value = true;
+      // Uma falha não pode deixar a tela presa sem mouse nem eventos.
+      await _liberarSistema();
       if (reportErrors) rethrow;
     } finally {
-      // O `ValueNotifier` não é descartado aqui de propósito: a folha ainda
-      // remove o seu listener no próprio dispose, e descartá-lo antes disso
-      // faz esse removeListener lançar.
-      // Mesmo numa falha o launcher precisa voltar a responder.
-      _liberarSistema();
-      // Resfriamento: o último clique de uma rajada chega depois de tudo
-      // pronto e abriria um segundo jogo. A tela já está liberada aqui; só a
-      // porta de entrada continua fechada por um instante.
-      await Future.delayed(resfriamentoDoClique);
       _entrandoNoJogo = false;
     }
   }
 
   /// Devolve mouse, janela e foco ao launcher e reabre os eventos da tela.
-  void _liberarSistema() {
+  ///
+  /// Roda **uma vez por abertura**, depois que o jogador fecha a folha. A
+  /// versão anterior chamava isto duas vezes, sendo a segunda 600 ms depois de
+  /// tudo pronto: nessa janela ela reescrevia `focusScope`, `cardInf` e
+  /// `stateTela` por cima de uma troca de interface em andamento, e era isso
+  /// que atrapalhava a troca de modo do aplicativo.
+  Future<void> _liberarSistema() async {
     if (_disposed) return;
     gameIniciado = false;
     try {
       Provider.of<JanelaCtrl>(ctx, listen: false)
           .telaPresaReverse(estado: true, usarEstado: true);
-      Provider.of<Paad>(ctx, listen: false)
+      await Provider.of<Paad>(ctx, listen: false)
           .ativaMouse(usarEstado: true, estado: false);
     } catch (error) {
       debugPrint('Não foi possível restaurar a janela: $error');
     }
-    cardInf = false;
-    focusScopeIcones.requestFocus();
-    focusScope = focusScopeIcones;
-    if (focusNodeIcones.isNotEmpty) {
-      selectedIndexIcone =
-          selectedIndexIcone.clamp(0, focusNodeIcones.length - 1);
-      focusNodeIcones[selectedIndexIcone].requestFocus();
+    // Durante uma troca de modo quem manda no foco é `aplicarModoInterface`:
+    // mexer aqui desmonta a árvore que ela acabou de montar.
+    if (!interfaceChanging) {
+      cardInf = false;
+      focusScopeIcones.requestFocus();
+      focusScope = focusScopeIcones;
+      if (focusNodeIcones.isNotEmpty) {
+        selectedIndexIcone =
+            selectedIndexIcone.clamp(0, focusNodeIcones.length - 1);
+        focusNodeIcones[selectedIndexIcone].requestFocus();
+      }
     }
+    // Reativar os eventos por último evita que um clique atrasado da mesma
+    // rajada seja aceito antes de a tela estar inteira.
+    await Future.delayed(resfriamentoDoClique);
+    if (_disposed) return;
     stateTela = true;
     attTela();
   }
@@ -1470,6 +1510,14 @@ class PrincipalCtrl with ChangeNotifier{
             aplicarModoInterface();
             limparClickPad();
           }
+        }
+        case "Interfaces":{
+          // Mesmo caminho do Cfg: o pop grava a configuração e quem aplica a
+          // interface é o controlador, dentro da transição protegida.
+          final retorno = await PopInterfaces.abrir(ctx);
+          stateTela = true;
+          if (retorno == "salvar") aplicarModoInterface();
+          limparClickPad();
         }
         case "busca":{
           final retorno = await GamesBuscaTela.abrir(ctx);
@@ -2237,26 +2285,39 @@ if (-not [WindowsPower]::SetSuspendState($false, $false, $false)) { exit 1 }
   }
 
   trocaViewIcones() async {
-    if (slimMode) return;
-    // SELECT: alterna entre o modo Grid e o modo salvo nas configurações (Normal, Moderno ou Retro)
-    if (!cardGamesGrid) {
-      // Entra no modo Grid
-      cardGamesGrid = true;
-      cardGamesModerno = false;
-      cardGamesRetro = false;
-    } else {
-      // Sai do modo Grid e volta para o modo que está salvo no configSistema
-      cardGamesGrid = false;
-      cardGamesModerno = configSistema.viewType == "moderno";
-      cardGamesRetro = configSistema.viewType == "retro";
-      // Se não for nenhum dos dois, o modo padrão (BodyIconesJogos) será exibido
-    }
-    
-    // Reseta o estado de informações extras ao trocar de visão
+    if (slimMode || interfaceChanging) return;
+    // SELECT alterna entre o Grid e o modo salvo nas configurações. Trocar o
+    // corpo direto, com um `attTela()` só, montava a apresentação nova no
+    // mesmo quadro em que a antiga saía — o mesmo conflito da troca pelas
+    // configurações. Passa pela transição, como todas as outras trocas.
+    _trocarApresentacao(() => _recalcularModos(forcarGrid: !cardGamesGrid));
+  }
+
+  /// Troca a apresentação em dois quadros: desmonta a antiga, monta a nova.
+  ///
+  /// Nenhum corpo pode entrar no mesmo quadro em que outro sai: todos anexam
+  /// o mesmo `focusScopeIcones`, e `PrincipalPage` desenha a tela de
+  /// passagem enquanto `interfaceChanging` estiver ligado. É o mesmo desenho
+  /// de [aplicarModoInterface], com as mesmas guardas de revisão.
+  void _trocarApresentacao(void Function() aplicar) {
+    if (_disposed) return;
+    final revision = ++interfaceRevision;
+    interfaceChanging = true;
+    FocusManager.instance.primaryFocus?.unfocus();
+    limparClickPad();
+    aplicar();
     cardInf = false;
-    
-    // Notifica a mudança para atualizar a UI
     attTela();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      // Desmonta a árvore antiga primeiro; só então monta a nova.
+      if (_disposed || revision != interfaceRevision) return;
+      interfaceChanging = false;
+      attTela();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (_disposed || !stateTela || revision != interfaceRevision) return;
+        focarCategoriaSlim();
+      });
+    });
   }
   
 

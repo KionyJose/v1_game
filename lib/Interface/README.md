@@ -211,10 +211,12 @@ Futurista — porque todos passam por `PrincipalCtrl.btnEntrar`.
 4. **Dois segundos** (`esperaAntesDoJogo`), descontando o que a preparação já
    consumiu: o jogo sobe sempre 2 s depois de a animação aparecer.
 5. **`db.openFile`.** Só agora o jogo abre.
-6. **Liberação.** `_liberarSistema()` devolve mouse, janela e foco e reabre os
-   eventos; a folha sai sozinha, sem ninguém apertar nada.
-7. **Resfriamento** de 600 ms (`resfriamentoDoClique`) antes de aceitar um
-   novo clique, para o último toque de uma rajada não abrir um segundo jogo.
+6. **Espera do jogador.** A folha **não** se fecha sozinha: ela fica na tela
+   enquanto o jogo está na frente e só sai com A ou B, com mínimo de 2 s.
+   **Quem decide a volta ao launcher é o jogador**, pelas ações que já existem.
+7. **Liberação.** Só depois dessa ação `_liberarSistema()` devolve mouse,
+   janela e foco, espera `resfriamentoDoClique` (600 ms) e reabre os eventos.
+   Roda **uma vez por abertura**.
 
 **A ordem era inversa.** `db.openFile` vinha primeiro, e só ~650 ms depois a
 animação aparecia — por isso ela parecia atrasada: o jogo já estava subindo.
@@ -224,6 +226,18 @@ cada, medido) e ainda espera 700 ms por dentro. Durante esses segundos
 `mouseBloqueado` continuava falso e cada clique extra abria outra cópia do
 jogo. No Transversal era pior, porque `_openGame` chama `btnEntrar` direto do
 `onTap` do cartão, sem passar por `abrirItemSlim`.
+
+**Duas regressões que esta ordem já causou**, e que os testes agora travam:
+
+- *A folha fechando sozinha.* Uma versão intermediária avisava a folha quando
+  o jogo subia, e ela saía junto. Isso restaurava o launcher sem o jogador
+  pedir, tirando dele o ponto de retorno. A espera é dele, sempre.
+- *A troca de interface atropelada.* Essa mesma versão chamava
+  `_liberarSistema()` duas vezes, a segunda 600 ms depois de tudo pronto.
+  Nessa janela ela reescrevia `focusScope`, `cardInf` e `stateTela` por cima
+  de um `aplicarModoInterface` em andamento — cuja segunda callback, aliás,
+  aborta quando `stateTela` é falso. Agora a restauração é única e respeita
+  `interfaceChanging`: durante uma troca de modo, quem manda no foco é ela.
 
 A folha de carga não usa `transitionAnimationController` próprio: o anterior
 nascia com `vsync: Navigator.of(ctx)` e nunca era descartado, deixando um

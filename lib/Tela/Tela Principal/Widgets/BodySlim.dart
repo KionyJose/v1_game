@@ -20,6 +20,19 @@ class BodySlim extends StatelessWidget {
     Icons.storefront_rounded,
   ];
   static const _selectedColor = Color(0xFFB9F6CA);
+
+  /// Cartão 5% menor e 15% mais perto do vizinho.
+  ///
+  /// Os dois andam juntos: encolher sem aproximar só aumenta o vazio entre
+  /// eles. A folga original era de 16 pixels.
+  static const escalaDoCartao = .95;
+  static const folgaEntreCartoes = 16 * .85;
+
+  /// Altura da barra inferior: categorias à esquerda, nome no meio.
+  static const alturaDaBarraInferior = 30.0;
+
+  /// Espaço que a legenda ocupava sob cada cartão, agora só reservado.
+  static const alturaDoNomeNoCartao = 18.0;
   static const _labels = ['Jogos', 'Cinema', 'Música', 'Loja'];
   static final _navigationKeys = {
     LogicalKeyboardKey.keyW: 'CIMA',
@@ -91,10 +104,16 @@ class BodySlim extends StatelessWidget {
                         bounds.maxHeight / LauncherWindowController.slimScale,
                     child: LayoutBuilder(builder: (context, constraints) {
                       final width =
-                          (constraints.maxHeight * .55).clamp(64.0, 144.0);
+                          (constraints.maxHeight * .55).clamp(64.0, 144.0) *
+                              escalaDoCartao;
                       return Stack(
                         fit: StackFit.expand,
                         children: [
+                          // A base do gradiente é quase preta: é ela que
+                          // sustenta a leitura dos ícones e do nome do item,
+                          // no lugar da pílula escura que havia atrás deles.
+                          // O escurecimento sobe devagar para não virar uma
+                          // faixa com borda visível.
                           const IgnorePointer(
                             child: DecoratedBox(
                               decoration: BoxDecoration(
@@ -102,11 +121,13 @@ class BodySlim extends StatelessWidget {
                                   begin: Alignment.bottomCenter,
                                   end: Alignment.topCenter,
                                   colors: [
-                                    Color(0xCC000000),
-                                    Color(0x66000000),
-                                    Colors.transparent
+                                    Color(0xF7000000),
+                                    Color(0xE6000000),
+                                    Color(0x99000000),
+                                    Color(0x33000000),
+                                    Colors.transparent,
                                   ],
-                                  stops: [0, .35, 1],
+                                  stops: [0, .18, .42, .7, 1],
                                 ),
                               ),
                             ),
@@ -154,16 +175,32 @@ class BodySlim extends StatelessWidget {
                                   ),
                                 ),
                                 const SizedBox(height: 4),
-                                Padding(
-                                  padding: const EdgeInsets.only(
-                                    left:
-                                        8 / LauncherWindowController.slimScale,
-                                    right: 260,
-                                  ),
-                                  child: Align(
-                                    alignment: Alignment.centerLeft,
-                                    child: _usageBar(),
-                                  ),
+                                SizedBox(
+                                  height: alturaDaBarraInferior,
+                                  child: Stack(children: [
+                                    // O nome centraliza na largura inteira.
+                                    // Centralizar no espaço que sobra depois
+                                    // da reserva dos botões o jogaria para a
+                                    // esquerda do meio da tela.
+                                    Positioned.fill(
+                                      child: Padding(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 170),
+                                        child: Center(
+                                            child: _nomeDoItem(count, selected)),
+                                      ),
+                                    ),
+                                    Positioned(
+                                      left: 8 /
+                                          LauncherWindowController.slimScale,
+                                      top: 0,
+                                      bottom: 0,
+                                      child: Align(
+                                        alignment: Alignment.centerLeft,
+                                        child: _usageBar(),
+                                      ),
+                                    ),
+                                  ]),
                                 ),
                               ],
                             ),
@@ -177,40 +214,34 @@ class BodySlim extends StatelessWidget {
     );
   }
 
-  Widget _usageBar() => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-        decoration: BoxDecoration(
-          color: Colors.black,
-          borderRadius: BorderRadius.circular(15),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _categories(),
-            const SizedBox(width: 10),
-            const SizedBox(
-              height: 18,
-              child: VerticalDivider(width: 1, color: Colors.white24),
-            ),
-            const SizedBox(width: 10),
-            Flexible(
-              child: Tooltip(
-                message:
-                    'LB / RB: categorias • A / Enter: abrir • Start / F10: menu',
-                child: GestureDetector(
-                  onTap: ctrl.mouseBloqueado ? null : ctrl.abrirMenuSlim,
-                  child: const Text(
-                    'LB / RB  Categorias     A / Enter  Abrir     Start / F10  Menu',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(color: Colors.white70, fontSize: 11),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      );
+  /// Rodapé esquerdo: só onde a tela está.
+  ///
+  /// Antes era uma pílula preta com as categorias e, ao lado, a legenda de
+  /// como navegar. A legenda saiu — ela repetia a cada quadro algo que se
+  /// aprende uma vez — e com ela foi o fundo arredondado: quem dá contraste
+  /// aos ícones agora é o próprio gradiente do rodapé, mais escuro na base.
+  Widget _usageBar() => _categories();
+
+  /// Nome do item em foco, no meio da barra inferior.
+  ///
+  /// Era uma legenda de 12 pixels embaixo de cada cartão, repetida na esteira
+  /// e apertada na largura do ícone. No meio da barra ele tem a linha toda,
+  /// aparece uma vez só e fica legível de longe — que é como o Slim é usado.
+  Widget _nomeDoItem(int count, int selected) {
+    if (count == 0) return const SizedBox.shrink();
+    return Text(
+      _name(selected),
+      maxLines: 1,
+      textAlign: TextAlign.center,
+      overflow: TextOverflow.ellipsis,
+      style: const TextStyle(
+        color: Colors.white,
+        fontSize: 15,
+        fontWeight: FontWeight.w600,
+        shadows: [Shadow(color: Colors.black, blurRadius: 6)],
+      ),
+    );
+  }
 
   Widget _categories() => FocusScope(
         node: ctrl.focusScopeAbaGuias,
@@ -328,7 +359,7 @@ class _SlimItemsState extends State<_SlimItems> {
   Widget build(BuildContext context) => ListView.builder(
         controller: _scroll,
         scrollDirection: Axis.horizontal,
-        itemExtent: widget.width + 16,
+        itemExtent: widget.width + BodySlim.folgaEntreCartoes,
         itemCount: widget.count,
         itemBuilder: (context, index) {
           final ctrl = widget.ctrl;
@@ -353,7 +384,8 @@ class _SlimItemsState extends State<_SlimItems> {
                     },
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 160),
-                margin: const EdgeInsets.only(right: 16, top: 6, bottom: 2),
+                margin: const EdgeInsets.only(
+                    right: BodySlim.folgaEntreCartoes, top: 6, bottom: 2),
                 padding: const EdgeInsets.all(5),
                 decoration: BoxDecoration(
                   color: Colors.transparent,
@@ -406,24 +438,11 @@ class _SlimItemsState extends State<_SlimItems> {
                             ),
                           )),
                     ),
-                    Padding(
-                      padding: const EdgeInsets.only(top: 2, left: 2, right: 2),
-                      child: Visibility(
-                        visible: ctrl.slimItemNodes[index].hasFocus,
-                        maintainSize: true,
-                        maintainState: true,
-                        maintainAnimation: true,
-                        child: Text(widget.name(index),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                                color: selected ? Colors.white : Colors.white70,
-                                fontSize: 12,
-                                shadows: const [
-                                  Shadow(color: Colors.black, blurRadius: 6)
-                                ])),
-                      ),
-                    ),
+                    // O nome saiu daqui para o meio da barra inferior, mas o
+                    // espaço dele continua reservado: sem isso o quadrado da
+                    // capa cresce para ocupar a sobra e desfaz o tamanho
+                    // definido por `escalaDoCartao`.
+                    const SizedBox(height: BodySlim.alturaDoNomeNoCartao),
                   ],
                 ),
               ),

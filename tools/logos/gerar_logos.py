@@ -345,6 +345,52 @@ def microsoft():
           os.path.getsize(os.path.join(SAIDA, 'microsoft.png'))))
 
 
+def descobrir():
+    """Bússola do Descobrir: marca nossa, desenhada aqui.
+
+    Não é marca de terceiro, então não vem do Simple Icons. Um anel e uma
+    agulha de dois gomos — a leitura clássica de "explorar" — em branco, como
+    as demais logos monocromáticas.
+    """
+    import math
+    from PIL import ImageDraw
+    lado = LADO * SUPER
+    img = Image.new('L', (lado, lado), 0)
+    desenho = ImageDraw.Draw(img)
+    centro = lado / 2
+    raio = lado * (0.5 - MARGEM)
+    grossura = lado * 0.062
+    desenho.ellipse(
+        [centro - raio, centro - raio, centro + raio, centro + raio],
+        outline=255, width=int(grossura))
+
+    # Agulha: dois gomos opostos, girados 45 graus.
+    comprimento = raio * 0.62
+    meio = raio * 0.2
+    angulo = math.radians(-45)
+
+    def girar(x, y):
+        return (centro + x * math.cos(angulo) - y * math.sin(angulo),
+                centro + x * math.sin(angulo) + y * math.cos(angulo))
+
+    desenho.polygon([girar(0, -comprimento), girar(meio, 0), girar(0, 0)],
+                    fill=255)
+    desenho.polygon([girar(0, -comprimento), girar(-meio, 0), girar(0, 0)],
+                    fill=255)
+    desenho.polygon([girar(0, comprimento), girar(meio, 0), girar(0, 0)],
+                    fill=255)
+    desenho.polygon([girar(0, comprimento), girar(-meio, 0), girar(0, 0)],
+                    fill=255)
+
+    alfa = img.resize((LADO, LADO), Image.LANCZOS)
+    final = Image.new('RGBA', (LADO, LADO), (255, 255, 255, 0))
+    final.putalpha(alfa)
+    caminho = os.path.join(SAIDA, 'descobrir.png')
+    final.save(caminho, optimize=True)
+    print('%-12s %-14s %6d bytes' % ('descobrir', '(geometria)',
+          os.path.getsize(caminho)))
+
+
 def interna():
     """A Loja Interna usa o ícone do próprio aplicativo."""
     origem = os.path.join('assets', 'IconeAppV1.png')
@@ -361,4 +407,5 @@ if __name__ == '__main__':
     for nome, slug in DO_SIMPLE_ICONS:
         gerar(nome, slug)
     microsoft()
+    descobrir()
     interna()

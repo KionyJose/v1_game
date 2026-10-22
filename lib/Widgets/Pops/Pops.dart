@@ -2,8 +2,6 @@
 import 'dart:async';
 import 'dart:ui' as ui;
 
-import 'package:flutter/foundation.dart';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -46,8 +44,11 @@ class Pops {
 
   /// Folha "Entrando no game...".
   ///
-  /// Com [pronto], ela se fecha sozinha assim que o jogo abrir, respeitando o
-  /// tempo mínimo de exibição. Sem ele, continua esperando A ou B, como antes.
+  /// **Ela espera o jogador.** Fica na tela enquanto o jogo está na frente e
+  /// só sai com A ou B, respeitando um mínimo de 2 segundos. Quem decide a
+  /// volta ao launcher é ele, pelas ações que já existem — fechá-la junto com
+  /// a abertura do jogo tirava essa decisão e restaurava a tela sozinha.
+  ///
   /// Sem `transitionAnimationController` de propósito.
   ///
   /// O controller anterior era criado com `vsync: Navigator.of(ctx)` e nunca
@@ -56,17 +57,17 @@ class Pops {
   /// animação de saída, e liberá-lo cedo deixa a folha congelada na tela.
   /// A transição padrão não tem dono para esquecer e ainda entra mais rápido,
   /// que é o que esta folha precisa: aparecer no instante do clique.
-  Future<void> carregandoGames(BuildContext ctx, String str,
-      {ValueListenable<bool>? pronto}) async {
+  Future<void> carregandoGames(BuildContext ctx, String str) async {
     await showModalBottomSheet<void>(
       context: ctx,
       isScrollControlled: true, // Permite expandir o conteúdo
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
+      // Sem véu e sem canto arredondado: o escurecimento inteiro é o
+      // gradiente da folha, que encosta nas bordas e some para cima.
+      barrierColor: Colors.transparent,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
       backgroundColor: Colors.transparent,
       builder: (context) {
-        return _CarregandoGamesSheet(texto: str, pronto: pronto);
+        return _CarregandoGamesSheet(texto: str);
       },
     );
   }
@@ -398,10 +399,7 @@ class Pops {
 class _CarregandoGamesSheet extends StatefulWidget {
   final String texto;
 
-  /// Vira verdadeiro quando o jogo já abriu; a folha então sai sozinha.
-  final ValueListenable<bool>? pronto;
-
-  const _CarregandoGamesSheet({required this.texto, this.pronto});
+  const _CarregandoGamesSheet({required this.texto});
 
   @override
   State<_CarregandoGamesSheet> createState() => _CarregandoGamesSheetState();
@@ -418,49 +416,24 @@ class _CarregandoGamesSheetState extends State<_CarregandoGamesSheet> {
   @override
   void initState() {
     super.initState();
-    widget.pronto?.addListener(_jogoAbriu);
-    // O tempo mínimo é marcado pelo próprio Timer, não por `DateTime.now()`:
+    // O tempo mínimo é marcado pelo próprio Timer, e não por `DateTime.now()`:
     // comparar relógio de parede com espera agendada dá resultados diferentes
-    // conforme quem conduz o tempo, e deixava a folha presa.
-    _minimo = Timer(tempoMinimo, () {
-      _minimoPassou = true;
-      _jogoAbriu();
-    });
+    // conforme quem conduz o tempo.
+    _minimo = Timer(tempoMinimo, () => _minimoPassou = true);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _focusNode.requestFocus();
     });
   }
 
   @override
-  void didUpdateWidget(_CarregandoGamesSheet oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.pronto != widget.pronto) {
-      oldWidget.pronto?.removeListener(_jogoAbriu);
-      widget.pronto?.addListener(_jogoAbriu);
-      _jogoAbriu();
-    }
-  }
-
-  @override
   void dispose() {
     _minimo?.cancel();
-    widget.pronto?.removeListener(_jogoAbriu);
     _focusNode.dispose();
     super.dispose();
   }
 
   bool get _podeFechar => _minimoPassou;
 
-  /// Fecha sozinha quando o jogo subiu e o tempo mínimo já passou.
-  void _jogoAbriu() {
-    if (_fechando || !mounted) return;
-    if (widget.pronto?.value != true || !_podeFechar) return;
-    _fechando = true;
-    // `dispose` do Navigator não pode rodar dentro de um listener/timer.
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) Navigator.of(context).maybePop();
-    });
-  }
 
   void _tentarFechar(BuildContext context, String event) {
     if (_fechando || (event != '2' && event != '3')) return;
@@ -492,25 +465,26 @@ class _CarregandoGamesSheetState extends State<_CarregandoGamesSheet> {
                 MovimentoSistema.convertKeyBoard(event.logicalKey.keyLabel);
             _tentarFechar(context, comando);
           },
+          // Atrás do load fica só um gradiente preto, forte embaixo e sumindo
+          // para cima. A caixa arredondada com halo colorido competia com a
+          // arte do jogo que está entrando; o gradiente dá o mesmo contraste
+          // sem recortar um bloco no meio da tela.
           child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 50),
-            margin: const EdgeInsets.only(bottom: 65),
-            width: 2000,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(40),
-              color: Colors.black87,
-              boxShadow: [
-                BoxShadow(
-                  blurRadius: 30,
-                  color: Colors.deepPurple.withOpacity(0.2),
-                  spreadRadius: 1,
-                ),
-                BoxShadow(
-                  blurRadius: 30,
-                  color: Colors.blue.withOpacity(0.2),
-                  spreadRadius: 1,
-                ),
-              ],
+            padding: const EdgeInsets.only(top: 86, bottom: 54),
+            width: double.infinity,
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.bottomCenter,
+                end: Alignment.topCenter,
+                colors: [
+                  Color(0xFF000000),
+                  Color(0xF2000000),
+                  Color(0xA6000000),
+                  Color(0x40000000),
+                  Colors.transparent,
+                ],
+                stops: [0, .22, .5, .78, 1],
+              ),
             ),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,

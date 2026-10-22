@@ -792,7 +792,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('Menu flutuante anterior oferece Downloads', (tester) async {
+  testWidgets('Downloads é o primeiro ícone da barra do Mais', (tester) async {
     String? result;
     await tester.pumpWidget(app(Scaffold(
         body: Builder(
@@ -803,7 +803,9 @@ void main() {
                 child: const Text('Start'))))));
     await tester.tap(find.text('Start'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Downloads'));
+    // Downloads deixou a grade e virou ícone no topo, antes dos outros três.
+    expect(find.text('Downloads'), findsNothing);
+    await tester.tap(find.byIcon(Icons.download_rounded));
     await tester.pumpAndSettle();
     expect(result, 'Downloads');
     expect(tester.takeException(), isNull);
@@ -821,9 +823,9 @@ void main() {
                 child: const Text('Start'))))));
     await tester.tap(find.text('Start'));
     await tester.pumpAndSettle();
-    await tester.ensureVisible(find.text('Atalhos'));
+    await tester.ensureVisible(find.text('Atalhos e dicas'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Atalhos'));
+    await tester.tap(find.text('Atalhos e dicas'));
     await tester.pumpAndSettle();
     // A folha abre por cima: o Mais continua aberto e nada foi devolvido.
     expect(find.byType(PadShortcutsSheet), findsOneWidget);
@@ -836,7 +838,7 @@ void main() {
     expect(find.byType(LauncherMoreGrid), findsOneWidget);
     expect(result, 'nada');
     final focado = find.ancestor(
-        of: find.text('Atalhos'), matching: find.byType(Focus).first);
+        of: find.text('Atalhos e dicas'), matching: find.byType(Focus).first);
     expect(tester.widget<Focus>(focado).focusNode?.hasFocus, isTrue);
     expect(tester.takeException(), isNull);
   });

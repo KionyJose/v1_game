@@ -17,23 +17,44 @@ class LauncherMoreGrid extends StatefulWidget {
 }
 
 class _LauncherMoreGridState extends State<LauncherMoreGrid> {
+  /// A grade: ações sobre o card, na ordem em que se usam.
+  ///
+  /// Material Icons não tem arma nem espada; `videogame_asset` é o glifo de
+  /// jogo mais próximo, e o rótulo carrega o verbo.
   static const items = [
-    ('Downloads', 'Downloads', Icons.download_rounded),
-    ('Adicionar jogo', 'Add', Icons.add_rounded),
+    ('Adicionar jogo', 'Add', Icons.videogame_asset_rounded),
     ('Buscar jogos', 'busca', Icons.search_rounded),
-    ('Configurações', 'Cfg', Icons.settings_rounded),
-    ('Pasta do jogo', 'Caminho do game', Icons.folder_rounded),
-    ('Imagem local', 'Caminho de Imagem', Icons.image_rounded),
-    ('Buscar imagens', 'Imagem da Download', Icons.image_search_rounded),
-    ('Atalhos', 'Atalhos', Icons.shortcut_rounded),
+    ('Imagem local', 'Caminho de Imagem', Icons.add_photo_alternate_rounded),
+    ('Imagem download', 'Imagem da Download', Icons.image_rounded),
+    ('Caminho do jogo', 'Caminho do game', Icons.insert_drive_file_rounded),
+    ('Atalhos e dicas', 'Atalhos', Icons.shortcut_rounded),
+    ('Interfaces', 'Interfaces', Icons.dashboard_rounded),
     ('Excluir card', 'Excluir Card', Icons.delete_outline_rounded),
-    ('Suspender', 'Suspender', Icons.bedtime_rounded),
   ];
+
+  /// A barra: ações do sistema, que não são sobre o card. Saíram da grade
+  /// porque disputavam espaço com o que se usa toda hora.
+  static const acoesDaBarra = [
+    ('Downloads', 'Downloads', Icons.download_rounded),
+    ('Suspender', 'Suspender', Icons.bedtime_rounded),
+    ('Configurações', 'Cfg', Icons.settings_rounded),
+    ('Fechar', '', Icons.close_rounded),
+  ];
+
   final _nodes = List.generate(items.length, (_) => FocusNode());
+  final _nodesDaBarra =
+      List.generate(acoesDaBarra.length, (_) => FocusNode());
   final _scroll = ScrollController();
   int _selected = 0;
+
+  /// Qual ícone da barra está apontado, quando o Pad está nela.
+  int _selecionadoNaBarra = 0;
+  bool _naBarra = false;
   bool _closed = false;
   static const stride = 106.0;
+
+  /// Altura da barra do topo. Os ícones a preenchem inteira, sem margem.
+  static const alturaDaBarra = 46.0;
 
   void _close(String result) {
     if (_closed || !mounted) return;
@@ -79,17 +100,60 @@ class _LauncherMoreGridState extends State<LauncherMoreGrid> {
         curve: Curves.easeOutCubic);
   }
 
+  /// Leva o Pad para a barra do topo, ou de volta para a grade.
+  void _irParaBarra(bool barra) {
+    if (_naBarra == barra) return;
+    setState(() => _naBarra = barra);
+    SonsSistema.direction();
+    (barra ? _nodesDaBarra[_selecionadoNaBarra] : _nodes[_selected])
+        .requestFocus();
+  }
+
+  void _selecionarNaBarra(int indice) {
+    final alvo = indice.clamp(0, acoesDaBarra.length - 1);
+    if (alvo == _selecionadoNaBarra && _naBarra) return;
+    setState(() {
+      _selecionadoNaBarra = alvo;
+      _naBarra = true;
+    });
+    SonsSistema.direction();
+    _nodesDaBarra[alvo].requestFocus();
+  }
+
+  /// `_close` já toca o som de confirmação; tocar aqui dobraria.
+  void _acionarDaBarra(int indice) =>
+      _close(acoesDaBarra[indice].$2);
+
   bool _command(String command) {
     if (_closed) return true;
+    if (_naBarra) {
+      switch (command) {
+        case 'ESQUERDA':
+          _selecionarNaBarra(_selecionadoNaBarra - 1);
+        case 'DIREITA':
+          _selecionarNaBarra(_selecionadoNaBarra + 1);
+        case 'BAIXO':
+          _irParaBarra(false);
+        case '2':
+          _acionarDaBarra(_selecionadoNaBarra);
+        case '3':
+        case 'START':
+          _close('');
+      }
+      return true;
+    }
     switch (command) {
       case 'CIMA':
-        if (_selected >= 2) _select(_selected - 2);
+        // Da primeira linha, sobe para a barra em vez de parar.
+        _selected >= 2 ? _select(_selected - 2) : _irParaBarra(true);
       case 'BAIXO':
         if (_selected + 2 < items.length) _select(_selected + 2);
       case 'ESQUERDA':
         if (_selected.isOdd) _select(_selected - 1);
       case 'DIREITA':
-        if (_selected.isEven) _select(_selected + 1);
+        if (_selected.isEven && _selected + 1 < items.length) {
+          _select(_selected + 1);
+        }
       case '2':
         _activate(_selected);
       case '3':
@@ -123,10 +187,60 @@ class _LauncherMoreGridState extends State<LauncherMoreGrid> {
     );
   }
 
+  /// Um ícone da barra: quadrado, da altura inteira, sem padding.
+  Widget _botaoDaBarra(int indice) {
+    final acao = acoesDaBarra[indice];
+    final apontado = _naBarra && indice == _selecionadoNaBarra;
+    return Focus(
+      focusNode: _nodesDaBarra[indice],
+      onFocusChange: (focado) {
+        if (focado) _selecionarNaBarra(indice);
+      },
+      child: Semantics(
+        button: true,
+        label: acao.$1,
+        selected: apontado,
+        child: Tooltip(
+          message: acao.$1,
+          child: GestureDetector(
+            onTap: () => _acionarDaBarra(indice),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 160),
+              width: alturaDaBarra,
+              height: alturaDaBarra,
+              decoration: BoxDecoration(
+                color: apontado
+                    ? (widget.futuristic
+                        ? const Color(0x908063BB)
+                        : const Color(0xFF40516A))
+                    : Colors.transparent,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                    color: apontado
+                        ? (widget.futuristic
+                            ? FuturisticPalette.pearl
+                            : const Color(0xFFB9D1EA))
+                        : Colors.transparent,
+                    width: 2),
+              ),
+              child: Icon(acao.$3,
+                  size: 24,
+                  color: widget.futuristic
+                      ? (apontado
+                          ? FuturisticPalette.pearl
+                          : FuturisticPalette.accent)
+                      : Colors.white),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   void dispose() {
     _scroll.dispose();
-    for (final node in _nodes) {
+    for (final node in [..._nodes, ..._nodesDaBarra]) {
       node.dispose();
     }
     super.dispose();
@@ -147,15 +261,25 @@ class _LauncherMoreGridState extends State<LauncherMoreGrid> {
               child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Padding(
-                        padding: const EdgeInsets.only(left: 6, bottom: 18),
-                        child: Text('Mais',
+                    SizedBox(
+                      height: alturaDaBarra,
+                      child: Row(children: [
+                        const SizedBox(width: 6),
+                        Text('Mais',
                             style: TextStyle(
                                 color: widget.futuristic
                                     ? FuturisticPalette.pearl
                                     : Colors.white,
                                 fontSize: 26,
-                                fontWeight: FontWeight.w500))),
+                                fontWeight: FontWeight.w500)),
+                        const Spacer(),
+                        // Sem margem nem respiro: os ícones tomam a altura
+                        // inteira da barra, como pedido.
+                        for (var i = 0; i < acoesDaBarra.length; i++)
+                          _botaoDaBarra(i),
+                      ]),
+                    ),
+                    const SizedBox(height: 18),
                     Expanded(
                         child: GridView.builder(
                       controller: _scroll,
