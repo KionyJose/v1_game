@@ -31,8 +31,11 @@ class BodySlim extends StatelessWidget {
   /// Altura da barra inferior: categorias à esquerda, nome no meio.
   static const alturaDaBarraInferior = 30.0;
 
-  /// Espaço que a legenda ocupava sob cada cartão, agora só reservado.
+  /// Espaço que a legenda ocupava sob cada cartão; hoje guarda a bolinha.
   static const alturaDoNomeNoCartao = 18.0;
+
+  /// A marca de "é este": uma bolinha branca sob o cartão escolhido.
+  static const diametroDaBolinha = 7.0;
   static const _labels = ['Jogos', 'Cinema', 'Música', 'Loja'];
   static final _navigationKeys = {
     LogicalKeyboardKey.keyW: 'CIMA',
@@ -438,11 +441,32 @@ class _SlimItemsState extends State<_SlimItems> {
                             ),
                           )),
                     ),
-                    // O nome saiu daqui para o meio da barra inferior, mas o
-                    // espaço dele continua reservado: sem isso o quadrado da
-                    // capa cresce para ocupar a sobra e desfaz o tamanho
-                    // definido por `escalaDoCartao`.
-                    const SizedBox(height: BodySlim.alturaDoNomeNoCartao),
+                    // O nome saiu daqui para o meio da barra inferior. O
+                    // espaço continua reservado — sem ele o quadrado da capa
+                    // cresce para ocupar a sobra e desfaz o tamanho de
+                    // `escalaDoCartao` — e agora guarda a bolinha que marca
+                    // qual cartão está escolhido.
+                    SizedBox(
+                      height: BodySlim.alturaDoNomeNoCartao,
+                      child: Center(
+                        child: AnimatedScale(
+                          duration: const Duration(milliseconds: 160),
+                          curve: Curves.easeOut,
+                          scale: selected ? 1 : 0,
+                          child: Container(
+                            width: BodySlim.diametroDaBolinha,
+                            height: BodySlim.diametroDaBolinha,
+                            decoration: const BoxDecoration(
+                              color: Colors.white,
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(color: Colors.black, blurRadius: 6)
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),

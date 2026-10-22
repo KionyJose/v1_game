@@ -66,6 +66,9 @@ class Pops {
       barrierColor: Colors.transparent,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
       backgroundColor: Colors.transparent,
+      // O Material 3 limita a folha a 640 px em tela larga; aqui ela precisa
+      // atravessar a tela de ponta a ponta.
+      constraints: const BoxConstraints(maxWidth: double.infinity),
       builder: (context) {
         return _CarregandoGamesSheet(texto: str);
       },
@@ -436,8 +439,15 @@ class _CarregandoGamesSheetState extends State<_CarregandoGamesSheet> {
 
 
   void _tentarFechar(BuildContext context, String event) {
-    if (_fechando || (event != '2' && event != '3')) return;
-    if (!_podeFechar) return;
+    if (event != '2' && event != '3') return;
+    _fechar(context);
+  }
+
+  /// Volta ao launcher. A folha inteira é clicável — o gradiente cobre a tela
+  /// de lado a lado, então qualquer ponto dela serve de "voltar", do mesmo
+  /// jeito que A ou B no pad.
+  void _fechar(BuildContext context) {
+    if (_fechando || !_podeFechar) return;
     _fechando = true;
     Navigator.pop(context);
     try {
@@ -469,31 +479,36 @@ class _CarregandoGamesSheetState extends State<_CarregandoGamesSheet> {
           // para cima. A caixa arredondada com halo colorido competia com a
           // arte do jogo que está entrando; o gradiente dá o mesmo contraste
           // sem recortar um bloco no meio da tela.
-          child: Container(
-            padding: const EdgeInsets.only(top: 86, bottom: 54),
-            width: double.infinity,
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.bottomCenter,
-                end: Alignment.topCenter,
-                colors: [
-                  Color(0xFF000000),
-                  Color(0xF2000000),
-                  Color(0xA6000000),
-                  Color(0x40000000),
-                  Colors.transparent,
-                ],
-                stops: [0, .22, .5, .78, 1],
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () => _fechar(context),
+            child: Container(
+              padding: const EdgeInsets.only(top: 86, bottom: 54),
+              width: double.infinity,
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.bottomCenter,
+                  end: Alignment.topCenter,
+                  colors: [
+                    Color(0xFF000000),
+                    Color(0xF2000000),
+                    Color(0xA6000000),
+                    Color(0x40000000),
+                    Colors.transparent,
+                  ],
+                  stops: [0, .22, .5, .78, 1],
+                ),
               ),
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const LoadingIco(),
-                const SizedBox(height: 15),
-                Text(widget.texto, style: const TextStyle(color: Colors.white)),
-              ],
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const LoadingIco(),
+                  const SizedBox(height: 15),
+                  Text(widget.texto,
+                      style: const TextStyle(color: Colors.white)),
+                ],
+              ),
             ),
           ),
         );
