@@ -17,6 +17,7 @@ import 'package:window_manager/window_manager.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 import 'Widgets/BodyIconesJogos.dart';
 import 'Widgets/BodyIconesCinema.dart';
+import '../Cinema/body_cinema.dart';
 import 'Widgets/BodyIconesMusica.dart';
 import 'Widgets/BodyIconesJogosGrid.dart';
 import 'Widgets/BodyIconesJogosModerno.dart';
@@ -431,7 +432,13 @@ class _PrincipalPageState extends State<PrincipalPage> with WindowListener {
         physics: const NeverScrollableScrollPhysics(),
         children: [
           jogosPage,
-          BodyIconesCinema(ctrl: ctrl, tamanhoBloco: tamanhoBloco),
+          // Aba Cinema: o catálogo em mosaico (lib/Tela/Cinema) ou a grade
+          // de canais de sempre. Quem escolhe é o interruptor "Cinema:
+          // catálogo de filmes" das Configurações; as duas telas continuam
+          // inteiras, nenhuma foi substituída.
+          configSistema.cinemaCatalogo
+              ? BodyCinema(ctrl: ctrl)
+              : BodyIconesCinema(ctrl: ctrl, tamanhoBloco: tamanhoBloco),
           BodyIconesMusica(ctrl: ctrl, tamanhoBloco: tamanhoBloco),
           BodyIconesLoja(ctrl: ctrl, tamanhoBloco: tamanhoBloco),
         ],

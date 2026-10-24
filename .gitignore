@@ -43,3 +43,14 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Chaves de API do usuário — nunca entram no repositório.
+# O lugar normal da chave do TMDB é a pasta de dados do usuário
+# (%LOCALAPPDATA%\V1 Launcher\v1_tmdb.json), fora daqui; estas linhas são a
+# rede de segurança para o dia em que um arquivo desses cair na pasta do
+# projeto.
+v1_tmdb.json
+**/v1_tmdb.json
+*.key
+.env
+.env.*

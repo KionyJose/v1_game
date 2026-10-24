@@ -23,6 +23,7 @@ class ConfigSistema {
   double volumeSomInicioFuturista; // Volume do som ao iniciar um jogo (0.0 - 1.0)
   int telaInicialTipo; // Tipo de tela inicial
   bool videosTelaPrincipal; // Exibir vídeos na tela principal
+  bool cinemaCatalogo; // Aba Cinema: catálogo TMDB (true) ou grade de canais
   bool noticias; // Exibir vídeos no card do game
   bool intro; // Tocar som de introdução
   
@@ -53,6 +54,7 @@ class ConfigSistema {
     required this.volumeSomInicioFuturista,
     required this.telaInicialTipo,
     required this.videosTelaPrincipal,
+    this.cinemaCatalogo = true,
     required this.noticias,
     required this.intro,
     required this.sequenciaEnter,
@@ -79,6 +81,7 @@ class ConfigSistema {
       volumeSomInicioFuturista: 1.0,
       telaInicialTipo: 1,
       videosTelaPrincipal: true,
+      cinemaCatalogo: true,
       noticias: false,
       intro: false,
       sequenciaEnter: ["SELECT", "SELECT", "2", "2", "2"],
@@ -116,6 +119,7 @@ class ConfigSistema {
           : 1.0,
       telaInicialTipo: json['telaInicialTipo'] ?? 1,
       videosTelaPrincipal: json['videosTelaPrincipal'] ?? true,
+      cinemaCatalogo: json['cinemaCatalogo'] ?? true,
       noticias: json['videosCardGame'] ?? true,
       intro: json['intro'] ?? true,
       sequenciaEnter: json['sequenciaEnter'] != null 
@@ -157,6 +161,7 @@ class ConfigSistema {
       'volumeSomInicioFuturista': volumeSomInicioFuturista,
       'telaInicialTipo': telaInicialTipo,
       'videosTelaPrincipal': videosTelaPrincipal,
+      'cinemaCatalogo': cinemaCatalogo,
       'videosCardGame': noticias,
       'intro': intro,
       'sequenciaEnter': sequenciaEnter,
@@ -183,6 +188,7 @@ class ConfigSistema {
     double? volumeSomInicioFuturista,
     int? telaInicialTipo,
     bool? videosTelaPrincipal,
+    bool? cinemaCatalogo,
     bool? videosCardGame,
     bool? intro,
     List<String>? sequenciaEnter,
@@ -209,6 +215,7 @@ class ConfigSistema {
           volumeSomInicioFuturista ?? this.volumeSomInicioFuturista,
       telaInicialTipo: telaInicialTipo ?? this.telaInicialTipo,
       videosTelaPrincipal: videosTelaPrincipal ?? this.videosTelaPrincipal,
+      cinemaCatalogo: cinemaCatalogo ?? this.cinemaCatalogo,
       noticias: videosCardGame ?? noticias,
       intro: intro ?? this.intro,
       sequenciaEnter: sequenciaEnter ?? this.sequenciaEnter,
@@ -290,6 +297,7 @@ class ConfigSistema {
       volumeSomInicioFuturista = d.volumeSomInicioFuturista;
       telaInicialTipo = d.telaInicialTipo;
       videosTelaPrincipal = d.videosTelaPrincipal;
+      cinemaCatalogo = d.cinemaCatalogo;
       noticias = d.noticias;
       intro = d.intro;
     }

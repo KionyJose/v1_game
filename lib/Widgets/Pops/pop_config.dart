@@ -6,16 +6,28 @@ import 'package:v1_game/Controllers/MovimentoSistema.dart';
 import 'package:v1_game/Controllers/SonsSistema.dart';
 import 'package:v1_game/Controllers/slim_mode_config_controller.dart';
 import 'package:v1_game/Global.dart';
+import '../../Interface/pad_keyboard.dart';
 import '../../Interface/ui_frame_binding.dart';
 import '../../Interface/ui_fps_options.dart';
+import '../../Tela/Cinema/tmdb_cine.dart';
+import 'pop_tutorial_tmdb.dart';
 
 class PopConfig {
+  /// Mostra que a chave existe sem imprimi-la inteira na tela.
+  static String _chaveResumida(String chave) {
+    final limpa = chave.trim();
+    if (limpa.isEmpty) return 'nao configurada';
+    if (limpa.length <= 10) return limpa;
+    return '${limpa.substring(0, 6)}...${limpa.substring(limpa.length - 4)}';
+  }
+
   static config(BuildContext context) async {
     List<String> commandos = [];
     try {
       bool statePop = true;
       String retorno = "";
-      int total = 12;
+      // 12: tipo da tela de cinema · 13: chave do TMDB · 14: tutorial
+      int total = 15;
       FocusScopeNode focusScope = FocusScopeNode();
       const slimModeController = SlimModeConfigController();
 
@@ -30,6 +42,10 @@ class PopConfig {
       bool videosTelaPrincipalTemp = configSistema.videosTelaPrincipal;
       bool videosCardGameTemp = configSistema.noticias;
       bool v1SlimTemp = SlimModeConfigController.active.value;
+      bool cinemaCatalogoTemp = configSistema.cinemaCatalogo;
+      String chaveTmdbTemp = ChaveTmdb.ler() ?? '';
+      final String chaveTmdbOriginal = chaveTmdbTemp;
+      bool tutorialAberto = false;
       if (!context.mounted) return "cancelar";
       List<String> sequenciaCustomTemp =
           List.from(configSistema.sequenciaAtivaMouseCustom);
@@ -61,6 +77,8 @@ class PopConfig {
           await Future.delayed(const Duration(milliseconds: 200));
         }
         paad.comandoAtivo = true;
+        // Fechar as configurações preserva o modo de entrada atual.
+        // Só a ação explícita de abrir o site do TMDB libera o mouse.
         if (context.mounted) Navigator.pop(context, resultado);
       }
 
@@ -76,6 +94,19 @@ class PopConfig {
         configSistema.noticias = videosCardGameTemp;
         configSistema.sequenciaAtivaMouseCustom = sequenciaCustomTemp;
         configSistema.viewType = interfaceTemp;
+        configSistema.cinemaCatalogo = cinemaCatalogoTemp;
+        if (chaveTmdbTemp.trim() != chaveTmdbOriginal.trim()) {
+          try {
+            await ChaveTmdb.salvar(chaveTmdbTemp);
+          } catch (_) {
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                    content: Text('Não foi possível gravar a chave do TMDB.')),
+              );
+            }
+          }
+        }
         if (!await configSistema.save()) {
           configSistema.uiFps = previousUiFps;
           if (context.mounted) {
@@ -115,8 +146,52 @@ class PopConfig {
         return true;
       }
 
+      /// Abre o teclado do controle e guarda o que a pessoa digitar.
+      ///
+      /// Adiado para depois do quadro: quem chama isto pelo Pad é
+      /// `escutaPad`, rodando dentro do `build` do próprio `Consumer<Paad>`
+      /// — abrir outro diálogo nesse instante é cedo demais para o
+      /// Navigator e derruba a tela com "setState() called during build".
+      /// Um toque de mouse chega fora do build e não precisaria do adiamento,
+      /// mas agendar sempre, em vez de só quando o Pad chama, evita manter
+      /// dois caminhos para a mesma ação.
+      void editarChaveTmdb(BuildContext context) {
+        tutorialAberto = true; // o pop de cima é que escuta o Pad agora
+        WidgetsBinding.instance.addPostFrameCallback((_) async {
+          if (!context.mounted) {
+            tutorialAberto = false;
+            return;
+          }
+          final digitado =
+              await abrirTecladoPad(context, texto: chaveTmdbTemp);
+          tutorialAberto = false;
+          if (digitado != null) {
+            chaveTmdbTemp = digitado.trim();
+            SonsSistema.pim();
+          }
+          setStateDialog?.call(() {});
+        });
+      }
+
+      /// Mesmo adiamento de [editarChaveTmdb], e pelo mesmo motivo.
+      void abrirTutorialTmdb(BuildContext context) {
+        tutorialAberto = true;
+        WidgetsBinding.instance.addPostFrameCallback((_) async {
+          if (!context.mounted) {
+            tutorialAberto = false;
+            return;
+          }
+          await PopTutorialTmdb.abrir(context);
+          tutorialAberto = false;
+          setStateDialog?.call(() {});
+        });
+      }
+
       Future<void> escutaPad(String event, Paad paad) async {
         if (!statePop || event == "") return;
+        // Com o teclado do controle ou o tutorial por cima, quem escuta o
+        // Pad é a tela de cima; daqui, silêncio.
+        if (tutorialAberto) return;
         debugPrint("=======   Escuta Pop Config  =======");
 
         // Se está editando sequência, captura os botões
@@ -239,6 +314,14 @@ class PopConfig {
             return;
           }
 
+          // Tipo da tela de Cinema (focusNodes[12])
+          if (focusNodes[12].hasFocus) {
+            cinemaCatalogoTemp = !cinemaCatalogoTemp;
+            SonsSistema.click();
+            setStateDialog?.call(() {});
+            return;
+          }
+
           // Interface (focusNodes[5]) - Cicla com setas
           if (focusNodes[5].hasFocus) {
             final opcoes = [
@@ -324,6 +407,23 @@ class PopConfig {
 
           if (focusNodes[11].hasFocus) {
             SonsSistema.click();
+            return;
+          }
+
+          if (focusNodes[12].hasFocus) {
+            cinemaCatalogoTemp = !cinemaCatalogoTemp;
+            SonsSistema.click();
+            setStateDialog?.call(() {});
+            return;
+          }
+
+          if (focusNodes[13].hasFocus) {
+            editarChaveTmdb(context);
+            return;
+          }
+
+          if (focusNodes[14].hasFocus) {
+            abrirTutorialTmdb(context);
             return;
           }
 
@@ -777,6 +877,110 @@ class PopConfig {
                                             }),
                                           ),
                                         ),
+
+                                        // Tela de Cinema
+                                        buildConfigItem(
+                                          "Cinema: catálogo de filmes",
+                                          Switch(
+                                            value: cinemaCatalogoTemp,
+                                            activeThumbColor: Colors.green,
+                                            inactiveThumbColor: Colors.red,
+                                            onChanged: (value) {
+                                              cinemaCatalogoTemp = value;
+                                              SonsSistema.click();
+                                              setStateDialog?.call(() {});
+                                            },
+                                          ),
+                                          focusNodes[12],
+                                        ),
+
+                                        // A chave só interessa a quem
+                                        // escolheu o catálogo: sem ele a aba
+                                        // é a grade de canais de sempre, e
+                                        // não fala com o TMDB.
+                                        if (cinemaCatalogoTemp) ...[
+                                          buildConfigItem(
+                                            "Chave da API do TMDB",
+                                            Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Text(
+                                                  _chaveResumida(chaveTmdbTemp),
+                                                  style: TextStyle(
+                                                    color: chaveTmdbTemp.isEmpty
+                                                        ? Colors.orangeAccent
+                                                        : Colors.white,
+                                                    fontSize: 14,
+                                                    fontWeight: FontWeight.w600,
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 10),
+                                                const Icon(Icons.edit_outlined,
+                                                    color: Colors.white70,
+                                                    size: 18),
+                                              ],
+                                            ),
+                                            focusNodes[13],
+                                          ),
+                                          Padding(
+                                            padding: const EdgeInsets.symmetric(
+                                                horizontal: 16, vertical: 5),
+                                            child: Focus(
+                                              focusNode: focusNodes[14],
+                                              child: Builder(builder: (ctx) {
+                                                final hf = Focus.of(ctx).hasFocus;
+                                                return GestureDetector(
+                                                  onTap: () =>
+                                                      abrirTutorialTmdb(ctx),
+                                                  child: Container(
+                                                    padding:
+                                                        const EdgeInsets.all(10),
+                                                    decoration: BoxDecoration(
+                                                      color: hf
+                                                          ? Colors.white12
+                                                          : Colors.black26,
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                              12),
+                                                      border: Border.all(
+                                                        color: hf
+                                                            ? Colors.white
+                                                            : Colors.transparent,
+                                                        width: 2,
+                                                      ),
+                                                    ),
+                                                    child: Row(children: [
+                                                      const Icon(
+                                                          Icons
+                                                              .help_outline_rounded,
+                                                          color: Colors.white,
+                                                          size: 20),
+                                                      const SizedBox(width: 10),
+                                                      Expanded(
+                                                        child: Text(
+                                                          "Como conseguir a chave",
+                                                          style: TextStyle(
+                                                            color: Colors.white,
+                                                            fontSize: 16,
+                                                            fontWeight: hf
+                                                                ? FontWeight.bold
+                                                                : FontWeight
+                                                                    .normal,
+                                                          ),
+                                                        ),
+                                                      ),
+                                                      const Icon(
+                                                          Icons
+                                                              .chevron_right_rounded,
+                                                          color: Colors.white70,
+                                                          size: 20),
+                                                    ]),
+                                                  ),
+                                                );
+                                              }),
+                                            ),
+                                          ),
+                                        ],
 
                                         if (interfaceTemp == 'futurista')
                                           buildConfigItem(

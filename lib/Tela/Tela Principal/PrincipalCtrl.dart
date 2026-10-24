@@ -110,6 +110,13 @@ class PrincipalCtrl with ChangeNotifier{
   
   // Callback para abrir notícia no Widget
   void Function(NoticiaGame)? abrirNoticiaCallback;
+
+  /// Comandos do Pad da aba Cinema, enquanto a tela de catálogo está montada.
+  /// Devolve `true` quando ela consumiu o evento; `false` devolve o comando
+  /// ao fluxo antigo — é assim que a coluna de canais continua abrindo
+  /// streaming e editando cartões sem código duplicado. Nulo com a tela
+  /// antiga (`BodyIconesCinema`), que não precisa de desvio nenhum.
+  bool Function(String evento)? cinemaPadHandler;
   // Controle de popup de notícia — recebe eventos de gamepad enquanto aberto
   NoticiaGame? noticiaPopupAberta;
   VoidCallback? fecharNoticiaPopup;
@@ -1775,7 +1782,13 @@ if (-not [WindowsPower]::SetSuspendState($false, $false, $false)) { exit 1 }
       }
 
       if((event == "RB"||event=="LB") && focusScope != focusScopeVideos){
-        movAbaGuias(event);}
+        // Na aba de cinema, LB/RB podem estar servindo de avanço e retrocesso
+        // do trailer em tela cheia. A tela diz se consumiu; se não consumiu,
+        // segue sendo troca de aba como em todo o resto do launcher.
+        if(!(selectedIndexAbaGuias == 1 &&
+            (cinemaPadHandler?.call(event) ?? false))){
+          movAbaGuias(event);
+        }}
       else if(focusScope == focusScopeIcones && selectedIndexAbaGuias == 0){
         movIcones(event);}
       else if(focusScope == focusScopeCardInf && selectedIndexAbaGuias == 0){
@@ -2031,7 +2044,10 @@ if (-not [WindowsPower]::SetSuspendState($false, $false, $false)) { exit 1 }
     }
   }
 
-  movFilmes(String event) async {    
+  movFilmes(String event) async {
+    // A tela de catálogo anda sozinha pelo mosaico; só o que ela não consome
+    // segue para a navegação por foco e para os cartões de canal.
+    if (cinemaPadHandler?.call(event) ?? false) return;
     if (!compactNavigation) MovimentoSistema.direcaoListView(focusScope, event);
     if(gameIniciado) {
       if(event == "3") Navigator.pop(ctx);

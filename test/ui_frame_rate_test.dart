@@ -135,6 +135,15 @@ void main() {
     expect(find.byType(UiFpsOptions), findsNothing);
     expect(configSistema.uiFps, 0);
     expect(pad.comandoAtivo, isTrue);
+    // Sair das Configurações religa o mouse, e o religamento tem um atraso
+    // próprio no Paad. Sem deixar esse relógio correr, o teste termina com
+    // um Timer pendente que não é defeito nenhum.
+    // O religamento confirma o estado em dez passos antes de agendar o
+    // último atraso, então não adianta um pulo só: é preciso deixar o
+    // relógio correr algumas vezes.
+    for (var i = 0; i < 4; i++) {
+      await tester.pump(const Duration(seconds: 2));
+    }
     await tester.pumpWidget(const SizedBox());
     expect(tester.takeException(), isNull);
   });
